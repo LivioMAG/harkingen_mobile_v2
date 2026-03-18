@@ -1,0 +1,495 @@
+Repo-Handoff für eine spätere Webfassung
+=======================================
+
+Zweck dieses Dokuments
+----------------------
+Dieses Repo ist aktuell eine mobile, clientseitige Wochenrapport-App mit Supabase als einzigem Backend.
+Die Webfassung soll später von einem anderen Agenten gebaut werden. Dieses Dokument fasst deshalb alles
+zusammen, was dieser Agent über die bestehende mobile Fassung, die Supabase-Struktur und die aktuellen
+Datenflüsse wissen muss.
+
+1) Kurzüberblick über das aktuelle Repo
+---------------------------------------
+- Stack: reine statische Frontend-App aus `index.html`, `style.css`, `script.js`.
+- Keine Build-Pipeline, kein Framework, kein Backend-Server, keine API-Route im Repo.
+- Supabase wird direkt im Browser über das CDN-SDK `@supabase/supabase-js@2` verwendet.
+- Die App ist auf die mobile Erfassung für Monteure ausgelegt.
+- Authentifizierung: E-Mail/Passwort über Supabase Auth.
+- Datenhaltung: Supabase Postgres.
+- Dateiuploads: Supabase Storage-Bucket `weekly-attachments`.
+
+Wichtige Dateien:
+- `index.html`: komplette UI-Struktur der mobilen App.
+- `script.js`: kompletter Auth-, Daten-, Render- und Upload-Flow.
+- `supabase-schema.sql`: Tabellen, Trigger, Indizes, RLS-Policies und Storage-Policies.
+- `supabase-config.json`: Projekt-URL + Anon-Key; wird im Browser geladen.
+- `README.md`: Kurzbeschreibung und lokale Setup-Hinweise.
+
+2) Domänenmodell / fachliche Sicht
+----------------------------------
+Die mobile App deckt aktuell genau drei fachliche Bereiche ab:
+
+A. Benutzerprofil (`app_profiles`)
+- 1:1-Erweiterung zu `auth.users`.
+- Wird nach Login/Registrierung automatisch per Upsert angelegt/aktualisiert.
+- Aktuell nur für den eingeloggten Benutzer selbst gedacht.
+
+B. Wochenrapporte (`weekly_reports`)
+- Mehrere Einträge pro Tag möglich.
+- Ein Rapport beschreibt einen Arbeitseinsatz an einem Datum.
+- Enthält Kommissionsnummer, Arbeitszeit, Pausen, berechnete Gesamtminuten, Spesen,
+  weitere Auslagen, Bemerkungen und Dateianhänge.
+
+C. Ferien-/Absenzanträge (`holiday_requests`)
+- Bereich für Ferien, Militär, Zivildienst, Unfall, Krankheit.
+- Enthält Datumsbereich, Typ, Bemerkung und Anhänge.
+
+3) Supabase-Projekt / Konfiguration
+-----------------------------------
+Die App lädt beim Start `./supabase-config.json` per `fetch()` und erstellt daraus den Client.
+Es gibt keine Umgebungsvariablen oder serverseitige Geheimnisverwaltung im Repo.
+
+Aktuell verwendete Konfigurationswerte:
+- Supabase URL ist im Repo hinterlegt.
+- Anon Key ist im Repo hinterlegt.
+- Projektname: `rapport-mobile`.
+
+Wichtige Konsequenz für die spätere Webfassung:
+- Die aktuelle App nutzt ausschließlich den Browser-Client mit Anon-Key.
+- Wegen der bestehenden RLS-Policies sieht ein normal angemeldeter Benutzer nur seine
+  eigenen Daten.
+- Eine Webfassung mit Admin-/Dispo-/Backoffice-Sicht braucht sehr wahrscheinlich entweder:
+  - andere Tabellen/Policies,
+  - eine Server-Komponente mit Service-Role,
+  - oder zusätzliche Rollen/Policies für erweiterte Leserechte.
+
+4) Tabellenstruktur in Supabase
+-------------------------------
+
+4.1 `public.app_profiles`
+-------------------------
+Zweck:
+- Profil-/Stammdaten-Tabelle pro Auth-User.
+- Primär Identität + Anzeigename + Rollenlabel.
+
+Spalten:
+- `id uuid primary key`
+  - referenziert `auth.users(id)`
+  - `on delete cascade`
+- `email text not null unique`
+- `full_name text not null`
+- `role_label text not null default 'Monteur'`
+- `created_at timestamptz not null default timezone('utc', now())`
+- `updated_at timestamptz not null default timezone('utc', now())`
+
+Beziehungen:
+- 1 Benutzerprofil gehört genau zu einem Auth-User.
+- `weekly_reports.profile_id` referenziert `app_profiles.id`.
+- `holiday_requests.profile_id` referenziert `app_profiles.id`.
+
+Aktuelle Nutzung in der App:
+- Beim Login/Session-Bootstrap wird per Upsert sichergestellt, dass der Datensatz existiert.
+- `full_name` wird für die Begrüßung verwendet.
+- `role_label` ist aktuell fachlich noch nicht ausgewertet; standardmäßig immer `Monteur`.
+
+4.2 `public.weekly_reports`
+---------------------------
+Zweck:
+- Tages-/Rapportdaten eines Monteurs.
+- Mehrere Rapporte pro Arbeitstag sind erlaubt.
+
+Spalten:
+- `id uuid primary key default gen_random_uuid()`
+- `profile_id uuid not null references public.app_profiles(id) on delete cascade`
+- `work_date date not null`
+- `commission_number text not null`
+- `start_time time not null default '07:00'`
+- `end_time time not null default '17:30'`
+- `lunch_break_minutes integer not null default 60`
+- `additional_break_minutes integer not null default 30`
+- `total_work_minutes integer not null default 0`
+- `expenses_amount numeric(10,2) not null default 0`
+- `other_costs_amount numeric(10,2) not null default 0`
+- `expense_note text`
+- `notes text`
+- `attachments jsonb not null default '[]'::jsonb`
+- `created_at timestamptz not null default timezone('utc', now())`
+- `updated_at timestamptz not null default timezone('utc', now())`
+
+Index:
+- `(profile_id, work_date)`
+
+Semantik der Felder:
+- `commission_number`: fachliche Referenz des Einsatzes.
+- `total_work_minutes`: wird clientseitig aus Start-/Endzeit und Pausen berechnet.
+- `expenses_amount`: Spesen.
+- `other_costs_amount`: sonstige Auslagen.
+- `expense_note`: Erläuterung zu den Auslagen.
+- `notes`: allgemeine Tätigkeits-/Rapportbemerkung.
+- `attachments`: JSON-Array mit Metadaten zu hochgeladenen Dateien.
+
+Format von `attachments` in der Praxis:
+Jeder Eintrag wird clientseitig ungefähr so gespeichert:
+- `name`: Originaldateiname
+- `path`: Storage-Pfad
+- `publicUrl`: öffentliche URL aus Supabase Storage
+- `mimeType`: MIME-Type der Datei
+
+Beispielstruktur:
+[
+  {
+    "name": "beleg.jpg",
+    "path": "<user-id>/2026-03-18/1710750000000-beleg.jpg",
+    "publicUrl": "https://.../storage/v1/object/public/weekly-attachments/...",
+    "mimeType": "image/jpeg"
+  }
+]
+
+Wichtige Beobachtungen:
+- `total_work_minutes` ist nicht durch DB-Logik geschützt, sondern wird nur im Frontend berechnet.
+- Es gibt keine Normalisierung der Anhänge in eigene Tabellen.
+- Beim Löschen eines Rapport-Datensatzes werden die Dateien im Storage aktuell nicht mitgelöscht.
+
+4.3 `public.holiday_requests`
+-----------------------------
+Zweck:
+- Ferien- und Absenzanträge eines Monteurs.
+
+Spalten:
+- `id uuid primary key default gen_random_uuid()`
+- `profile_id uuid not null references public.app_profiles(id) on delete cascade`
+- `start_date date not null`
+- `end_date date not null`
+- `request_type text not null`
+- `notes text`
+- `attachments jsonb not null default '[]'::jsonb`
+- `created_at timestamptz not null default timezone('utc', now())`
+- `updated_at timestamptz not null default timezone('utc', now())`
+- Constraint: `end_date >= start_date`
+
+Erlaubte Werte für `request_type`:
+- `ferien`
+- `militaer`
+- `zivildienst`
+- `unfall`
+- `krankheit`
+
+Index:
+- `(profile_id, start_date, end_date)`
+
+Format von `attachments`:
+- gleiches JSON-Schema wie bei `weekly_reports.attachments`.
+
+Wichtige Beobachtungen:
+- Auch hier keine separate Attachment-Tabelle.
+- Auch hier werden Storage-Dateien beim Löschen eines Datensatzes nicht entfernt.
+
+5) Trigger / Defaults / Datenintegrität
+---------------------------------------
+Vorhanden:
+- PostgreSQL-Extension `pgcrypto` für `gen_random_uuid()`.
+- Trigger-Funktion `public.set_updated_at()`.
+- Trigger auf allen drei Tabellen setzen `updated_at` vor jedem Update automatisch neu.
+
+Nicht vorhanden:
+- Keine DB-Funktion zur Berechnung von `total_work_minutes`.
+- Keine weiteren Constraints auf Arbeitszeiten.
+- Keine Prüfungen gegen Überschneidungen, doppelte Kommissionsnummern oder ähnliche Fachregeln.
+- Kein Freigabe-/Status-Workflow bei Ferien-/Absenzanträgen.
+- Keine Tabellen für Teams, Projekte, Kunden, Aufträge, Disponenten oder Genehmigungen.
+
+6) Row Level Security (RLS)
+---------------------------
+Aktueller Sicherheitsmodus ist streng "jeder User nur seine Daten":
+
+`app_profiles`
+- SELECT: nur eigenes Profil (`auth.uid() = id`)
+- INSERT: nur eigenes Profil
+- UPDATE: nur eigenes Profil
+
+`weekly_reports`
+- SELECT: nur eigene Rapporte (`auth.uid() = profile_id`)
+- INSERT: nur eigene Rapporte
+- UPDATE: nur eigene Rapporte
+- DELETE: nur eigene Rapporte
+
+`holiday_requests`
+- SELECT: nur eigene Anträge (`auth.uid() = profile_id`)
+- INSERT: nur eigene Anträge
+- UPDATE: nur eigene Anträge
+- DELETE: nur eigene Anträge
+
+Bedeutung für die Webfassung:
+- Eine normale Benutzer-Webfassung kann mit dem gleichen Modell arbeiten.
+- Eine zentrale Web-Übersicht über mehrere Monteure funktioniert damit nicht direkt.
+- Für Web-Features wie Admin-Dashboard, Teamübersicht, Disposition, Controlling,
+  Sammelauswertungen oder Genehmigungslisten muss das Berechtigungsmodell erweitert werden.
+
+7) Supabase Storage-Struktur
+----------------------------
+Bucket:
+- `weekly-attachments`
+- Bucket wird als `public = true` angelegt.
+
+Storage-Policies:
+- Lesen: nur Objekte im eigenen User-Ordner.
+- Insert: nur Objekte im eigenen User-Ordner.
+- Update: nur Objekte im eigenen User-Ordner.
+- Delete: nur Objekte im eigenen User-Ordner.
+
+Pfadkonvention:
+- Rapport-Anhänge:
+  `<user-id>/<work_date>/<timestamp>-<safe-filename>`
+- Holiday-Anhänge:
+  `<user-id>/holiday-<start_date>/<timestamp>-<safe-filename>`
+
+`safe-filename` wird clientseitig erzeugt durch:
+- kleinschreiben
+- alle Zeichen außerhalb `[a-z0-9._-]` werden durch `-` ersetzt
+
+Wichtige Konsequenzen:
+- Obwohl der Bucket public ist, werden im Datensatz direkt öffentliche URLs gespeichert.
+- Die App rendert Links direkt über `publicUrl`.
+- Für eine Webfassung wäre zu überlegen, ob öffentliche URLs gewünscht sind oder ob besser
+  signierte URLs bzw. ein nicht-öffentlicher Bucket verwendet werden sollten.
+- Es gibt aktuell keine Garbage-Collection für verwaiste Dateien.
+
+8) Requests / Datenflüsse in `script.js`
+----------------------------------------
+Die gesamte App-Logik lebt in einer Datei. Relevante Flows:
+
+8.1 Start / Initialisierung
+- `loadConfig()`:
+  - `fetch('./supabase-config.json', { cache: 'no-store' })`
+  - validiert Konfiguration
+  - erzeugt Supabase-Client
+  - registriert Auth-Listener
+  - lädt bestehende Session
+
+8.2 Session / Auth
+- `bootstrapSession()`:
+  - `supabase.auth.getSession()`
+- `wireAuthListener()`:
+  - hört auf `supabase.auth.onAuthStateChange(...)`
+  - ruft asynchron `syncSessionState(session)` auf
+- `signIn()`:
+  - `supabase.auth.signInWithPassword({ email, password })`
+- `signUp()`:
+  - `supabase.auth.signUp({ email, password, options: { data: { full_name } } })`
+- `signOut()`:
+  - `supabase.auth.signOut()`
+
+8.3 Profil-Synchronisierung
+- `ensureProfile(user, explicitFullName)`:
+  - `from('app_profiles').upsert(payload, { onConflict: 'id' }).select().single()`
+- Das Profil wird also nicht in einem separaten Onboarding gepflegt, sondern automatisch.
+
+8.4 Rapporte laden
+- `loadEntries()`:
+  - berechnet Montag bis Sonntag der aktuell gewählten Kalenderwoche
+  - Query:
+    - `from('weekly_reports')`
+    - `.select('*')`
+    - `.gte('work_date', firstDay)`
+    - `.lte('work_date', lastDay)`
+    - `.order('work_date', { ascending: true })`
+    - `.order('start_time', { ascending: true })`
+
+Wichtig:
+- Die mobile App lädt nur die aktuell ausgewählte Woche, nicht die gesamte Historie.
+- Für eine Webfassung mit Listen, Filtern oder Monats-/Jahresansicht muss die Query-Strategie
+  erweitert werden.
+
+8.5 Ferien-/Absenzanträge laden
+- `loadHolidayRequests()`:
+  - Query:
+    - `from('holiday_requests')`
+    - `.select('*')`
+    - `.order('start_date', { ascending: false })`
+    - `.limit(12)`
+
+Wichtig:
+- Die mobile Fassung zeigt nur die 12 neuesten Anträge.
+- Für die Webfassung kann Pagination/Filter nötig werden.
+
+8.6 Datei-Uploads
+- `uploadAttachments(files, folderKey, existingFiles = [])`:
+  - für jede Datei:
+    - baut Storage-Pfad
+    - `storage.from('weekly-attachments').upload(filePath, file, { upsert: false })`
+    - `storage.from('weekly-attachments').getPublicUrl(filePath)`
+  - gibt erweitertes Attachment-Array zurück
+
+Wichtig:
+- Uploads laufen sequentiell, nicht parallel.
+- Bestehende Anhänge bleiben beim Editieren erhalten; neue werden ergänzt.
+- Es gibt kein Entfernen einzelner bestehender Anhänge im UI.
+
+8.7 Rapport speichern
+- `getEntryPayload()` baut den Body.
+- `saveEntry()`:
+  - validiert Kommissionsnummer und positive Arbeitszeit
+  - lädt neue Attachments hoch
+  - Insert oder Update auf `weekly_reports`
+
+Insert:
+- `from('weekly_reports').insert(body).select().single()`
+
+Update:
+- `from('weekly_reports').update(body).eq('id', editingEntry.id).select().single()`
+
+8.8 Rapport löschen
+- `deleteEntry()`:
+  - `from('weekly_reports').delete().eq('id', editingEntry.id)`
+
+Wichtig:
+- Nur DB-Zeile wird gelöscht, nicht die zugehörigen Dateien im Storage.
+
+8.9 Holiday speichern
+- `getHolidayPayload(attachments)` baut den Body.
+- `saveHolidayRequest()`:
+  - validiert Datumsbereich
+  - lädt neue Anhänge hoch
+  - Insert oder Update auf `holiday_requests`
+
+Insert:
+- `from('holiday_requests').insert(body).select().single()`
+
+Update:
+- `from('holiday_requests').update(body).eq('id', editingHoliday.id).select().single()`
+
+8.10 Holiday löschen
+- `deleteHolidayRequest()`:
+  - `from('holiday_requests').delete().eq('id', editingHoliday.id)`
+
+9) Wie die mobile UI die Daten verwendet
+----------------------------------------
+Die Webfassung sollte wissen, was in der mobilen Fassung bereits vorhanden ist und was nicht.
+
+Vorhanden in der UI:
+- Login und Registrierung.
+- Wochennavigation (vor/zurück).
+- Wochenzusammenfassung:
+  - Anzahl Rapporte
+  - Gesamtarbeitszeit
+  - Gesamtspesen
+- Tageskarten Montag bis Sonntag.
+- Pro Tag mehrere Rapporte.
+- Drawer zum Anlegen/Bearbeiten von Rapporten.
+- Bereich für Ferien/Absenzen mit Liste der letzten 12 Anträge.
+- Drawer zum Anlegen/Bearbeiten von Anträgen.
+
+Nicht vorhanden in der UI:
+- Desktop-/Responsive-Layout für große Screens.
+- Tabellenansichten.
+- Filter über mehrere Mitarbeiter.
+- Rollenbasierte Oberflächen.
+- Status/Approval-Prozesse.
+- Exportfunktionen.
+- Suchfunktionen.
+- Aggregierte Berichte über längere Zeiträume.
+- Kalenderdarstellung über Monate hinweg.
+
+10) Zentrale Fachlogik aus dem Frontend
+--------------------------------------
+Arbeitszeitberechnung:
+- `minutesBetween(startTime, endTime, lunchMinutes, breakMinutes)`
+- Formel:
+  - `(Ende - Start) - lunch_break_minutes - additional_break_minutes`
+  - Minimum ist 0
+
+Default-Werte für neue Rapporte:
+- Start: `07:00`
+- Ende: `16:30`
+- Mittagspause: `60`
+- weitere Pause: `30`
+
+Hinweis:
+- Im SQL-Schema ist für `end_time` der Default `17:30` hinterlegt.
+- Im Frontend ist der Default dagegen `16:30`.
+- Das ist eine Inkonsistenz, die ein späterer Agent beachten sollte.
+
+Holiday-Typ-Labels im Frontend:
+- `ferien` => `Urlaub / Ferien`
+- `militaer` => `Militär`
+- `zivildienst` => `Zivildienst`
+- `unfall` => `Unfall`
+- `krankheit` => `Krankheit`
+
+11) Aktuelle Grenzen / technische Schulden
+------------------------------------------
+Wichtige Punkte für einen zukünftigen Web-Agenten:
+
+- Keine Trennung von Daten-, API- und UI-Schicht; fast alles liegt in `script.js`.
+- Keine typisierte Datenstruktur und kein Schema-Client im Code.
+- Keine Migration-Historie außer einer SQL-Datei.
+- Keine Tests.
+- Kein Backend für administrative oder aggregierte Sichten.
+- Anon-Key liegt lokal im Repo; für eine produktive Webfassung evtl. anders lösen.
+- Storage-Dateien werden nicht mit DB-Datensätzen synchron gelöscht.
+- Anhänge liegen als JSONB in den Haupttabellen, nicht relational.
+- `role_label` ist eher kosmetisch und aktuell nicht durch RLS oder Feature-Flags abgesichert.
+- Es gibt keine echte Trennung zwischen Monteur-, Teamleiter- und Admin-Rechten.
+
+12) Was ein neuer Agent für die Webfassung sehr wahrscheinlich brauchen wird
+----------------------------------------------------------------------------
+Wenn eine Webfassung mehr sein soll als nur eine größere Darstellung der mobilen Einzelansicht,
+werden sehr wahrscheinlich zusätzliche Entscheidungen nötig:
+
+A. Rollenmodell klären
+- Wer darf nur eigene Daten sehen?
+- Wer darf mehrere Monteure sehen?
+- Wer darf Ferien genehmigen?
+- Wer darf Rapporte korrigieren?
+
+B. Datenmodell erweitern
+Mögliche zusätzliche Tabellen / Felder:
+- Teams / Abteilungen
+- Projekte / Baustellen / Kunden
+- Genehmigungsstatus für Holiday Requests
+- Status/Freigabe für Rapporte
+- Kommentare / Rückfragen
+- Verantwortliche Vorgesetzte
+- Kostenträger / Auftragsarten
+
+C. Query-Strategie für Web überarbeiten
+- Listenansicht für viele Rapporte
+- Filter nach Mitarbeiter, Woche, Monat, Kommission, Status
+- Paginierung
+- evtl. serverseitige Aggregationen
+
+D. Attachment-Strategie prüfen
+- Public Bucket behalten oder auf private Objekte wechseln?
+- Eigene Attachment-Tabelle einführen?
+- Löschen/Archivieren verwaister Dateien implementieren?
+
+E. Architektur überdenken
+- Weiterhin statisches Frontend direkt gegen Supabase?
+- Oder Web-App mit Server-Komponente / Edge Functions / Backend?
+- Für Admin-Use-Cases ist Browser-only mit Anon-Key oft nicht ausreichend.
+
+13) Konkrete Fundstellen im Repo
+--------------------------------
+Wenn der nächste Agent etwas nachschauen will:
+
+- Tabellen, RLS, Trigger, Storage:
+  - `supabase-schema.sql`
+- Alle Supabase-Requests und Fachlogik:
+  - `script.js`
+- Welche UI-Felder aktuell existieren:
+  - `index.html`
+- Setup / Kurzbeschreibung:
+  - `README.md`
+
+14) Wichtigste Kurzfassung in 10 Punkten
+----------------------------------------
+1. Das Repo ist eine reine statische Mobile-Web-App ohne Backend-Server.
+2. Alle Datenzugriffe laufen direkt vom Browser auf Supabase.
+3. Es gibt drei Haupttabellen: `app_profiles`, `weekly_reports`, `holiday_requests`.
+4. Alle RLS-Regeln sind auf "nur eigene Daten" ausgelegt.
+5. `weekly_reports` speichert Arbeitszeit, Spesen, Bemerkungen und Anhänge.
+6. `holiday_requests` speichert Datumsbereich, Typ, Bemerkung und Anhänge.
+7. Anhänge liegen im öffentlichen Storage-Bucket `weekly-attachments` und werden zusätzlich als JSONB-Metadaten in den Tabellen gespeichert.
+8. Die mobile App lädt nur die aktuelle Woche an Rapporten und nur die letzten 12 Holiday Requests.
+9. Es gibt keine Admin-, Manager- oder Team-Sicht in der aktuellen Architektur.
+10. Für eine echte Webfassung mit Mehrbenutzer-/Übersichtslogik muss sehr wahrscheinlich das Rollen-, Query- und ggf. Backend-Modell erweitert werden.
