@@ -315,8 +315,15 @@ async function syncSessionState(session) {
 }
 
 function wireAuthListener() {
-  state.supabase.auth.onAuthStateChange(async (_event, session) => {
-    await syncSessionState(session);
+  state.supabase.auth.onAuthStateChange((_event, session) => {
+    // Supabase empfiehlt, Folgeaufrufe asynchron aus dem Auth-Callback auszulagern,
+    // damit keine Deadlocks bei weiteren Auth-/DB-Requests entstehen.
+    window.setTimeout(() => {
+      syncSessionState(session).catch((error) => {
+        console.error(error);
+        showToast(`Sitzung konnte nicht aktualisiert werden: ${error.message}`, 'error');
+      });
+    }, 0);
   });
 }
 
