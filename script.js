@@ -1,7 +1,7 @@
 const CONFIG_PATH = './supabase-config.json';
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
-const DEFAULT_END_TIME = '17:30';
+const DEFAULT_END_TIME = '16:30';
 const DEFAULT_LUNCH_MINUTES = 60;
 const DEFAULT_BREAK_MINUTES = 30;
 const HOLIDAY_TYPE_LABELS = {
@@ -51,7 +51,7 @@ const elements = {
   weekExpensesTotal: document.getElementById('weekExpensesTotal'),
   prevWeekBtn: document.getElementById('prevWeekBtn'),
   nextWeekBtn: document.getElementById('nextWeekBtn'),
-  todayWeekBtn: document.getElementById('todayWeekBtn'),
+  currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
@@ -169,6 +169,12 @@ function formatMinutes(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+function formatMinutesLong(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours} Stunden ${String(minutes).padStart(2, '0')} Minuten`;
 }
 
 function validateConfig(config) {
@@ -685,7 +691,8 @@ function renderAttachmentPreview(attachments, kind) {
 function renderWeek() {
   const days = getWeekDays();
   const weekNumber = getWeekNumber(days[0].date);
-  elements.weekRangeLabel.textContent = `KW ${weekNumber} · ${formatDate(days[0].date)} – ${formatDate(days[days.length - 1].date)}`;
+  elements.weekRangeLabel.textContent = `${formatDate(days[0].date)} – ${formatDate(days[days.length - 1].date)}`;
+  elements.currentWeekLabel.textContent = `KW ${weekNumber}`;
 
   elements.weekGrid.innerHTML = '';
   let totalMinutes = 0;
@@ -727,8 +734,9 @@ function renderWeek() {
         const entryNode = elements.entryCardTemplate.content.cloneNode(true);
         const button = entryNode.querySelector('.entry-card');
         button.querySelector('.entry-commission').textContent = entry.commission_number;
+        button.querySelector('.entry-time-range').textContent = `${entry.start_time} – ${entry.end_time}`;
         button.querySelector('.entry-time').textContent = `${entry.start_time} – ${entry.end_time}`;
-        button.querySelector('.entry-minutes').textContent = formatMinutes(Number(entry.total_work_minutes || 0));
+        button.querySelector('.entry-minutes').textContent = formatMinutesLong(Number(entry.total_work_minutes || 0));
         button.querySelector('.entry-expenses').textContent = formatCurrency(
           Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0)
         );
@@ -823,19 +831,12 @@ function handleWeekChange(offsetDelta) {
   loadEntries().then(() => renderWeek());
 }
 
-function jumpToCurrentWeek() {
-  state.weekOffset = 0;
-  if (!state.session?.user) return;
-  loadEntries().then(() => renderWeek());
-}
-
 function registerEventListeners() {
   elements.authForm.addEventListener('submit', handleAuthSubmit);
   elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
   elements.signOutBtn.addEventListener('click', signOut);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
-  elements.todayWeekBtn.addEventListener('click', jumpToCurrentWeek);
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
   elements.entryForm.addEventListener('submit', saveEntry);
   elements.holidayForm.addEventListener('submit', saveHolidayRequest);
