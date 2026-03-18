@@ -116,7 +116,8 @@ code {
 .entry-card-body,
 .auth-switch-row,
 .hero-top-row,
-.week-nav {
+.week-nav,
+.drawer-head-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -238,11 +239,33 @@ small {
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
+.drawer-head-actions {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
 .link-btn {
   background: transparent;
   color: var(--accent);
   padding: 0;
   font-weight: 700;
+}
+
+.drawer-link-btn {
+  min-height: 46px;
+  padding: 0 4px;
+}
+
+.report-type-field {
+  min-width: 190px;
+}
+
+.report-type-field span {
+  font-size: 0.78rem;
+}
+
+.report-type-field select {
+  min-height: 46px;
 }
 
 .primary-btn.small {
@@ -732,5 +755,15 @@ textarea {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .drawer-head-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .report-type-field {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 }
