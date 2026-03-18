@@ -72,16 +72,17 @@
 
         <section class="app-view hidden" id="appView">
           <section class="glass-card hero-card">
-            <div>
-              <p class="section-label">Einsatzplanung</p>
+            <div class="hero-top-row">
               <h2 id="welcomeHeading">Willkommen</h2>
-              <p id="weekRangeLabel">Kalenderwoche wird geladen…</p>
+              <button id="openHolidayDrawerBtn" class="icon-action-btn" type="button" aria-label="Ferien beantragen">
+                <span aria-hidden="true">🌴</span>
+              </button>
             </div>
-            <div class="hero-actions">
-              <button id="prevWeekBtn" class="ghost-btn" type="button">← Vorherige Woche</button>
-              <button id="todayWeekBtn" class="secondary-btn" type="button">Diese Woche</button>
-              <button id="nextWeekBtn" class="ghost-btn" type="button">Nächste Woche →</button>
-              <button id="openHolidayDrawerBtn" class="primary-btn" type="button">Ferien beantragen</button>
+            <p id="weekRangeLabel">Kalenderwoche wird geladen…</p>
+            <div class="week-nav" aria-label="Kalenderwochen-Navigation">
+              <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
+              <div id="currentWeekLabel" class="week-nav-label" aria-live="polite">KW --</div>
+              <button id="nextWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Nächste Kalenderwoche">→</button>
             </div>
           </section>
 
@@ -100,6 +101,8 @@
             </div>
           </section>
 
+          <section class="week-grid" id="weekGrid"></section>
+
           <section class="glass-card requests-card">
             <div class="section-head compact">
               <div>
@@ -111,8 +114,6 @@
             </div>
             <div id="holidayList" class="request-list"></div>
           </section>
-
-          <section class="week-grid" id="weekGrid"></section>
         </section>
       </main>
     </div>
@@ -138,34 +139,34 @@
             <input id="commissionInput" type="text" required placeholder="z. B. K-2026-041" />
           </label>
 
-          <div class="field-row two-columns">
-            <label class="field">
+          <div class="field-row split-pair two-columns">
+            <label class="field compact-field">
               <span>Arbeitsbeginn</span>
               <input id="startTimeInput" type="time" required />
             </label>
-            <label class="field">
+            <label class="field compact-field align-right-field">
               <span>Arbeitsende</span>
               <input id="endTimeInput" type="time" required />
             </label>
           </div>
 
-          <div class="field-row two-columns">
-            <label class="field">
+          <div class="field-row split-pair two-columns">
+            <label class="field compact-field">
               <span>Mittagspause (Minuten)</span>
               <input id="lunchMinutesInput" type="number" min="0" step="5" value="60" />
             </label>
-            <label class="field">
+            <label class="field compact-field align-right-field">
               <span>Weitere Pause (Minuten)</span>
               <input id="breakMinutesInput" type="number" min="0" step="5" value="30" />
             </label>
           </div>
 
-          <div class="field-row two-columns">
-            <label class="field">
+          <div class="field-row split-pair two-columns">
+            <label class="field compact-field">
               <span>Spesen (CHF)</span>
               <input id="expensesInput" type="number" min="0" step="0.05" value="0" />
             </label>
-            <label class="field">
+            <label class="field compact-field align-right-field">
               <span>Sonstige Auslagen (CHF)</span>
               <input id="otherCostsInput" type="number" min="0" step="0.05" value="0" />
             </label>
@@ -276,7 +277,7 @@
             <p class="weekday-label"></p>
             <h3 class="day-date"></h3>
           </div>
-          <button class="primary-btn small add-entry-btn" type="button">📷 Eintrag</button>
+          <button class="primary-btn small add-entry-btn icon-only" type="button" aria-label="Eintrag erfassen">+</button>
         </div>
         <div class="day-meta"></div>
         <div class="entry-list"></div>
@@ -285,13 +286,14 @@
 
     <template id="entryCardTemplate">
       <button class="entry-card" type="button">
-        <div class="entry-card-head">
+        <div class="entry-card-head entry-card-spacing">
           <strong class="entry-commission"></strong>
-          <span class="entry-time"></span>
+          <span class="entry-time-range"></span>
         </div>
-        <div class="entry-card-body">
-          <span class="entry-minutes"></span>
-          <span class="entry-expenses"></span>
+        <div class="entry-card-body entry-icon-row">
+          <span class="entry-icon-item"><span aria-hidden="true">📄</span><span class="entry-minutes"></span></span>
+          <span class="entry-icon-item"><span aria-hidden="true">⏱️</span><span class="entry-time"></span></span>
+          <span class="entry-icon-item"><span aria-hidden="true">🥪</span><span class="entry-expenses"></span></span>
         </div>
         <p class="entry-notes"></p>
       </button>
