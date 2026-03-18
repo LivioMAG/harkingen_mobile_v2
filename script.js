@@ -25,7 +25,8 @@ const state = {
   selectedDate: null,
   editingEntry: null,
   editingHoliday: null,
-  toastTimer: null
+  toastTimer: null,
+  activeFeedback: null
 };
 
 const elements = {
@@ -76,6 +77,7 @@ const elements = {
   existingAttachmentsList: document.getElementById('existingAttachmentsList'),
   attachmentCountLabel: document.getElementById('attachmentCountLabel'),
   deleteEntryBtn: document.getElementById('deleteEntryBtn'),
+  saveEntryBtn: document.getElementById('saveEntryBtn'),
   holidayDrawer: document.getElementById('holidayDrawer'),
   closeHolidayDrawerBtn: document.getElementById('closeHolidayDrawerBtn'),
   holidayForm: document.getElementById('holidayForm'),
@@ -89,8 +91,11 @@ const elements = {
   existingHolidayAttachmentsList: document.getElementById('existingHolidayAttachmentsList'),
   holidayAttachmentCountLabel: document.getElementById('holidayAttachmentCountLabel'),
   deleteHolidayBtn: document.getElementById('deleteHolidayBtn'),
+  saveHolidayBtn: document.getElementById('saveHolidayBtn'),
   dayCardTemplate: document.getElementById('dayCardTemplate'),
-  entryCardTemplate: document.getElementById('entryCardTemplate')
+  entryCardTemplate: document.getElementById('entryCardTemplate'),
+  activityFeedback: document.getElementById('activityFeedback'),
+  activityFeedbackLabel: document.getElementById('activityFeedbackLabel')
 };
 
 function showToast(message, type = 'success') {
@@ -103,6 +108,60 @@ function showToast(message, type = 'success') {
   document.body.appendChild(node);
 
   state.toastTimer = window.setTimeout(() => node.remove(), 3400);
+}
+
+function showActivity(message) {
+  state.activeFeedback = message;
+  elements.activityFeedbackLabel.textContent = message;
+  elements.activityFeedback.classList.remove('hidden');
+  elements.activityFeedback.setAttribute('aria-hidden', 'false');
+  window.requestAnimationFrame(() => elements.activityFeedback.classList.add('visible'));
+}
+
+function hideActivity() {
+  state.activeFeedback = null;
+  elements.activityFeedback.classList.remove('visible');
+  elements.activityFeedback.setAttribute('aria-hidden', 'true');
+  window.setTimeout(() => {
+    if (!state.activeFeedback) {
+      elements.activityFeedback.classList.add('hidden');
+      elements.activityFeedbackLabel.textContent = '';
+    }
+  }, 220);
+}
+
+function setButtonLoading(button, isLoading, loadingLabel) {
+  if (!button) return;
+
+  if (!button.dataset.defaultLabel) {
+    button.dataset.defaultLabel = button.textContent.trim();
+  }
+
+  button.disabled = isLoading;
+  button.classList.toggle('is-loading', isLoading);
+  button.setAttribute('aria-busy', String(isLoading));
+  button.textContent = isLoading ? loadingLabel : button.dataset.defaultLabel;
+}
+
+function setSectionBusy(section, isBusy) {
+  if (!section) return;
+  section.classList.toggle('is-busy', isBusy);
+  section.setAttribute('aria-busy', String(isBusy));
+}
+
+async function runWithFeedback(options, task) {
+  const { button, section, pendingMessage, loadingLabel } = options;
+  showActivity(pendingMessage);
+  setButtonLoading(button, true, loadingLabel);
+  setSectionBusy(section, true);
+
+  try {
+    return await task();
+  } finally {
+    setButtonLoading(button, false, loadingLabel);
+    setSectionBusy(section, false);
+    hideActivity();
+  }
 }
 
 function setPill(element, text, variant) {
@@ -296,29 +355,39 @@ async function signIn(event) {
     return;
   }
 
-  const email = elements.emailInput.value.trim();
-  const password = elements.passwordInput.value;
-  const { data, error } = await state.supabase.auth.signInWithPassword({ email, password });
+  await runWithFeedback(
+    {
+      button: elements.authSubmitBtn,
+      section: elements.authCard,
+      pendingMessage: 'Anmeldung wird durchgeführt …',
+      loadingLabel: 'Anmeldung läuft …'
+    },
+    async () => {
+      const email = elements.emailInput.value.trim();
+      const password = elements.passwordInput.value;
+      const { data, error } = await state.supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    showToast(`Anmeldung fehlgeschlagen: ${error.message}`, 'error');
-    return;
-  }
+      if (error) {
+        showToast(`Anmeldung fehlgeschlagen: ${error.message}`, 'error');
+        return;
+      }
 
-  if (data.session) {
-    await syncSessionState(data.session);
-  } else {
-    const { data: sessionData, error: sessionError } = await state.supabase.auth.getSession();
-    if (sessionError) {
-      showToast(`Sitzung konnte nicht geladen werden: ${sessionError.message}`, 'error');
-      return;
+      if (data.session) {
+        await syncSessionState(data.session);
+      } else {
+        const { data: sessionData, error: sessionError } = await state.supabase.auth.getSession();
+        if (sessionError) {
+          showToast(`Sitzung konnte nicht geladen werden: ${sessionError.message}`, 'error');
+          return;
+        }
+        await syncSessionState(sessionData.session);
+      }
+
+      showToast('Erfolgreich angemeldet.');
+      elements.authForm.reset();
+      setAuthMode('login');
     }
-    await syncSessionState(sessionData.session);
-  }
-
-  showToast('Erfolgreich angemeldet.');
-  elements.authForm.reset();
-  setAuthMode('login');
+  );
 }
 
 async function signUp() {
@@ -336,26 +405,36 @@ async function signUp() {
     return;
   }
 
-  const { data, error } = await state.supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name: fullName }
+  await runWithFeedback(
+    {
+      button: elements.authSubmitBtn,
+      section: elements.authCard,
+      pendingMessage: 'Konto wird erstellt …',
+      loadingLabel: 'Konto wird erstellt …'
+    },
+    async () => {
+      const { data, error } = await state.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+
+      if (error) {
+        showToast(`Konto konnte nicht erstellt werden: ${error.message}`, 'error');
+        return;
+      }
+
+      if (data.session?.user) {
+        await ensureProfile(data.session.user, fullName);
+      }
+
+      showToast('Konto erstellt. Bitte E-Mail-Bestätigung prüfen, falls aktiviert.');
+      elements.authForm.reset();
+      setAuthMode('login');
     }
-  });
-
-  if (error) {
-    showToast(`Konto konnte nicht erstellt werden: ${error.message}`, 'error');
-    return;
-  }
-
-  if (data.session?.user) {
-    await ensureProfile(data.session.user, fullName);
-  }
-
-  showToast('Konto erstellt. Bitte E-Mail-Bestätigung prüfen, falls aktiviert.');
-  elements.authForm.reset();
-  setAuthMode('login');
+  );
 }
 
 async function handleAuthSubmit(event) {
@@ -369,12 +448,22 @@ async function handleAuthSubmit(event) {
 }
 
 async function signOut() {
-  const { error } = await state.supabase.auth.signOut();
-  if (error) {
-    showToast(`Abmeldung fehlgeschlagen: ${error.message}`, 'error');
-    return;
-  }
-  showToast('Erfolgreich abgemeldet.');
+  await runWithFeedback(
+    {
+      button: elements.signOutBtn,
+      section: elements.appView,
+      pendingMessage: 'Abmeldung läuft …',
+      loadingLabel: 'Abmeldung läuft …'
+    },
+    async () => {
+      const { error } = await state.supabase.auth.signOut();
+      if (error) {
+        showToast(`Abmeldung fehlgeschlagen: ${error.message}`, 'error');
+        return;
+      }
+      showToast('Erfolgreich abgemeldet.');
+    }
+  );
 }
 
 async function loadEntries() {
@@ -503,23 +592,33 @@ async function saveEntry(event) {
   }
 
   try {
-    const existingAttachments = state.editingEntry?.attachments || [];
-    const attachments = await uploadAttachments(Array.from(elements.attachmentsInput.files || []), payload.work_date, existingAttachments);
-    const body = { ...payload, attachments };
+    await runWithFeedback(
+      {
+        button: elements.saveEntryBtn,
+        section: elements.entryDrawer.querySelector('.drawer-panel'),
+        pendingMessage: state.editingEntry?.id ? 'Eintrag wird aktualisiert …' : 'Eintrag wird gespeichert …',
+        loadingLabel: state.editingEntry?.id ? 'Aktualisieren …' : 'Speichern …'
+      },
+      async () => {
+        const existingAttachments = state.editingEntry?.attachments || [];
+        const attachments = await uploadAttachments(Array.from(elements.attachmentsInput.files || []), payload.work_date, existingAttachments);
+        const body = { ...payload, attachments };
 
-    let result;
-    if (state.editingEntry?.id) {
-      result = await state.supabase.from('weekly_reports').update(body).eq('id', state.editingEntry.id).select().single();
-    } else {
-      result = await state.supabase.from('weekly_reports').insert(body).select().single();
-    }
+        let result;
+        if (state.editingEntry?.id) {
+          result = await state.supabase.from('weekly_reports').update(body).eq('id', state.editingEntry.id).select().single();
+        } else {
+          result = await state.supabase.from('weekly_reports').insert(body).select().single();
+        }
 
-    if (result.error) throw result.error;
+        if (result.error) throw result.error;
 
-    showToast(state.editingEntry?.id ? 'Eintrag aktualisiert.' : 'Eintrag gespeichert.');
-    closeDrawer();
-    await loadEntries();
-    renderWeek();
+        showToast(state.editingEntry?.id ? 'Eintrag aktualisiert.' : 'Eintrag gespeichert.');
+        closeDrawer();
+        await loadEntries();
+        renderWeek();
+      }
+    );
   } catch (error) {
     console.error(error);
     showToast(`Speichern fehlgeschlagen: ${error.message}`, 'error');
@@ -547,27 +646,37 @@ async function saveHolidayRequest(event) {
   }
 
   try {
-    const existingAttachments = state.editingHoliday?.attachments || [];
-    const attachments = await uploadAttachments(
-      Array.from(elements.holidayAttachmentsInput.files || []),
-      `holiday-${startDate}`,
-      existingAttachments
+    await runWithFeedback(
+      {
+        button: elements.saveHolidayBtn,
+        section: elements.holidayDrawer.querySelector('.drawer-panel'),
+        pendingMessage: state.editingHoliday?.id ? 'Antrag wird aktualisiert …' : 'Antrag wird gespeichert …',
+        loadingLabel: state.editingHoliday?.id ? 'Aktualisieren …' : 'Speichern …'
+      },
+      async () => {
+        const existingAttachments = state.editingHoliday?.attachments || [];
+        const attachments = await uploadAttachments(
+          Array.from(elements.holidayAttachmentsInput.files || []),
+          `holiday-${startDate}`,
+          existingAttachments
+        );
+
+        const body = getHolidayPayload(attachments);
+        let result;
+        if (state.editingHoliday?.id) {
+          result = await state.supabase.from('holiday_requests').update(body).eq('id', state.editingHoliday.id).select().single();
+        } else {
+          result = await state.supabase.from('holiday_requests').insert(body).select().single();
+        }
+
+        if (result.error) throw result.error;
+
+        showToast(state.editingHoliday?.id ? 'Abwesenheitsantrag aktualisiert.' : 'Abwesenheitsantrag gespeichert.');
+        closeHolidayDrawer();
+        await loadHolidayRequests();
+        renderHolidayRequests();
+      }
     );
-
-    const body = getHolidayPayload(attachments);
-    let result;
-    if (state.editingHoliday?.id) {
-      result = await state.supabase.from('holiday_requests').update(body).eq('id', state.editingHoliday.id).select().single();
-    } else {
-      result = await state.supabase.from('holiday_requests').insert(body).select().single();
-    }
-
-    if (result.error) throw result.error;
-
-    showToast(state.editingHoliday?.id ? 'Abwesenheitsantrag aktualisiert.' : 'Abwesenheitsantrag gespeichert.');
-    closeHolidayDrawer();
-    await loadHolidayRequests();
-    renderHolidayRequests();
   } catch (error) {
     console.error(error);
     showToast(`Antrag konnte nicht gespeichert werden: ${error.message}`, 'error');
@@ -578,32 +687,52 @@ async function deleteEntry() {
   if (!state.editingEntry?.id) return;
   if (!window.confirm('Diesen Rapport wirklich löschen?')) return;
 
-  const { error } = await state.supabase.from('weekly_reports').delete().eq('id', state.editingEntry.id);
-  if (error) {
-    showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
-    return;
-  }
+  await runWithFeedback(
+    {
+      button: elements.deleteEntryBtn,
+      section: elements.entryDrawer.querySelector('.drawer-panel'),
+      pendingMessage: 'Eintrag wird gelöscht …',
+      loadingLabel: 'Löschen …'
+    },
+    async () => {
+      const { error } = await state.supabase.from('weekly_reports').delete().eq('id', state.editingEntry.id);
+      if (error) {
+        showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
+        return;
+      }
 
-  showToast('Eintrag gelöscht.');
-  closeDrawer();
-  await loadEntries();
-  renderWeek();
+      showToast('Eintrag gelöscht.');
+      closeDrawer();
+      await loadEntries();
+      renderWeek();
+    }
+  );
 }
 
 async function deleteHolidayRequest() {
   if (!state.editingHoliday?.id) return;
   if (!window.confirm('Diesen Abwesenheitsantrag wirklich löschen?')) return;
 
-  const { error } = await state.supabase.from('holiday_requests').delete().eq('id', state.editingHoliday.id);
-  if (error) {
-    showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
-    return;
-  }
+  await runWithFeedback(
+    {
+      button: elements.deleteHolidayBtn,
+      section: elements.holidayDrawer.querySelector('.drawer-panel'),
+      pendingMessage: 'Antrag wird gelöscht …',
+      loadingLabel: 'Löschen …'
+    },
+    async () => {
+      const { error } = await state.supabase.from('holiday_requests').delete().eq('id', state.editingHoliday.id);
+      if (error) {
+        showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
+        return;
+      }
 
-  showToast('Abwesenheitsantrag gelöscht.');
-  closeHolidayDrawer();
-  await loadHolidayRequests();
-  renderHolidayRequests();
+      showToast('Abwesenheitsantrag gelöscht.');
+      closeHolidayDrawer();
+      await loadHolidayRequests();
+      renderHolidayRequests();
+    }
+  );
 }
 
 function openDrawer(isoDate, entry = null) {
