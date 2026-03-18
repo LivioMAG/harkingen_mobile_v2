@@ -1,5 +1,16 @@
 const CONFIG_PATH = './supabase-config.json';
 const STORAGE_BUCKET = 'weekly-attachments';
+const DEFAULT_START_TIME = '07:00';
+const DEFAULT_END_TIME = '17:30';
+const DEFAULT_LUNCH_MINUTES = 60;
+const DEFAULT_BREAK_MINUTES = 30;
+const HOLIDAY_TYPE_LABELS = {
+  ferien: 'Urlaub / Ferien',
+  militaer: 'Militär',
+  zivildienst: 'Zivildienst',
+  unfall: 'Unfall',
+  krankheit: 'Krankheit'
+};
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
 const state = {
@@ -8,20 +19,27 @@ const state = {
   session: null,
   profile: null,
   weekOffset: 0,
+  authMode: 'login',
   entries: [],
+  holidays: [],
   selectedDate: null,
   editingEntry: null,
+  editingHoliday: null,
   toastTimer: null
 };
 
 const elements = {
-  configStatusPill: document.getElementById('configStatusPill'),
-  authStatusPill: document.getElementById('authStatusPill'),
-  signOutBtn: document.getElementById('signOutBtn'),
   authCard: document.getElementById('authCard'),
+  authTitle: document.getElementById('authTitle'),
+  authSubtitle: document.getElementById('authSubtitle'),
+  authStatusPill: document.getElementById('authStatusPill'),
+  authSubmitBtn: document.getElementById('authSubmitBtn'),
+  authSwitchText: document.getElementById('authSwitchText'),
+  toggleAuthModeBtn: document.getElementById('toggleAuthModeBtn'),
+  fullNameField: document.getElementById('fullNameField'),
+  signOutBtn: document.getElementById('signOutBtn'),
   appView: document.getElementById('appView'),
   authForm: document.getElementById('authForm'),
-  signUpBtn: document.getElementById('signUpBtn'),
   emailInput: document.getElementById('emailInput'),
   passwordInput: document.getElementById('passwordInput'),
   fullNameInput: document.getElementById('fullNameInput'),
@@ -34,6 +52,9 @@ const elements = {
   prevWeekBtn: document.getElementById('prevWeekBtn'),
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   todayWeekBtn: document.getElementById('todayWeekBtn'),
+  openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
+  holidayList: document.getElementById('holidayList'),
+  holidayCountPill: document.getElementById('holidayCountPill'),
   entryDrawer: document.getElementById('entryDrawer'),
   closeDrawerBtn: document.getElementById('closeDrawerBtn'),
   drawerTitle: document.getElementById('drawerTitle'),
@@ -55,6 +76,19 @@ const elements = {
   existingAttachmentsList: document.getElementById('existingAttachmentsList'),
   attachmentCountLabel: document.getElementById('attachmentCountLabel'),
   deleteEntryBtn: document.getElementById('deleteEntryBtn'),
+  holidayDrawer: document.getElementById('holidayDrawer'),
+  closeHolidayDrawerBtn: document.getElementById('closeHolidayDrawerBtn'),
+  holidayForm: document.getElementById('holidayForm'),
+  holidayIdInput: document.getElementById('holidayIdInput'),
+  holidayStartDateInput: document.getElementById('holidayStartDateInput'),
+  holidayEndDateInput: document.getElementById('holidayEndDateInput'),
+  holidayTypeInput: document.getElementById('holidayTypeInput'),
+  holidayNotesInput: document.getElementById('holidayNotesInput'),
+  holidayAttachmentsInput: document.getElementById('holidayAttachmentsInput'),
+  existingHolidayAttachmentsBlock: document.getElementById('existingHolidayAttachmentsBlock'),
+  existingHolidayAttachmentsList: document.getElementById('existingHolidayAttachmentsList'),
+  holidayAttachmentCountLabel: document.getElementById('holidayAttachmentCountLabel'),
+  deleteHolidayBtn: document.getElementById('deleteHolidayBtn'),
   dayCardTemplate: document.getElementById('dayCardTemplate'),
   entryCardTemplate: document.getElementById('entryCardTemplate')
 };
@@ -149,20 +183,30 @@ function validateConfig(config) {
   );
 }
 
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const isRegister = mode === 'register';
+  elements.authTitle.textContent = isRegister ? 'Registrieren' : 'Anmelden';
+  elements.authSubtitle.textContent = isRegister
+    ? 'Erstelle dein Konto mit E-Mail und Passwort.'
+    : 'Melde dich mit E-Mail und Passwort an.';
+  elements.authSubmitBtn.textContent = isRegister ? 'Registrieren' : 'Anmelden';
+  elements.authSwitchText.textContent = isRegister ? 'Bereits registriert?' : 'Noch kein Konto?';
+  elements.toggleAuthModeBtn.textContent = isRegister ? 'Zum Login' : 'Jetzt registrieren';
+  elements.fullNameField.classList.toggle('hidden', !isRegister);
+  elements.passwordInput.setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+}
+
 async function loadConfig() {
   try {
     const response = await fetch(CONFIG_PATH, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error('Konfigurationsdatei nicht gefunden.');
-    }
+    if (!response.ok) throw new Error('Konfigurationsdatei nicht gefunden.');
 
     const config = await response.json();
     state.config = config;
 
     if (!validateConfig(config)) {
-      setPill(elements.configStatusPill, 'Konfiguration unvollständig', 'warning');
-      showToast('Bitte supabase-config.json mit URL und Anon Key ergänzen.', 'error');
-      return;
+      throw new Error('Konfiguration unvollständig.');
     }
 
     state.supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
@@ -172,13 +216,12 @@ async function loadConfig() {
       }
     });
 
-    setPill(elements.configStatusPill, 'Supabase verbunden', 'success');
     wireAuthListener();
     await bootstrapSession();
   } catch (error) {
     console.error(error);
-    setPill(elements.configStatusPill, 'Konfiguration fehlt', 'danger');
-    showToast('supabase-config.json konnte nicht geladen werden.', 'error');
+    setPill(elements.authStatusPill, 'Verbindung fehlt', 'danger');
+    showToast('Supabase-Konfiguration konnte nicht geladen werden.', 'error');
   }
 }
 
@@ -187,10 +230,11 @@ function wireAuthListener() {
     state.session = session;
     if (session?.user) {
       await ensureProfile(session.user);
-      await loadEntries();
+      await Promise.all([loadEntries(), loadHolidayRequests()]);
     } else {
       state.profile = null;
       state.entries = [];
+      state.holidays = [];
     }
     render();
   });
@@ -206,7 +250,7 @@ async function bootstrapSession() {
   state.session = data.session;
   if (state.session?.user) {
     await ensureProfile(state.session.user);
-    await loadEntries();
+    await Promise.all([loadEntries(), loadHolidayRequests()]);
   }
   render();
 }
@@ -220,12 +264,7 @@ async function ensureProfile(user, explicitFullName) {
     role_label: 'Monteur'
   };
 
-  const { data, error } = await state.supabase
-    .from('app_profiles')
-    .upsert(payload, { onConflict: 'id' })
-    .select()
-    .single();
-
+  const { data, error } = await state.supabase.from('app_profiles').upsert(payload, { onConflict: 'id' }).select().single();
   if (error) {
     showToast(`Profil konnte nicht gespeichert werden: ${error.message}`, 'error');
     return;
@@ -237,14 +276,14 @@ async function ensureProfile(user, explicitFullName) {
 async function signIn(event) {
   event.preventDefault();
   if (!state.supabase) {
-    showToast('Bitte zuerst Supabase konfigurieren.', 'error');
+    showToast('Supabase ist noch nicht verbunden.', 'error');
     return;
   }
 
   const email = elements.emailInput.value.trim();
   const password = elements.passwordInput.value;
-
   const { error } = await state.supabase.auth.signInWithPassword({ email, password });
+
   if (error) {
     showToast(`Anmeldung fehlgeschlagen: ${error.message}`, 'error');
     return;
@@ -252,11 +291,12 @@ async function signIn(event) {
 
   showToast('Erfolgreich angemeldet.');
   elements.authForm.reset();
+  setAuthMode('login');
 }
 
 async function signUp() {
   if (!state.supabase) {
-    showToast('Bitte zuerst Supabase konfigurieren.', 'error');
+    showToast('Supabase ist noch nicht verbunden.', 'error');
     return;
   }
 
@@ -264,8 +304,8 @@ async function signUp() {
   const password = elements.passwordInput.value;
   const fullName = elements.fullNameInput.value.trim();
 
-  if (!email || !password) {
-    showToast('E-Mail und Passwort sind erforderlich.', 'error');
+  if (!email || !password || !fullName) {
+    showToast('Name, E-Mail und Passwort sind erforderlich.', 'error');
     return;
   }
 
@@ -273,7 +313,7 @@ async function signUp() {
     email,
     password,
     options: {
-      data: { full_name: fullName || email.split('@')[0] }
+      data: { full_name: fullName }
     }
   });
 
@@ -287,6 +327,18 @@ async function signUp() {
   }
 
   showToast('Konto erstellt. Bitte E-Mail-Bestätigung prüfen, falls aktiviert.');
+  elements.authForm.reset();
+  setAuthMode('login');
+}
+
+async function handleAuthSubmit(event) {
+  if (state.authMode === 'register') {
+    event.preventDefault();
+    await signUp();
+    return;
+  }
+
+  await signIn(event);
 }
 
 async function signOut() {
@@ -320,26 +372,40 @@ async function loadEntries() {
   state.entries = data || [];
 }
 
+async function loadHolidayRequests() {
+  if (!state.session?.user) return;
+
+  const { data, error } = await state.supabase
+    .from('holiday_requests')
+    .select('*')
+    .order('start_date', { ascending: false })
+    .limit(12);
+
+  if (error) {
+    showToast(`Abwesenheiten konnten nicht geladen werden: ${error.message}`, 'error');
+    return;
+  }
+
+  state.holidays = data || [];
+}
+
 function getEntriesForDate(isoDate) {
   return state.entries.filter((entry) => entry.work_date === isoDate);
 }
 
-function buildStoragePath(file, isoDate) {
+function buildStoragePath(file, folderKey) {
   const safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
-  return `${state.session.user.id}/${isoDate}/${Date.now()}-${safeName}`;
+  return `${state.session.user.id}/${folderKey}/${Date.now()}-${safeName}`;
 }
 
-async function uploadAttachments(files, isoDate, existingFiles = []) {
+async function uploadAttachments(files, folderKey, existingFiles = []) {
   if (!files.length) return existingFiles;
 
   const uploaded = [...existingFiles];
-
   for (const file of files) {
-    const filePath = buildStoragePath(file, isoDate);
+    const filePath = buildStoragePath(file, folderKey);
     const { error } = await state.supabase.storage.from(STORAGE_BUCKET).upload(filePath, file, { upsert: false });
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const { data } = state.supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
     uploaded.push({
@@ -380,6 +446,17 @@ function getEntryPayload() {
   };
 }
 
+function getHolidayPayload(existingAttachments) {
+  return {
+    profile_id: state.session.user.id,
+    start_date: elements.holidayStartDateInput.value,
+    end_date: elements.holidayEndDateInput.value,
+    request_type: elements.holidayTypeInput.value,
+    notes: elements.holidayNotesInput.value.trim(),
+    attachments: existingAttachments
+  };
+}
+
 async function saveEntry(event) {
   event.preventDefault();
   if (!state.supabase || !state.session?.user) {
@@ -405,19 +482,12 @@ async function saveEntry(event) {
 
     let result;
     if (state.editingEntry?.id) {
-      result = await state.supabase
-        .from('weekly_reports')
-        .update(body)
-        .eq('id', state.editingEntry.id)
-        .select()
-        .single();
+      result = await state.supabase.from('weekly_reports').update(body).eq('id', state.editingEntry.id).select().single();
     } else {
       result = await state.supabase.from('weekly_reports').insert(body).select().single();
     }
 
-    if (result.error) {
-      throw result.error;
-    }
+    if (result.error) throw result.error;
 
     showToast(state.editingEntry?.id ? 'Eintrag aktualisiert.' : 'Eintrag gespeichert.');
     closeDrawer();
@@ -429,10 +499,57 @@ async function saveEntry(event) {
   }
 }
 
+async function saveHolidayRequest(event) {
+  event.preventDefault();
+  if (!state.supabase || !state.session?.user) {
+    showToast('Bitte zuerst anmelden.', 'error');
+    return;
+  }
+
+  const startDate = elements.holidayStartDateInput.value;
+  const endDate = elements.holidayEndDateInput.value;
+
+  if (!startDate || !endDate) {
+    showToast('Bitte Start- und Enddatum erfassen.', 'error');
+    return;
+  }
+
+  if (endDate < startDate) {
+    showToast('Das Enddatum darf nicht vor dem Startdatum liegen.', 'error');
+    return;
+  }
+
+  try {
+    const existingAttachments = state.editingHoliday?.attachments || [];
+    const attachments = await uploadAttachments(
+      Array.from(elements.holidayAttachmentsInput.files || []),
+      `holiday-${startDate}`,
+      existingAttachments
+    );
+
+    const body = getHolidayPayload(attachments);
+    let result;
+    if (state.editingHoliday?.id) {
+      result = await state.supabase.from('holiday_requests').update(body).eq('id', state.editingHoliday.id).select().single();
+    } else {
+      result = await state.supabase.from('holiday_requests').insert(body).select().single();
+    }
+
+    if (result.error) throw result.error;
+
+    showToast(state.editingHoliday?.id ? 'Abwesenheitsantrag aktualisiert.' : 'Abwesenheitsantrag gespeichert.');
+    closeHolidayDrawer();
+    await loadHolidayRequests();
+    renderHolidayRequests();
+  } catch (error) {
+    console.error(error);
+    showToast(`Antrag konnte nicht gespeichert werden: ${error.message}`, 'error');
+  }
+}
+
 async function deleteEntry() {
   if (!state.editingEntry?.id) return;
-  const confirmed = window.confirm('Diesen Rapport wirklich löschen?');
-  if (!confirmed) return;
+  if (!window.confirm('Diesen Rapport wirklich löschen?')) return;
 
   const { error } = await state.supabase.from('weekly_reports').delete().eq('id', state.editingEntry.id);
   if (error) {
@@ -444,6 +561,22 @@ async function deleteEntry() {
   closeDrawer();
   await loadEntries();
   renderWeek();
+}
+
+async function deleteHolidayRequest() {
+  if (!state.editingHoliday?.id) return;
+  if (!window.confirm('Diesen Abwesenheitsantrag wirklich löschen?')) return;
+
+  const { error } = await state.supabase.from('holiday_requests').delete().eq('id', state.editingHoliday.id);
+  if (error) {
+    showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
+    return;
+  }
+
+  showToast('Abwesenheitsantrag gelöscht.');
+  closeHolidayDrawer();
+  await loadHolidayRequests();
+  renderHolidayRequests();
 }
 
 function openDrawer(isoDate, entry = null) {
@@ -458,17 +591,17 @@ function openDrawer(isoDate, entry = null) {
   elements.entryIdInput.value = entry?.id || '';
   elements.entryDateInput.value = isoDate;
   elements.commissionInput.value = entry?.commission_number || '';
-  elements.startTimeInput.value = entry?.start_time || '07:30';
-  elements.endTimeInput.value = entry?.end_time || '17:00';
-  elements.lunchMinutesInput.value = entry?.lunch_break_minutes ?? 30;
-  elements.breakMinutesInput.value = entry?.additional_break_minutes ?? 0;
+  elements.startTimeInput.value = entry?.start_time || DEFAULT_START_TIME;
+  elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
+  elements.lunchMinutesInput.value = entry?.lunch_break_minutes ?? DEFAULT_LUNCH_MINUTES;
+  elements.breakMinutesInput.value = entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES;
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
   elements.expenseNoteInput.value = entry?.expense_note || '';
   elements.notesInput.value = entry?.notes || '';
   elements.attachmentsInput.value = '';
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
-  renderAttachmentPreview(entry?.attachments || []);
+  renderAttachmentPreview(entry?.attachments || [], 'report');
 }
 
 function closeDrawer() {
@@ -477,14 +610,45 @@ function closeDrawer() {
   elements.entryDrawer.classList.add('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'true');
   elements.entryForm.reset();
-  renderAttachmentPreview([]);
+  elements.startTimeInput.value = DEFAULT_START_TIME;
+  elements.endTimeInput.value = DEFAULT_END_TIME;
+  elements.lunchMinutesInput.value = DEFAULT_LUNCH_MINUTES;
+  elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+  renderAttachmentPreview([], 'report');
 }
 
-function renderAttachmentPreview(attachments) {
+function openHolidayDrawer(holiday = null) {
+  state.editingHoliday = holiday;
+  elements.holidayDrawer.classList.remove('hidden');
+  elements.holidayDrawer.setAttribute('aria-hidden', 'false');
+  elements.holidayIdInput.value = holiday?.id || '';
+  elements.holidayStartDateInput.value = holiday?.start_date || getISODate(new Date());
+  elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
+  elements.holidayTypeInput.value = holiday?.request_type || 'ferien';
+  elements.holidayNotesInput.value = holiday?.notes || '';
+  elements.holidayAttachmentsInput.value = '';
+  elements.deleteHolidayBtn.classList.toggle('hidden', !holiday);
+  renderAttachmentPreview(holiday?.attachments || [], 'holiday');
+}
+
+function closeHolidayDrawer() {
+  state.editingHoliday = null;
+  elements.holidayDrawer.classList.add('hidden');
+  elements.holidayDrawer.setAttribute('aria-hidden', 'true');
+  elements.holidayForm.reset();
+  renderAttachmentPreview([], 'holiday');
+}
+
+function renderAttachmentPreview(attachments, kind) {
   const files = attachments || [];
-  elements.existingAttachmentsBlock.classList.toggle('hidden', files.length === 0);
-  elements.attachmentCountLabel.textContent = `${files.length} Datei${files.length === 1 ? '' : 'en'}`;
-  elements.existingAttachmentsList.innerHTML = '';
+  const isHoliday = kind === 'holiday';
+  const block = isHoliday ? elements.existingHolidayAttachmentsBlock : elements.existingAttachmentsBlock;
+  const count = isHoliday ? elements.holidayAttachmentCountLabel : elements.attachmentCountLabel;
+  const list = isHoliday ? elements.existingHolidayAttachmentsList : elements.existingAttachmentsList;
+
+  block.classList.toggle('hidden', files.length === 0);
+  count.textContent = `${files.length} Datei${files.length === 1 ? '' : 'en'}`;
+  list.innerHTML = '';
 
   files.forEach((file) => {
     const link = document.createElement('a');
@@ -493,7 +657,7 @@ function renderAttachmentPreview(attachments) {
     link.target = '_blank';
     link.rel = 'noreferrer';
     link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
-    elements.existingAttachmentsList.appendChild(link);
+    list.appendChild(link);
   });
 }
 
@@ -529,8 +693,7 @@ function renderWeek() {
       <span class="pill neutral">${formatCurrency(dayExpenses)}</span>
     `;
 
-    const addEntryBtn = fragment.querySelector('.add-entry-btn');
-    addEntryBtn.addEventListener('click', () => openDrawer(day.iso));
+    fragment.querySelector('.add-entry-btn').addEventListener('click', () => openDrawer(day.iso));
 
     const list = fragment.querySelector('.entry-list');
     if (!dayEntries.length) {
@@ -562,6 +725,59 @@ function renderWeek() {
   elements.weekExpensesTotal.textContent = formatCurrency(totalExpenses);
 }
 
+function renderHolidayRequests() {
+  const holidays = state.holidays || [];
+  elements.holidayCountPill.textContent = `${holidays.length} Antrag${holidays.length === 1 ? '' : 'e'}`;
+  elements.holidayList.innerHTML = '';
+
+  if (!holidays.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Noch keine Ferien oder Absenzen erfasst.';
+    elements.holidayList.appendChild(empty);
+    return;
+  }
+
+  holidays.forEach((holiday) => {
+    const article = document.createElement('article');
+    article.className = 'request-item';
+
+    const start = formatDate(parseLocalDate(holiday.start_date));
+    const end = formatDate(parseLocalDate(holiday.end_date));
+    const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
+    const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
+
+    article.innerHTML = `
+      <div class="request-item-header">
+        <h3>${typeLabel}</h3>
+        <span class="pill neutral">${start} – ${end}</span>
+      </div>
+      <div class="request-item-meta">
+        <p>${holiday.notes || 'Keine zusätzliche Bemerkung.'}</p>
+        <span class="pill ${attachmentCount ? 'success' : 'neutral'}">${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}</span>
+      </div>
+      <div class="chip-list"></div>
+      <div class="request-item-actions">
+        <button class="secondary-btn" type="button">Bearbeiten</button>
+      </div>
+    `;
+
+    const chipList = article.querySelector('.chip-list');
+    (holiday.attachments || []).forEach((file) => {
+      const link = document.createElement('a');
+      link.className = 'file-chip';
+      link.href = file.publicUrl;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
+      chipList.appendChild(link);
+    });
+
+    article.querySelector('button').addEventListener('click', () => openHolidayDrawer(holiday));
+    elements.holidayList.appendChild(article);
+  });
+}
+
 function render() {
   const isAuthenticated = Boolean(state.session?.user);
   elements.authCard.classList.toggle('hidden', isAuthenticated);
@@ -572,16 +788,17 @@ function render() {
     setPill(elements.authStatusPill, `Angemeldet als ${state.session.user.email}`, 'success');
     elements.welcomeHeading.textContent = `Hallo ${state.profile?.full_name || state.session.user.email}`;
     renderWeek();
+    renderHolidayRequests();
   } else {
-    setPill(elements.authStatusPill, 'Nicht angemeldet', 'neutral');
+    setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
+    elements.holidayList.innerHTML = '';
   }
 }
 
 function handleWeekChange(offsetDelta) {
   state.weekOffset += offsetDelta;
   if (!state.session?.user) return;
-
   loadEntries().then(() => renderWeek());
 }
 
@@ -592,21 +809,27 @@ function jumpToCurrentWeek() {
 }
 
 function registerEventListeners() {
-  elements.authForm.addEventListener('submit', signIn);
-  elements.signUpBtn.addEventListener('click', signUp);
+  elements.authForm.addEventListener('submit', handleAuthSubmit);
+  elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
   elements.signOutBtn.addEventListener('click', signOut);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.todayWeekBtn.addEventListener('click', jumpToCurrentWeek);
+  elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
   elements.entryForm.addEventListener('submit', saveEntry);
+  elements.holidayForm.addEventListener('submit', saveHolidayRequest);
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
+  elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerBtn.addEventListener('click', closeDrawer);
+  elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.entryDrawer.addEventListener('click', (event) => {
-    if (event.target.dataset.closeDrawer === 'true') {
-      closeDrawer();
-    }
+    if (event.target.dataset.closeDrawer === 'true') closeDrawer();
+  });
+  elements.holidayDrawer.addEventListener('click', (event) => {
+    if (event.target.dataset.closeHolidayDrawer === 'true') closeHolidayDrawer();
   });
 }
 
+setAuthMode('login');
 registerEventListeners();
 loadConfig();

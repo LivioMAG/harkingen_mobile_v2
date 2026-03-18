@@ -4,9 +4,9 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 
 ## Dateien
 
-- `index.html` – UI-Struktur der mobilen App.
-- `style.css` – modernes Mobile-First-Design.
-- `script.js` – Supabase-Anbindung, Auth, Wochenansicht und CRUD-Logik.
+- `index.html` – UI-Struktur der mobilen App mit Login/Registrierung, Wochenrapport und Ferien-/Absenzanträgen.
+- `style.css` – Mobile-First-Design im Firmenstil mit roter Highlight-Farbe, weissem Hintergrund und schwarzer Schrift.
+- `script.js` – Supabase-Anbindung, Auth, Wochenansicht sowie CRUD-Logik für Rapporte und Abwesenheiten.
 - `supabase-config.json` – lokale Projekt-Konfiguration mit Supabase URL + Anon Key.
 - `supabase-config.example.json` – Vorlage für die Konfiguration.
 - `supabase-schema.sql` – SQL für Tabellen, RLS-Policies und Storage-Bucket.
@@ -40,10 +40,11 @@ Dann `http://localhost:4173` öffnen.
 
 ## Funktionen
 
-- Login und optional Kontoerstellung per E-Mail/Passwort.
+- Getrennte Login- und Registrierungsmaske per E-Mail/Passwort.
 - Aktuelle Kalenderwoche mit Navigation vor/zurück.
 - Mehrere Rapporte pro Tag.
-- Arbeitszeit von/bis, Mittagspause, zusätzliche Pause.
+- Standard-Arbeitszeit von 07:00 bis 17:30 Uhr mit 60 Minuten Mittagspause und 30 Minuten zusätzlicher Pause.
 - Spesen, sonstige Auslagen und Bemerkungen.
 - Mehrfach-Upload von Belegen/Fotos direkt in Supabase Storage.
-- Bearbeiten und Löschen von vorhandenen Einträgen.
+- Ferien- und Absenzanträge mit Typwahl (Ferien, Militär, Zivildienst, Unfall, Krankheit) inklusive Anhängen.
+- Bearbeiten und Löschen von vorhandenen Rapporten und Abwesenheitsanträgen.
