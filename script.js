@@ -225,18 +225,33 @@ async function loadConfig() {
   }
 }
 
+async function syncSessionState(session) {
+  state.session = session;
+
+  if (!session?.user) {
+    state.profile = null;
+    state.entries = [];
+    state.holidays = [];
+    render();
+    return;
+  }
+
+  render();
+
+  try {
+    await ensureProfile(session.user);
+    await Promise.all([loadEntries(), loadHolidayRequests()]);
+  } catch (error) {
+    console.error(error);
+    showToast(`Sitzung konnte nicht vollständig geladen werden: ${error.message}`, 'error');
+  }
+
+  render();
+}
+
 function wireAuthListener() {
   state.supabase.auth.onAuthStateChange(async (_event, session) => {
-    state.session = session;
-    if (session?.user) {
-      await ensureProfile(session.user);
-      await Promise.all([loadEntries(), loadHolidayRequests()]);
-    } else {
-      state.profile = null;
-      state.entries = [];
-      state.holidays = [];
-    }
-    render();
+    await syncSessionState(session);
   });
 }
 
@@ -247,12 +262,7 @@ async function bootstrapSession() {
     return;
   }
 
-  state.session = data.session;
-  if (state.session?.user) {
-    await ensureProfile(state.session.user);
-    await Promise.all([loadEntries(), loadHolidayRequests()]);
-  }
-  render();
+  await syncSessionState(data.session);
 }
 
 async function ensureProfile(user, explicitFullName) {
@@ -282,11 +292,22 @@ async function signIn(event) {
 
   const email = elements.emailInput.value.trim();
   const password = elements.passwordInput.value;
-  const { error } = await state.supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await state.supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     showToast(`Anmeldung fehlgeschlagen: ${error.message}`, 'error');
     return;
+  }
+
+  if (data.session) {
+    await syncSessionState(data.session);
+  } else {
+    const { data: sessionData, error: sessionError } = await state.supabase.auth.getSession();
+    if (sessionError) {
+      showToast(`Sitzung konnte nicht geladen werden: ${sessionError.message}`, 'error');
+      return;
+    }
+    await syncSessionState(sessionData.session);
   }
 
   showToast('Erfolgreich angemeldet.');
