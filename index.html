@@ -127,7 +127,21 @@
             <h2 id="drawerTitle">Neuer Eintrag</h2>
             <p id="drawerDateLabel">Datum</p>
           </div>
-          <button class="icon-btn" id="closeDrawerBtn" type="button" aria-label="Schliessen">×</button>
+          <div class="drawer-head-actions">
+            <button class="link-btn drawer-link-btn" id="closeDrawerLinkBtn" type="button">Schliessen</button>
+            <label class="field compact-field report-type-field">
+              <span>Rapportart</span>
+              <select id="reportTypeInput">
+                <option value="" selected>— Normaler Rapport —</option>
+                <option value="ferien">Ferien</option>
+                <option value="krankheit">Krankheit</option>
+                <option value="militaer">Militär</option>
+                <option value="unfall">Unfall</option>
+                <option value="feiertag">Feiertag</option>
+              </select>
+            </label>
+            <button class="icon-btn" id="closeDrawerBtn" type="button" aria-label="Schliessen">×</button>
+          </div>
         </div>
 
         <form id="entryForm" class="form-grid">

@@ -4,6 +4,13 @@ const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
 const DEFAULT_LUNCH_MINUTES = 60;
 const DEFAULT_BREAK_MINUTES = 30;
+const REPORT_TYPE_LABELS = {
+  ferien: 'Ferien',
+  krankheit: 'Krankheit',
+  militaer: 'Militär',
+  unfall: 'Unfall',
+  feiertag: 'Feiertag'
+};
 const HOLIDAY_TYPE_LABELS = {
   ferien: 'Urlaub / Ferien',
   militaer: 'Militär',
@@ -58,11 +65,13 @@ const elements = {
   holidayCountPill: document.getElementById('holidayCountPill'),
   entryDrawer: document.getElementById('entryDrawer'),
   closeDrawerBtn: document.getElementById('closeDrawerBtn'),
+  closeDrawerLinkBtn: document.getElementById('closeDrawerLinkBtn'),
   drawerTitle: document.getElementById('drawerTitle'),
   drawerDateLabel: document.getElementById('drawerDateLabel'),
   entryForm: document.getElementById('entryForm'),
   entryIdInput: document.getElementById('entryIdInput'),
   entryDateInput: document.getElementById('entryDateInput'),
+  reportTypeInput: document.getElementById('reportTypeInput'),
   commissionInput: document.getElementById('commissionInput'),
   startTimeInput: document.getElementById('startTimeInput'),
   endTimeInput: document.getElementById('endTimeInput'),
@@ -234,6 +243,32 @@ function formatMinutesLong(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours} Stunden ${String(minutes).padStart(2, '0')} Minuten`;
+}
+
+function getReportTypeFromCommission(commissionNumber = '') {
+  const normalizedCommission = commissionNumber.trim().toLowerCase();
+  return (
+    Object.entries(REPORT_TYPE_LABELS).find(([, label]) => label.toLowerCase() === normalizedCommission)?.[0] ||
+    ''
+  );
+}
+
+function applyReportTypeSelection(reportType) {
+  const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
+  const previousAutoLabel = REPORT_TYPE_LABELS[elements.reportTypeInput.dataset.previousValue] || '';
+  const currentCommission = elements.commissionInput.value.trim();
+
+  if (reportLabel) {
+    elements.commissionInput.value = reportLabel;
+    elements.startTimeInput.value = DEFAULT_START_TIME;
+    elements.endTimeInput.value = DEFAULT_END_TIME;
+    elements.lunchMinutesInput.value = DEFAULT_LUNCH_MINUTES;
+    elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+  } else if (previousAutoLabel && currentCommission === previousAutoLabel) {
+    elements.commissionInput.value = '';
+  }
+
+  elements.reportTypeInput.dataset.previousValue = reportType;
 }
 
 function validateConfig(config) {
@@ -746,6 +781,7 @@ function openDrawer(isoDate, entry = null) {
   state.selectedDate = isoDate;
   state.editingEntry = entry;
   const date = parseLocalDate(isoDate);
+  const reportType = getReportTypeFromCommission(entry?.commission_number || '');
 
   elements.entryDrawer.classList.remove('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'false');
@@ -753,6 +789,8 @@ function openDrawer(isoDate, entry = null) {
   elements.drawerTitle.textContent = entry ? 'Rapport bearbeiten' : 'Neuer Eintrag';
   elements.entryIdInput.value = entry?.id || '';
   elements.entryDateInput.value = isoDate;
+  elements.reportTypeInput.value = reportType;
+  elements.reportTypeInput.dataset.previousValue = reportType;
   elements.commissionInput.value = entry?.commission_number || '';
   elements.startTimeInput.value = entry?.start_time || DEFAULT_START_TIME;
   elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
@@ -773,6 +811,8 @@ function closeDrawer() {
   elements.entryDrawer.classList.add('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'true');
   elements.entryForm.reset();
+  elements.reportTypeInput.value = '';
+  elements.reportTypeInput.dataset.previousValue = '';
   elements.startTimeInput.value = DEFAULT_START_TIME;
   elements.endTimeInput.value = DEFAULT_END_TIME;
   elements.lunchMinutesInput.value = DEFAULT_LUNCH_MINUTES;
@@ -979,7 +1019,9 @@ function registerEventListeners() {
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerBtn.addEventListener('click', closeDrawer);
+  elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
+  elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
   elements.entryDrawer.addEventListener('click', (event) => {
     if (event.target.dataset.closeDrawer === 'true') closeDrawer();
   });
