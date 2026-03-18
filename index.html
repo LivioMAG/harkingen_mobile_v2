@@ -25,34 +25,27 @@
       </header>
 
       <main class="content-stack">
-        <section class="glass-card status-card" id="configNotice">
-          <div>
-            <p class="section-label">Supabase Setup</p>
-            <h2>Konfiguration laden</h2>
-            <p>
-              Trage deine Zugangsdaten in <code>supabase-config.json</code> ein. Danach verbindet sich die App
-              direkt mit deinem Projekt.
-            </p>
-          </div>
-          <div class="status-pills">
-            <span class="pill neutral" id="configStatusPill">Warte auf Konfiguration</span>
-            <span class="pill neutral" id="authStatusPill">Nicht angemeldet</span>
-          </div>
-        </section>
-
         <section class="glass-card auth-card" id="authCard">
-          <div class="section-head compact">
+          <div class="section-head compact auth-head">
             <div>
               <p class="section-label">Authentifizierung</p>
-              <h2>Anmelden oder Konto erstellen</h2>
+              <h2 id="authTitle">Anmelden</h2>
+              <p id="authSubtitle">Melde dich mit E-Mail und Passwort an.</p>
             </div>
+            <span class="pill neutral" id="authStatusPill">Nicht angemeldet</span>
           </div>
 
           <form id="authForm" class="form-grid">
+            <label class="field hidden" id="fullNameField">
+              <span>Name</span>
+              <input id="fullNameInput" name="fullName" type="text" placeholder="Vorname Nachname" />
+            </label>
+
             <label class="field">
               <span>E-Mail</span>
               <input id="emailInput" name="email" type="email" autocomplete="email" required placeholder="monteur@firma.ch" />
             </label>
+
             <label class="field">
               <span>Passwort</span>
               <input
@@ -65,15 +58,16 @@
                 placeholder="Mindestens 6 Zeichen"
               />
             </label>
-            <label class="field">
-              <span>Name</span>
-              <input id="fullNameInput" name="fullName" type="text" placeholder="Vorname Nachname" />
-            </label>
-            <div class="auth-actions">
-              <button class="primary-btn" id="signInBtn" type="submit">Anmelden</button>
-              <button class="secondary-btn" id="signUpBtn" type="button">Konto erstellen</button>
+
+            <div class="auth-actions stacked-on-mobile">
+              <button class="primary-btn" id="authSubmitBtn" type="submit">Anmelden</button>
             </div>
           </form>
+
+          <div class="auth-switch-row">
+            <span id="authSwitchText">Noch kein Konto?</span>
+            <button class="link-btn" id="toggleAuthModeBtn" type="button">Jetzt registrieren</button>
+          </div>
         </section>
 
         <section class="app-view hidden" id="appView">
@@ -87,6 +81,7 @@
               <button id="prevWeekBtn" class="ghost-btn" type="button">← Vorherige Woche</button>
               <button id="todayWeekBtn" class="secondary-btn" type="button">Diese Woche</button>
               <button id="nextWeekBtn" class="ghost-btn" type="button">Nächste Woche →</button>
+              <button id="openHolidayDrawerBtn" class="primary-btn" type="button">Ferien beantragen</button>
             </div>
           </section>
 
@@ -103,6 +98,18 @@
               <span class="summary-label">Spesen total</span>
               <strong id="weekExpensesTotal">CHF 0.00</strong>
             </div>
+          </section>
+
+          <section class="glass-card requests-card">
+            <div class="section-head compact">
+              <div>
+                <p class="section-label">Abwesenheiten</p>
+                <h2>Ferien &amp; Absenzen</h2>
+                <p>Hier siehst du deine erfassten Ferien-, Krankheits- und sonstigen Abwesenheitsanträge.</p>
+              </div>
+              <span class="pill neutral" id="holidayCountPill">0 Anträge</span>
+            </div>
+            <div id="holidayList" class="request-list"></div>
           </section>
 
           <section class="week-grid" id="weekGrid"></section>
@@ -131,7 +138,7 @@
             <input id="commissionInput" type="text" required placeholder="z. B. K-2026-041" />
           </label>
 
-          <div class="field-row">
+          <div class="field-row two-columns">
             <label class="field">
               <span>Arbeitsbeginn</span>
               <input id="startTimeInput" type="time" required />
@@ -142,18 +149,18 @@
             </label>
           </div>
 
-          <div class="field-row">
+          <div class="field-row two-columns">
             <label class="field">
               <span>Mittagspause (Minuten)</span>
-              <input id="lunchMinutesInput" type="number" min="0" step="5" value="30" />
+              <input id="lunchMinutesInput" type="number" min="0" step="5" value="60" />
             </label>
             <label class="field">
               <span>Weitere Pause (Minuten)</span>
-              <input id="breakMinutesInput" type="number" min="0" step="5" value="0" />
+              <input id="breakMinutesInput" type="number" min="0" step="5" value="30" />
             </label>
           </div>
 
-          <div class="field-row">
+          <div class="field-row two-columns">
             <label class="field">
               <span>Spesen (CHF)</span>
               <input id="expensesInput" type="number" min="0" step="0.05" value="0" />
@@ -175,11 +182,9 @@
           </label>
 
           <label class="field">
-            <span>Belege / Fotos hochladen</span>
+            <span>📷 Belege / Fotos hochladen</span>
             <input id="attachmentsInput" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" capture="environment" multiple />
-            <small>
-              Mehrere Dateien möglich. Auf dem Handy kann direkt die Kamera geöffnet werden.
-            </small>
+            <small>Mehrere Dateien möglich. Auf dem Handy kann direkt die Kamera geöffnet werden.</small>
           </label>
 
           <div class="upload-preview hidden" id="existingAttachmentsBlock">
@@ -199,6 +204,71 @@
       </section>
     </div>
 
+    <div class="drawer hidden" id="holidayDrawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-holiday-drawer="true"></div>
+      <section class="drawer-panel">
+        <div class="drawer-head">
+          <div>
+            <p class="section-label">Abwesenheit erfassen</p>
+            <h2 id="holidayDrawerTitle">Ferien beantragen</h2>
+            <p>Ferien, Militär, Zivildienst, Unfall oder Krankheit bequem erfassen.</p>
+          </div>
+          <button class="icon-btn" id="closeHolidayDrawerBtn" type="button" aria-label="Schliessen">×</button>
+        </div>
+
+        <form id="holidayForm" class="form-grid">
+          <input id="holidayIdInput" type="hidden" />
+
+          <div class="field-row two-columns">
+            <label class="field">
+              <span>Von</span>
+              <input id="holidayStartDateInput" type="date" required />
+            </label>
+            <label class="field">
+              <span>Bis</span>
+              <input id="holidayEndDateInput" type="date" required />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Art der Abwesenheit</span>
+            <select id="holidayTypeInput" required>
+              <option value="ferien">Urlaub / Ferien</option>
+              <option value="militaer">Militär</option>
+              <option value="zivildienst">Zivildienst</option>
+              <option value="unfall">Unfall</option>
+              <option value="krankheit">Krankheit</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Bemerkung</span>
+            <textarea id="holidayNotesInput" rows="4" placeholder="Optional: Zusatzinfos, Hinweise, Einsatznummer oder Bemerkung"></textarea>
+          </label>
+
+          <label class="field">
+            <span>📷 Beweise / Anhänge</span>
+            <input id="holidayAttachmentsInput" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" capture="environment" multiple />
+            <small>Fotos, Arztzeugnisse oder andere Dokumente können mitgeschickt werden.</small>
+          </label>
+
+          <div class="upload-preview hidden" id="existingHolidayAttachmentsBlock">
+            <div class="inline-head">
+              <strong>Bereits gespeicherte Anhänge</strong>
+              <span class="muted" id="holidayAttachmentCountLabel">0 Dateien</span>
+            </div>
+            <div id="existingHolidayAttachmentsList" class="chip-list"></div>
+          </div>
+
+          <div class="drawer-actions">
+            <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button">Antrag löschen</button>
+            <button class="secondary-btn" id="resetHolidayBtn" type="reset">Zurücksetzen</button>
+            <button class="primary-btn" id="saveHolidayBtn" type="submit">Antrag speichern</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <template id="dayCardTemplate">
       <article class="glass-card day-card">
         <div class="day-card-head">
@@ -206,7 +276,7 @@
             <p class="weekday-label"></p>
             <h3 class="day-date"></h3>
           </div>
-          <button class="primary-btn small add-entry-btn" type="button">+ Eintrag</button>
+          <button class="primary-btn small add-entry-btn" type="button">📷 Eintrag</button>
         </div>
         <div class="day-meta"></div>
         <div class="entry-list"></div>
