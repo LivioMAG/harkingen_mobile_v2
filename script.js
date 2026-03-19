@@ -33,7 +33,8 @@ const state = {
   editingEntry: null,
   editingHoliday: null,
   toastTimer: null,
-  activeFeedback: null
+  activeFeedback: null,
+  currentView: 'dashboard'
 };
 
 const elements = {
@@ -57,10 +58,14 @@ const elements = {
   weekEntryCount: document.getElementById('weekEntryCount'),
   weekMinutesTotal: document.getElementById('weekMinutesTotal'),
   weekExpensesTotal: document.getElementById('weekExpensesTotal'),
+  summaryCard: document.getElementById('summaryCard'),
   prevWeekBtn: document.getElementById('prevWeekBtn'),
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
+  openSettingsViewBtn: document.getElementById('openSettingsViewBtn'),
+  settingsView: document.getElementById('settingsView'),
+  backToDashboardBtn: document.getElementById('backToDashboardBtn'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
   settingsCard: document.getElementById('settingsCard'),
@@ -185,6 +190,15 @@ async function runWithFeedback(options, task) {
 function setPill(element, text, variant) {
   element.className = `pill ${variant}`;
   element.textContent = text;
+}
+
+function setCurrentView(view) {
+  state.currentView = view === 'settings' ? 'settings' : 'dashboard';
+  elements.settingsView?.classList.toggle('hidden', state.currentView !== 'settings');
+  elements.weekGrid?.classList.toggle('hidden', state.currentView === 'settings');
+  elements.summaryCard?.classList.toggle('hidden', state.currentView === 'settings');
+  elements.openSettingsViewBtn?.classList.toggle('hidden', state.currentView === 'settings');
+  elements.openHolidayDrawerBtn?.classList.toggle('hidden', state.currentView === 'settings');
 }
 
 function formatCurrency(value) {
@@ -1128,7 +1142,10 @@ function render() {
     fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
+    setCurrentView(state.currentView);
   } else {
+    state.currentView = 'dashboard';
+    setCurrentView('dashboard');
     elements.settingsForm?.reset();
     setPill(elements.adminStatusPill, 'Admin: nein', 'neutral');
     elements.isAdminInput.value = '';
@@ -1156,6 +1173,12 @@ function registerEventListeners() {
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
+  elements.openSettingsViewBtn.addEventListener('click', () => {
+    setCurrentView('settings');
+  });
+  elements.backToDashboardBtn.addEventListener('click', () => {
+    setCurrentView('dashboard');
+  });
   elements.entryForm.addEventListener('submit', saveEntry);
   elements.holidayForm.addEventListener('submit', saveHolidayRequest);
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);

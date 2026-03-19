@@ -325,6 +325,32 @@ textarea {
   margin-top: 6px;
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-icon {
+  min-width: 46px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+}
+
+.settings-view {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-overview-card {
+  padding-bottom: 18px;
+}
+
+.settings-overview-head {
+  align-items: flex-start;
+}
+
 .readonly-field input {
   background: #f8f8f8;
   color: var(--muted);
