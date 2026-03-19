@@ -807,3 +807,353 @@ textarea {
     min-width: 0;
   }
 }
+
+/* Apple-inspired dashboard refresh */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f5f5f7;
+  --card: rgba(255, 255, 255, 0.9);
+  --line: rgba(15, 23, 42, 0.08);
+  --muted: #6e6e73;
+  --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --radius-xl: 30px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 14px;
+}
+
+body {
+  background:
+    radial-gradient(circle at top right, rgba(215, 25, 32, 0.1), transparent 22%),
+    radial-gradient(circle at top left, rgba(0, 0, 0, 0.035), transparent 20%),
+    #ffffff;
+}
+
+.app-shell {
+  width: min(100%, 920px);
+  padding: 24px 16px 120px;
+}
+
+.topbar {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.topbar h1 {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+}
+
+.content-stack,
+.app-view,
+.settings-view {
+  gap: 20px;
+}
+
+.glass-card {
+  background: var(--card);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+}
+
+.hero-card {
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 248, 250, 0.92)),
+    #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow);
+}
+
+.hero-top-row,
+.hero-title-block {
+  display: grid;
+  gap: 6px;
+}
+
+.hero-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0 2px;
+}
+
+.hero-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-btn {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.primary-btn,
+.secondary-btn,
+.ghost-btn,
+.icon-btn,
+.toolbar-btn {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.ghost-btn:hover,
+.icon-btn:hover,
+.toolbar-btn:hover,
+.entry-card:hover {
+  transform: translateY(-1px);
+}
+
+.secondary-btn {
+  background: linear-gradient(135deg, var(--accent), #ef4444);
+  border: 1px solid rgba(215, 25, 32, 0.18);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(215, 25, 32, 0.16);
+}
+
+.ghost-btn,
+.icon-btn,
+.toolbar-btn.ghost-btn,
+.nav-btn {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-week-panel {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.week-caption {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+#weekRangeLabel {
+  margin: 8px 0 0;
+  font-size: 0.98rem;
+  color: var(--muted);
+}
+
+.week-nav {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.week-nav-label {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  justify-content: flex-start;
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.nav-btn {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.summary-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.summary-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 22px 24px;
+}
+
+.summary-item + .summary-item {
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.summary-label {
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+
+.summary-item strong {
+  margin-top: 12px;
+  font-size: clamp(1.35rem, 3.2vw, 1.8rem);
+  letter-spacing: -0.05em;
+}
+
+.week-grid {
+  gap: 18px;
+}
+
+.day-card {
+  display: grid;
+  gap: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+}
+
+.day-card-head {
+  align-items: center;
+}
+
+.weekday-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.day-date {
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+}
+
+.day-meta {
+  gap: 10px;
+}
+
+.day-meta .pill.neutral,
+.request-item .pill.neutral,
+#authStatusPill.pill.neutral,
+#adminStatusPill.pill.neutral,
+#holidayCountPill.pill.neutral {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: var(--text);
+}
+
+.icon-only {
+  min-width: 46px;
+  min-height: 46px;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(215, 25, 32, 0.16);
+}
+
+.entry-list {
+  gap: 12px;
+}
+
+.entry-card {
+  width: 100%;
+  padding: 16px 18px;
+  text-align: left;
+  background: linear-gradient(180deg, #f6f6f7 0%, #f1f1f3 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.entry-time-range,
+.day-meta,
+.entry-notes,
+.request-item p,
+.request-item-meta,
+.empty-state,
+small,
+.hero-card p,
+.auth-card p,
+.requests-card p {
+  color: var(--muted);
+}
+
+.empty-state {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px dashed rgba(15, 23, 42, 0.14);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.request-item {
+  background: linear-gradient(180deg, #f8f8f9 0%, #f3f3f5 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.file-chip {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.readonly-field input,
+.field input,
+.field textarea,
+.field select {
+  border-radius: 16px;
+}
+
+@media (max-width: 719px) {
+  .app-shell {
+    padding: 18px 14px 110px;
+  }
+
+  .hero-card,
+  .glass-card,
+  .day-card,
+  .summary-item {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .hero-toolbar,
+  .hero-week-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-actions-left {
+    width: 100%;
+  }
+
+  .hero-actions-left > .toolbar-btn,
+  #signOutBtn.toolbar-btn {
+    flex: 1 1 0;
+  }
+
+  .summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-item + .summary-item {
+    border-left: 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .week-nav {
+    justify-content: flex-start;
+  }
+}
