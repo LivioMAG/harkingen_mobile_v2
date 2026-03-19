@@ -74,30 +74,28 @@
             <div class="hero-top-row">
               <div class="hero-title-block">
                 <p class="section-label">Dashboard</p>
-                <h2 id="welcomeHeading">Willkommen</h2>
+                <h2 id="welcomeHeading">Dashboard</h2>
+                <p id="userNameLabel" class="hero-user-name">–</p>
               </div>
             </div>
             <div class="hero-toolbar">
               <div class="hero-actions hero-actions-left">
-                <button id="openHolidayDrawerBtn" class="toolbar-btn secondary-btn icon-label-btn" type="button">
+                <button id="openHolidayDrawerBtn" class="toolbar-btn secondary-btn icon-only-toolbar-btn" type="button" aria-label="Ferien">
                   <span class="toolbar-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" role="presentation" focusable="false">
                       <path d="M12 3v2.2M12 18.8V21M5.64 5.64l1.56 1.56M16.8 16.8l1.56 1.56M3 12h2.2M18.8 12H21M5.64 18.36l1.56-1.56M16.8 7.2l1.56-1.56M12 8.2a3.8 3.8 0 1 1 0 7.6a3.8 3.8 0 0 1 0-7.6Z" />
                     </svg>
                   </span>
-                  <span>Ferien</span>
                 </button>
-                <button id="openSettingsViewBtn" class="toolbar-btn ghost-btn icon-label-btn" type="button">
+                <button id="openSettingsViewBtn" class="toolbar-btn ghost-btn icon-only-toolbar-btn" type="button" aria-label="Einstellungen">
                   <span class="toolbar-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" role="presentation" focusable="false">
                       <path d="M12 8.6a3.4 3.4 0 1 1 0 6.8a3.4 3.4 0 0 1 0-6.8Zm8 3.4l-1.72-.62a6.9 6.9 0 0 0-.48-1.15l.78-1.64l-1.8-1.8l-1.64.78c-.37-.2-.75-.36-1.15-.48L12 4l-2 .74c-.4.12-.78.28-1.15.48l-1.64-.78l-1.8 1.8l.78 1.64c-.2.37-.36.75-.48 1.15L4 12l.74 2c.12.4.28.78.48 1.15l-.78 1.64l1.8 1.8l1.64-.78c.37.2.75.36 1.15.48L12 20l2-.74c.4-.12.78-.28 1.15-.48l1.64.78l1.8-1.8l-.78-1.64c.2-.37.36-.75.48-1.15L20 12Z" />
                     </svg>
                   </span>
-                  <span>Einstellungen</span>
                 </button>
               </div>
-              <button id="signOutBtn" class="toolbar-btn ghost-btn icon-label-btn hidden" type="button">
-                <span>Abmelden</span>
+              <button id="signOutBtn" class="toolbar-btn ghost-btn icon-only-toolbar-btn hidden" type="button" aria-label="Abmelden">
                 <span class="toolbar-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" role="presentation" focusable="false">
                     <path d="M14 5h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3M10 8l4 4l-4 4M14 12H5" />

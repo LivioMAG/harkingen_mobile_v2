@@ -875,6 +875,7 @@ body {
 .hero-title-block {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .hero-toolbar {
@@ -883,7 +884,8 @@ body {
   justify-content: space-between;
   gap: 14px;
   padding: 8px 0 0;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .hero-actions-left {
@@ -892,6 +894,7 @@ body {
   gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
+  flex-wrap: wrap;
 }
 
 .toolbar-btn {
@@ -911,6 +914,25 @@ body {
   align-items: center;
   gap: 10px;
   white-space: nowrap;
+}
+
+.icon-only-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-width: 46px;
+  padding: 0;
+  flex: 0 0 46px;
+}
+
+.hero-user-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .toolbar-icon {
@@ -1154,8 +1176,15 @@ small,
 }
 
 @media (max-width: 719px) {
+  body {
+    overflow-x: hidden;
+  }
+
   .app-shell {
+    width: 100%;
+    max-width: 100%;
     padding: 18px 14px 110px;
+    overflow-x: clip;
   }
 
   .hero-card,
@@ -1168,6 +1197,7 @@ small,
 
   .hero-toolbar {
     gap: 10px;
+    justify-content: flex-start;
   }
 
   .hero-week-panel {
@@ -1180,17 +1210,13 @@ small,
     gap: 8px;
   }
 
-  .hero-actions-left > .toolbar-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
+  .hero-actions-left > .toolbar-btn,
   #signOutBtn.toolbar-btn {
-    flex: 0 0 auto;
-    padding-left: 14px;
-    padding-right: 14px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    flex: 0 0 44px;
   }
 
   .summary-card {
