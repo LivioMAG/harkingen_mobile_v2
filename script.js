@@ -19,6 +19,36 @@ const HOLIDAY_TYPE_LABELS = {
   krankheit: 'Krankheit'
 };
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, is_admin';
+const WEEKLY_REPORT_COLUMNS = [
+  'id',
+  'profile_id',
+  'work_date',
+  'commission_number',
+  'start_time',
+  'end_time',
+  'lunch_break_minutes',
+  'additional_break_minutes',
+  'total_work_minutes',
+  'expenses_amount',
+  'other_costs_amount',
+  'expense_note',
+  'notes',
+  'attachments',
+  'created_at',
+  'updated_at'
+].join(', ');
+const HOLIDAY_REQUEST_COLUMNS = [
+  'id',
+  'profile_id',
+  'start_date',
+  'end_date',
+  'request_type',
+  'notes',
+  'attachments',
+  'created_at',
+  'updated_at'
+].join(', ');
 
 const state = {
   config: null,
@@ -34,7 +64,9 @@ const state = {
   editingHoliday: null,
   toastTimer: null,
   activeFeedback: null,
-  currentView: 'dashboard'
+  currentView: 'dashboard',
+  latestEntriesRequestId: 0,
+  latestHolidayRequestId: 0
 };
 
 const elements = {
@@ -416,6 +448,16 @@ function getDisplayName(profile, fallbackEmail = '') {
   return full || profile?.full_name || fallbackEmail;
 }
 
+function areProfileFieldsEqual(left, right) {
+  return (
+    (left?.email || '') === (right?.email || '') &&
+    (left?.first_name || '') === (right?.first_name || '') &&
+    (left?.last_name || '') === (right?.last_name || '') &&
+    (left?.full_name || '') === (right?.full_name || '') &&
+    (left?.role_label || '') === (right?.role_label || '')
+  );
+}
+
 function normalizeProfile(profile) {
   if (!profile) return null;
   const nameParts = splitFullName(profile.full_name || '');
@@ -448,7 +490,7 @@ async function ensureProfile(user, explicitFullName) {
 
   const { data: existingProfile, error: existingError } = await state.supabase
     .from('app_profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('id', user.id)
     .maybeSingle();
 
@@ -477,11 +519,17 @@ async function ensureProfile(user, explicitFullName) {
         role_label: 'Monteur'
       };
 
+  if (existingProfile && areProfileFieldsEqual(existingProfile, payload)) {
+    state.profile = normalizeProfile(existingProfile);
+    fillSettingsForm();
+    return;
+  }
+
   const query = existingProfile
     ? state.supabase.from('app_profiles').update(payload).eq('id', user.id)
     : state.supabase.from('app_profiles').insert(payload);
 
-  const { data, error } = await query.select().single();
+  const { data, error } = await query.select(PROFILE_COLUMNS).single();
   if (error) {
     showToast(`Profil konnte nicht gespeichert werden: ${error.message}`, 'error');
     return;
@@ -515,15 +563,9 @@ async function signIn(event) {
         return;
       }
 
-      if (data.session) {
-        await syncSessionState(data.session);
-      } else {
-        const { data: sessionData, error: sessionError } = await state.supabase.auth.getSession();
-        if (sessionError) {
-          showToast(`Sitzung konnte nicht geladen werden: ${sessionError.message}`, 'error');
-          return;
-        }
-        await syncSessionState(sessionData.session);
+      if (!data.user) {
+        showToast('Anmeldung gestartet, aber es wurde noch keine Benutzersitzung zurückgegeben.', 'warning');
+        return;
       }
 
       showToast('Erfolgreich angemeldet.');
@@ -569,11 +611,11 @@ async function signUp() {
         return;
       }
 
-      if (data.session?.user) {
-        await ensureProfile(data.session.user, fullName);
+      if (!data.user) {
+        showToast('Konto erstellt, aber es wurde noch keine Benutzersitzung zurückgegeben.', 'warning');
+      } else {
+        showToast('Konto erstellt. Bitte E-Mail-Bestätigung prüfen, falls aktiviert.');
       }
-
-      showToast('Konto erstellt. Bitte E-Mail-Bestätigung prüfen, falls aktiviert.');
       elements.authForm.reset();
       setAuthMode('login');
     }
@@ -625,7 +667,7 @@ async function saveSettings(event) {
         .from('app_profiles')
         .update(payload)
         .eq('id', state.session.user.id)
-        .select()
+        .select(PROFILE_COLUMNS)
         .single();
 
       if (error) {
@@ -661,17 +703,20 @@ async function signOut() {
 
 async function loadEntries() {
   if (!state.session?.user) return;
+  const requestId = ++state.latestEntriesRequestId;
   const days = getWeekDays();
   const firstDay = days[0].iso;
   const lastDay = days[days.length - 1].iso;
 
   const { data, error } = await state.supabase
     .from('weekly_reports')
-    .select('*')
+    .select(WEEKLY_REPORT_COLUMNS)
     .gte('work_date', firstDay)
     .lte('work_date', lastDay)
     .order('work_date', { ascending: true })
     .order('start_time', { ascending: true });
+
+  if (requestId !== state.latestEntriesRequestId) return;
 
   if (error) {
     showToast(`Rapporte konnten nicht geladen werden: ${error.message}`, 'error');
@@ -683,12 +728,15 @@ async function loadEntries() {
 
 async function loadHolidayRequests() {
   if (!state.session?.user) return;
+  const requestId = ++state.latestHolidayRequestId;
 
   const { data, error } = await state.supabase
     .from('holiday_requests')
-    .select('*')
+    .select(HOLIDAY_REQUEST_COLUMNS)
     .order('start_date', { ascending: false })
     .limit(12);
+
+  if (requestId !== state.latestHolidayRequestId) return;
 
   if (error) {
     showToast(`Abwesenheiten konnten nicht geladen werden: ${error.message}`, 'error');
@@ -799,9 +847,18 @@ async function saveEntry(event) {
 
         let result;
         if (state.editingEntry?.id) {
-          result = await state.supabase.from('weekly_reports').update(body).eq('id', state.editingEntry.id).select().single();
+          result = await state.supabase
+            .from('weekly_reports')
+            .update(body)
+            .eq('id', state.editingEntry.id)
+            .select(WEEKLY_REPORT_COLUMNS)
+            .single();
         } else {
-          result = await state.supabase.from('weekly_reports').insert(body).select().single();
+          result = await state.supabase
+            .from('weekly_reports')
+            .insert(body)
+            .select(WEEKLY_REPORT_COLUMNS)
+            .single();
         }
 
         if (result.error) throw result.error;
@@ -857,9 +914,18 @@ async function saveHolidayRequest(event) {
         const body = getHolidayPayload(attachments);
         let result;
         if (state.editingHoliday?.id) {
-          result = await state.supabase.from('holiday_requests').update(body).eq('id', state.editingHoliday.id).select().single();
+          result = await state.supabase
+            .from('holiday_requests')
+            .update(body)
+            .eq('id', state.editingHoliday.id)
+            .select(HOLIDAY_REQUEST_COLUMNS)
+            .single();
         } else {
-          result = await state.supabase.from('holiday_requests').insert(body).select().single();
+          result = await state.supabase
+            .from('holiday_requests')
+            .insert(body)
+            .select(HOLIDAY_REQUEST_COLUMNS)
+            .single();
         }
 
         if (result.error) throw result.error;
@@ -1166,10 +1232,17 @@ function render() {
   }
 }
 
-function handleWeekChange(offsetDelta) {
+async function handleWeekChange(offsetDelta) {
   state.weekOffset += offsetDelta;
   if (!state.session?.user) return;
-  loadEntries().then(() => renderWeek());
+
+  try {
+    await loadEntries();
+    renderWeek();
+  } catch (error) {
+    console.error(error);
+    showToast(`Kalenderwoche konnte nicht geladen werden: ${error.message}`, 'error');
+  }
 }
 
 function registerEventListeners() {
