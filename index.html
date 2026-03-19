@@ -277,18 +277,29 @@
             <textarea id="notesInput" rows="4" placeholder="Was wurde gemacht? Besonderheiten, Material, Kundenhinweise …"></textarea>
           </label>
 
-          <label class="field">
-            <span>📷 Belege / Fotos hochladen</span>
-            <input id="attachmentsInput" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" capture="environment" multiple />
-            <small>Mehrere Dateien möglich. Auf dem Handy kann direkt die Kamera geöffnet werden.</small>
-          </label>
+          <div class="field media-upload-field">
+            <div class="media-upload-head">
+              <span>Belege &amp; Fotos</span>
+              <div class="media-upload-actions">
+                <button class="icon-action-btn media-upload-btn" id="attachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
+                  <span aria-hidden="true">📷</span>
+                </button>
+                <button class="secondary-btn media-upload-btn" id="attachmentsGalleryBtn" type="button">
+                  Galerie öffnen
+                </button>
+              </div>
+            </div>
+            <input id="attachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
+            <input id="attachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" multiple />
+            <small>Du kannst mehrere Fotos und Belege nacheinander hinzufügen. Unten erscheinen alle Anhänge als Liste und können wieder entfernt werden.</small>
+          </div>
 
           <div class="upload-preview hidden" id="existingAttachmentsBlock">
-            <div class="inline-head">
-              <strong>Bereits gespeicherte Belege</strong>
+            <div class="inline-head upload-preview-head">
+              <strong>Belege &amp; Fotos</strong>
               <span class="muted" id="attachmentCountLabel">0 Dateien</span>
             </div>
-            <div id="existingAttachmentsList" class="chip-list"></div>
+            <div id="existingAttachmentsList" class="attachment-list"></div>
           </div>
 
           <div class="drawer-actions">
@@ -342,18 +353,29 @@
             <textarea id="holidayNotesInput" rows="4" placeholder="Optional: Zusatzinfos, Hinweise, Einsatznummer oder Bemerkung"></textarea>
           </label>
 
-          <label class="field">
-            <span>📷 Beweise / Anhänge</span>
-            <input id="holidayAttachmentsInput" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" capture="environment" multiple />
-            <small>Fotos, Arztzeugnisse oder andere Dokumente können mitgeschickt werden.</small>
-          </label>
+          <div class="field media-upload-field">
+            <div class="media-upload-head">
+              <span>Beweise &amp; Anhänge</span>
+              <div class="media-upload-actions">
+                <button class="icon-action-btn media-upload-btn" id="holidayAttachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
+                  <span aria-hidden="true">📷</span>
+                </button>
+                <button class="secondary-btn media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button">
+                  Galerie öffnen
+                </button>
+              </div>
+            </div>
+            <input id="holidayAttachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
+            <input id="holidayAttachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.heic" multiple />
+            <small>Fotos, Arztzeugnisse oder andere Dokumente können nacheinander hinzugefügt und wieder entfernt werden.</small>
+          </div>
 
           <div class="upload-preview hidden" id="existingHolidayAttachmentsBlock">
-            <div class="inline-head">
-              <strong>Bereits gespeicherte Anhänge</strong>
+            <div class="inline-head upload-preview-head">
+              <strong>Beweise &amp; Anhänge</strong>
               <span class="muted" id="holidayAttachmentCountLabel">0 Dateien</span>
             </div>
-            <div id="existingHolidayAttachmentsList" class="chip-list"></div>
+            <div id="existingHolidayAttachmentsList" class="attachment-list"></div>
           </div>
 
           <div class="drawer-actions">

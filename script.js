@@ -66,7 +66,11 @@ const state = {
   activeFeedback: null,
   currentView: 'dashboard',
   latestEntriesRequestId: 0,
-  latestHolidayRequestId: 0
+  latestHolidayRequestId: 0,
+  reportDraftAttachments: [],
+  reportPendingFiles: [],
+  holidayDraftAttachments: [],
+  holidayPendingFiles: []
 };
 
 const elements = {
@@ -128,7 +132,10 @@ const elements = {
   otherCostsInput: document.getElementById('otherCostsInput'),
   expenseNoteInput: document.getElementById('expenseNoteInput'),
   notesInput: document.getElementById('notesInput'),
-  attachmentsInput: document.getElementById('attachmentsInput'),
+  attachmentsCameraBtn: document.getElementById('attachmentsCameraBtn'),
+  attachmentsGalleryBtn: document.getElementById('attachmentsGalleryBtn'),
+  attachmentsCameraInput: document.getElementById('attachmentsCameraInput'),
+  attachmentsGalleryInput: document.getElementById('attachmentsGalleryInput'),
   existingAttachmentsBlock: document.getElementById('existingAttachmentsBlock'),
   existingAttachmentsList: document.getElementById('existingAttachmentsList'),
   attachmentCountLabel: document.getElementById('attachmentCountLabel'),
@@ -142,7 +149,10 @@ const elements = {
   holidayEndDateInput: document.getElementById('holidayEndDateInput'),
   holidayTypeInput: document.getElementById('holidayTypeInput'),
   holidayNotesInput: document.getElementById('holidayNotesInput'),
-  holidayAttachmentsInput: document.getElementById('holidayAttachmentsInput'),
+  holidayAttachmentsCameraBtn: document.getElementById('holidayAttachmentsCameraBtn'),
+  holidayAttachmentsGalleryBtn: document.getElementById('holidayAttachmentsGalleryBtn'),
+  holidayAttachmentsCameraInput: document.getElementById('holidayAttachmentsCameraInput'),
+  holidayAttachmentsGalleryInput: document.getElementById('holidayAttachmentsGalleryInput'),
   existingHolidayAttachmentsBlock: document.getElementById('existingHolidayAttachmentsBlock'),
   existingHolidayAttachmentsList: document.getElementById('existingHolidayAttachmentsList'),
   holidayAttachmentCountLabel: document.getElementById('holidayAttachmentCountLabel'),
@@ -755,6 +765,85 @@ function buildStoragePath(file, folderKey) {
   return `${state.session.user.id}/${folderKey}/${Date.now()}-${safeName}`;
 }
 
+function getAttachmentState(kind) {
+  return kind === 'holiday'
+    ? {
+        draftKey: 'holidayDraftAttachments',
+        pendingKey: 'holidayPendingFiles',
+        block: elements.existingHolidayAttachmentsBlock,
+        count: elements.holidayAttachmentCountLabel,
+        list: elements.existingHolidayAttachmentsList,
+        cameraInput: elements.holidayAttachmentsCameraInput,
+        galleryInput: elements.holidayAttachmentsGalleryInput
+      }
+    : {
+        draftKey: 'reportDraftAttachments',
+        pendingKey: 'reportPendingFiles',
+        block: elements.existingAttachmentsBlock,
+        count: elements.attachmentCountLabel,
+        list: elements.existingAttachmentsList,
+        cameraInput: elements.attachmentsCameraInput,
+        galleryInput: elements.attachmentsGalleryInput
+      };
+}
+
+function revokePendingPreview(file) {
+  if (file?.previewUrl) {
+    URL.revokeObjectURL(file.previewUrl);
+  }
+}
+
+function resetAttachmentState(kind, existingAttachments = []) {
+  const config = getAttachmentState(kind);
+  (state[config.pendingKey] || []).forEach(revokePendingPreview);
+  state[config.pendingKey] = [];
+  state[config.draftKey] = (existingAttachments || []).map((file) => ({ ...file, isExisting: true }));
+  if (config.cameraInput) config.cameraInput.value = '';
+  if (config.galleryInput) config.galleryInput.value = '';
+}
+
+function formatAttachmentMeta(file) {
+  if (file.size) {
+    const kiloBytes = file.size / 1024;
+    if (kiloBytes < 1024) return `${Math.max(1, Math.round(kiloBytes))} KB`;
+    return `${(kiloBytes / 1024).toFixed(1)} MB`;
+  }
+
+  if (file.mimeType === 'application/pdf') return 'PDF';
+  return 'Datei';
+}
+
+function removeAttachment(kind, index, isPending) {
+  const config = getAttachmentState(kind);
+  if (isPending) {
+    const [removed] = state[config.pendingKey].splice(index, 1);
+    revokePendingPreview(removed);
+  } else {
+    state[config.draftKey].splice(index, 1);
+  }
+  renderAttachmentPreview(kind);
+}
+
+function handleAttachmentSelection(kind, files) {
+  const config = getAttachmentState(kind);
+  const pending = state[config.pendingKey];
+
+  Array.from(files || []).forEach((file) => {
+    pending.push({
+      name: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size || 0,
+      file,
+      isExisting: false,
+      previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : ''
+    });
+  });
+
+  if (config.cameraInput) config.cameraInput.value = '';
+  if (config.galleryInput) config.galleryInput.value = '';
+  renderAttachmentPreview(kind);
+}
+
 async function uploadAttachments(files, folderKey, existingFiles = []) {
   if (!files.length) return existingFiles;
 
@@ -841,8 +930,12 @@ async function saveEntry(event) {
         loadingLabel: state.editingEntry?.id ? 'Aktualisieren …' : 'Speichern …'
       },
       async () => {
-        const existingAttachments = state.editingEntry?.attachments || [];
-        const attachments = await uploadAttachments(Array.from(elements.attachmentsInput.files || []), payload.work_date, existingAttachments);
+        const existingAttachments = [...state.reportDraftAttachments];
+        const attachments = await uploadAttachments(
+          state.reportPendingFiles.map((item) => item.file),
+          payload.work_date,
+          existingAttachments
+        );
         const body = { ...payload, attachments };
 
         let result;
@@ -904,9 +997,9 @@ async function saveHolidayRequest(event) {
         loadingLabel: state.editingHoliday?.id ? 'Aktualisieren …' : 'Speichern …'
       },
       async () => {
-        const existingAttachments = state.editingHoliday?.attachments || [];
+        const existingAttachments = [...state.holidayDraftAttachments];
         const attachments = await uploadAttachments(
-          Array.from(elements.holidayAttachmentsInput.files || []),
+          state.holidayPendingFiles.map((item) => item.file),
           `holiday-${startDate}`,
           existingAttachments
         );
@@ -1017,9 +1110,9 @@ function openDrawer(isoDate, entry = null) {
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
   elements.expenseNoteInput.value = entry?.expense_note || '';
   elements.notesInput.value = entry?.notes || '';
-  elements.attachmentsInput.value = '';
+  resetAttachmentState('report', entry?.attachments || []);
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
-  renderAttachmentPreview(entry?.attachments || [], 'report');
+  renderAttachmentPreview('report');
 }
 
 function closeDrawer() {
@@ -1034,7 +1127,8 @@ function closeDrawer() {
   elements.endTimeInput.value = DEFAULT_END_TIME;
   elements.lunchMinutesInput.value = DEFAULT_LUNCH_MINUTES;
   elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
-  renderAttachmentPreview([], 'report');
+  resetAttachmentState('report', []);
+  renderAttachmentPreview('report');
 }
 
 function openHolidayDrawer(holiday = null) {
@@ -1046,9 +1140,9 @@ function openHolidayDrawer(holiday = null) {
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
   elements.holidayTypeInput.value = holiday?.request_type || 'ferien';
   elements.holidayNotesInput.value = holiday?.notes || '';
-  elements.holidayAttachmentsInput.value = '';
+  resetAttachmentState('holiday', holiday?.attachments || []);
   elements.deleteHolidayBtn.classList.toggle('hidden', !holiday);
-  renderAttachmentPreview(holiday?.attachments || [], 'holiday');
+  renderAttachmentPreview('holiday');
 }
 
 function closeHolidayDrawer() {
@@ -1056,28 +1150,58 @@ function closeHolidayDrawer() {
   elements.holidayDrawer.classList.add('hidden');
   elements.holidayDrawer.setAttribute('aria-hidden', 'true');
   elements.holidayForm.reset();
-  renderAttachmentPreview([], 'holiday');
+  resetAttachmentState('holiday', []);
+  renderAttachmentPreview('holiday');
 }
 
-function renderAttachmentPreview(attachments, kind) {
-  const files = attachments || [];
-  const isHoliday = kind === 'holiday';
-  const block = isHoliday ? elements.existingHolidayAttachmentsBlock : elements.existingAttachmentsBlock;
-  const count = isHoliday ? elements.holidayAttachmentCountLabel : elements.attachmentCountLabel;
-  const list = isHoliday ? elements.existingHolidayAttachmentsList : elements.existingAttachmentsList;
+function renderAttachmentPreview(kind) {
+  const config = getAttachmentState(kind);
+  const existingFiles = state[config.draftKey] || [];
+  const pendingFiles = state[config.pendingKey] || [];
+  const files = [...existingFiles, ...pendingFiles];
 
-  block.classList.toggle('hidden', files.length === 0);
-  count.textContent = `${files.length} Datei${files.length === 1 ? '' : 'en'}`;
-  list.innerHTML = '';
+  config.block.classList.toggle('hidden', files.length === 0);
+  config.count.textContent = `${files.length} Datei${files.length === 1 ? '' : 'en'}`;
+  config.list.innerHTML = '';
 
-  files.forEach((file) => {
-    const link = document.createElement('a');
-    link.className = 'file-chip';
-    link.href = file.publicUrl;
-    link.target = '_blank';
-    link.rel = 'noreferrer';
-    link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
-    list.appendChild(link);
+  files.forEach((file, index) => {
+    const item = document.createElement('article');
+    const isPending = !file.isExisting;
+    const isImage = (file.mimeType || '').startsWith('image/');
+    item.className = 'attachment-item';
+
+    const preview = document.createElement(file.publicUrl ? 'a' : 'div');
+    preview.className = 'attachment-preview';
+    if (file.publicUrl) {
+      preview.href = file.publicUrl;
+      preview.target = '_blank';
+      preview.rel = 'noreferrer';
+    }
+
+    if (isImage) {
+      const image = document.createElement('img');
+      image.src = file.publicUrl || file.previewUrl;
+      image.alt = file.name;
+      preview.appendChild(image);
+    } else {
+      preview.innerHTML = '<span aria-hidden="true">📄</span>';
+    }
+
+    const body = document.createElement('div');
+    body.className = 'attachment-item-body';
+    body.innerHTML = `
+      <strong>${file.name}</strong>
+      <span>${isPending ? 'Neu hinzugefügt' : 'Bereits gespeichert'} • ${formatAttachmentMeta(file)}</span>
+    `;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'ghost-btn attachment-remove-btn';
+    removeBtn.textContent = 'Entfernen';
+    removeBtn.addEventListener('click', () => removeAttachment(kind, isPending ? index - existingFiles.length : index, isPending));
+
+    item.append(preview, body, removeBtn);
+    config.list.appendChild(item);
   });
 }
 
@@ -1267,6 +1391,30 @@ function registerEventListeners() {
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
+  elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
+  elements.attachmentsGalleryBtn.addEventListener('click', () => elements.attachmentsGalleryInput.click());
+  elements.holidayAttachmentsCameraBtn.addEventListener('click', () => elements.holidayAttachmentsCameraInput.click());
+  elements.holidayAttachmentsGalleryBtn.addEventListener('click', () => elements.holidayAttachmentsGalleryInput.click());
+  elements.attachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
+  elements.attachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
+  elements.holidayAttachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
+  elements.holidayAttachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
+  elements.entryForm.addEventListener('reset', () => {
+    window.setTimeout(() => {
+      elements.startTimeInput.value = DEFAULT_START_TIME;
+      elements.endTimeInput.value = DEFAULT_END_TIME;
+      elements.lunchMinutesInput.value = DEFAULT_LUNCH_MINUTES;
+      elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+      resetAttachmentState('report', []);
+      renderAttachmentPreview('report');
+    }, 0);
+  });
+  elements.holidayForm.addEventListener('reset', () => {
+    window.setTimeout(() => {
+      resetAttachmentState('holiday', []);
+      renderAttachmentPreview('holiday');
+    }, 0);
+  });
   elements.entryDrawer.addEventListener('click', (event) => {
     if (event.target.dataset.closeDrawer === 'true') closeDrawer();
   });
