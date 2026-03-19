@@ -27,6 +27,7 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 
 4. E-Mail/Passwort-Login in Supabase Auth aktivieren.
 5. Die App lokal z. B. mit einem statischen Server starten.
+6. Bei bestehenden Projekten das aktuelle SQL aus `supabase-schema.sql` erneut im Supabase SQL Editor ausführen, damit die optimierten RLS-/Admin-Funktionen übernommen werden.
 
 ## Lokal starten
 
