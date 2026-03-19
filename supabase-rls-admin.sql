@@ -100,10 +100,11 @@ begin
   new.last_name := trim(coalesce(new.last_name, ''));
   new.full_name := trim(concat_ws(' ', nullif(new.first_name, ''), nullif(new.last_name, '')));
   new.role_label := coalesce(nullif(trim(new.role_label), ''), 'Monteur');
-  new.email := lower(trim(new.email));
-  new.is_admin := coalesce(new.is_admin, false);
 
   if tg_op = 'UPDATE' then
+    new.email := lower(trim(coalesce(new.email, old.email)));
+    new.is_admin := coalesce(new.is_admin, old.is_admin, false);
+
     if new.email is distinct from old.email then
       raise exception 'E-Mail kann nicht über die App geändert werden.';
     end if;
@@ -111,6 +112,9 @@ begin
     if new.is_admin is distinct from old.is_admin then
       raise exception 'Admin-Status kann nur direkt in Supabase geändert werden.';
     end if;
+  else
+    new.email := lower(trim(new.email));
+    new.is_admin := coalesce(new.is_admin, false);
   end if;
 
   return new;
