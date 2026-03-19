@@ -1072,7 +1072,7 @@ function renderWeek() {
     elements.weekGrid.appendChild(card);
   });
 
-  elements.weekEntryCount.textContent = String(totalEntries);
+  if (elements.weekEntryCount) elements.weekEntryCount.textContent = String(totalEntries);
   elements.weekMinutesTotal.textContent = formatMinutes(totalMinutes);
   elements.weekExpensesTotal.textContent = formatCurrency(totalExpenses);
 }
