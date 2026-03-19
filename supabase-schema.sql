@@ -109,7 +109,7 @@ begin
       raise exception 'E-Mail kann nicht über die App geändert werden.';
     end if;
 
-    if new.is_admin is distinct from old.is_admin then
+    if new.is_admin is distinct from old.is_admin and auth.uid() is not null then
       raise exception 'Admin-Status kann nur direkt in Supabase geändert werden.';
     end if;
   else
