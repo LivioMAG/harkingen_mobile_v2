@@ -717,10 +717,12 @@ async function loadEntries() {
   const days = getWeekDays();
   const firstDay = days[0].iso;
   const lastDay = days[days.length - 1].iso;
+  const currentProfileId = state.session.user.id;
 
   const { data, error } = await state.supabase
     .from('weekly_reports')
     .select(WEEKLY_REPORT_COLUMNS)
+    .eq('profile_id', currentProfileId)
     .gte('work_date', firstDay)
     .lte('work_date', lastDay)
     .order('work_date', { ascending: true })
@@ -739,10 +741,12 @@ async function loadEntries() {
 async function loadHolidayRequests() {
   if (!state.session?.user) return;
   const requestId = ++state.latestHolidayRequestId;
+  const currentProfileId = state.session.user.id;
 
   const { data, error } = await state.supabase
     .from('holiday_requests')
     .select(HOLIDAY_REQUEST_COLUMNS)
+    .eq('profile_id', currentProfileId)
     .order('start_date', { ascending: false })
     .limit(12);
 
@@ -944,6 +948,7 @@ async function saveEntry(event) {
             .from('weekly_reports')
             .update(body)
             .eq('id', state.editingEntry.id)
+            .eq('profile_id', state.session.user.id)
             .select(WEEKLY_REPORT_COLUMNS)
             .single();
         } else {
@@ -1011,6 +1016,7 @@ async function saveHolidayRequest(event) {
             .from('holiday_requests')
             .update(body)
             .eq('id', state.editingHoliday.id)
+            .eq('profile_id', state.session.user.id)
             .select(HOLIDAY_REQUEST_COLUMNS)
             .single();
         } else {
@@ -1047,7 +1053,11 @@ async function deleteEntry() {
       loadingLabel: 'Löschen …'
     },
     async () => {
-      const { error } = await state.supabase.from('weekly_reports').delete().eq('id', state.editingEntry.id);
+      const { error } = await state.supabase
+        .from('weekly_reports')
+        .delete()
+        .eq('id', state.editingEntry.id)
+        .eq('profile_id', state.session.user.id);
       if (error) {
         showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
         return;
@@ -1073,7 +1083,11 @@ async function deleteHolidayRequest() {
       loadingLabel: 'Löschen …'
     },
     async () => {
-      const { error } = await state.supabase.from('holiday_requests').delete().eq('id', state.editingHoliday.id);
+      const { error } = await state.supabase
+        .from('holiday_requests')
+        .delete()
+        .eq('id', state.editingHoliday.id)
+        .eq('profile_id', state.session.user.id);
       if (error) {
         showToast(`Löschen fehlgeschlagen: ${error.message}`, 'error');
         return;
