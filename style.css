@@ -882,13 +882,16 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 0 2px;
+  padding: 8px 0 0;
+  flex-wrap: nowrap;
 }
 
 .hero-actions-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .toolbar-btn {
@@ -897,6 +900,37 @@ body {
   border-radius: 999px;
   font-weight: 700;
   box-shadow: none;
+}
+
+#signOutBtn.toolbar-btn {
+  margin-left: auto;
+}
+
+.icon-label-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.toolbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.toolbar-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
 .primary-btn,
@@ -935,39 +969,37 @@ body {
 
 .hero-week-panel {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   padding-top: 18px;
   border-top: 1px solid rgba(15, 23, 42, 0.07);
 }
 
+.hero-week-copy {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
 .week-caption {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
+  display: none;
 }
 
 #weekRangeLabel {
-  margin: 8px 0 0;
-  font-size: 0.98rem;
+  margin: 0;
+  font-size: 0.96rem;
   color: var(--muted);
-}
-
-.week-nav {
-  justify-content: flex-end;
-  gap: 10px;
 }
 
 .week-nav-label {
   min-height: auto;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  justify-content: flex-start;
+  justify-content: center;
   font-size: clamp(1.5rem, 3.5vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.05em;
@@ -983,7 +1015,7 @@ body {
 
 .summary-card {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -1009,9 +1041,14 @@ body {
 }
 
 .summary-item strong {
-  margin-top: 12px;
-  font-size: clamp(1.35rem, 3.2vw, 1.8rem);
+  margin-top: 8px;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
   letter-spacing: -0.05em;
+}
+
+.compact-summary-item {
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .week-grid {
@@ -1129,31 +1166,40 @@ small,
     padding-right: 18px;
   }
 
-  .hero-toolbar,
+  .hero-toolbar {
+    gap: 10px;
+  }
+
   .hero-week-panel {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 10px;
   }
 
   .hero-actions-left {
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
   }
 
-  .hero-actions-left > .toolbar-btn,
-  #signOutBtn.toolbar-btn {
+  .hero-actions-left > .toolbar-btn {
     flex: 1 1 0;
+    min-width: 0;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  #signOutBtn.toolbar-btn {
+    flex: 0 0 auto;
+    padding-left: 14px;
+    padding-right: 14px;
   }
 
   .summary-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .summary-item + .summary-item {
-    border-left: 0;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+    border-top: 0;
   }
 
-  .week-nav {
-    justify-content: flex-start;
-  }
 }
