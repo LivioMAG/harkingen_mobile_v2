@@ -53,6 +53,7 @@ const elements = {
   passwordInput: document.getElementById('passwordInput'),
   fullNameInput: document.getElementById('fullNameInput'),
   welcomeHeading: document.getElementById('welcomeHeading'),
+  userNameLabel: document.getElementById('userNameLabel'),
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
   weekEntryCount: document.getElementById('weekEntryCount'),
@@ -1138,13 +1139,16 @@ function render() {
 
   if (isAuthenticated) {
     setPill(elements.authStatusPill, `Angemeldet als ${state.session.user.email}`, 'success');
-    elements.welcomeHeading.textContent = `Hallo ${getDisplayName(state.profile, state.session.user.email)}`;
+    elements.welcomeHeading.textContent = 'Dashboard';
+    elements.userNameLabel.textContent = getDisplayName(state.profile, state.session.user.email);
     fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
     setCurrentView(state.currentView);
   } else {
     state.currentView = 'dashboard';
+    elements.welcomeHeading.textContent = 'Dashboard';
+    elements.userNameLabel.textContent = '–';
     setCurrentView('dashboard');
     elements.settingsForm?.reset();
     setPill(elements.adminStatusPill, 'Admin: nein', 'neutral');
