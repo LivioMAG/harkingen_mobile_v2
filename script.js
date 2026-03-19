@@ -63,6 +63,15 @@ const elements = {
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
+  settingsCard: document.getElementById('settingsCard'),
+  adminStatusPill: document.getElementById('adminStatusPill'),
+  settingsForm: document.getElementById('settingsForm'),
+  firstNameInput: document.getElementById('firstNameInput'),
+  lastNameInput: document.getElementById('lastNameInput'),
+  roleLabelInput: document.getElementById('roleLabelInput'),
+  settingsEmailInput: document.getElementById('settingsEmailInput'),
+  isAdminInput: document.getElementById('isAdminInput'),
+  saveSettingsBtn: document.getElementById('saveSettingsBtn'),
   entryDrawer: document.getElementById('entryDrawer'),
   closeDrawerBtn: document.getElementById('closeDrawerBtn'),
   closeDrawerLinkBtn: document.getElementById('closeDrawerLinkBtn'),
@@ -372,22 +381,96 @@ async function bootstrapSession() {
   await syncSessionState(data.session);
 }
 
+function splitFullName(fullName = '') {
+  const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ')
+  };
+}
+
+function getDisplayName(profile, fallbackEmail = '') {
+  const first = profile?.first_name?.trim() || '';
+  const last = profile?.last_name?.trim() || '';
+  const full = [first, last].filter(Boolean).join(' ').trim();
+  return full || profile?.full_name || fallbackEmail;
+}
+
+function normalizeProfile(profile) {
+  if (!profile) return null;
+  const nameParts = splitFullName(profile.full_name || '');
+  const firstName = profile.first_name || nameParts.firstName || '';
+  const lastName = profile.last_name || nameParts.lastName || '';
+
+  return {
+    ...profile,
+    first_name: firstName,
+    last_name: lastName,
+    full_name: [firstName, lastName].filter(Boolean).join(' ').trim() || profile.full_name || '',
+    role_label: profile.role_label || 'Monteur',
+    is_admin: Boolean(profile.is_admin)
+  };
+}
+
+function fillSettingsForm() {
+  const profile = normalizeProfile(state.profile);
+  elements.firstNameInput.value = profile?.first_name || '';
+  elements.lastNameInput.value = profile?.last_name || '';
+  elements.roleLabelInput.value = profile?.role_label || 'Monteur';
+  elements.settingsEmailInput.value = state.session?.user?.email || profile?.email || '';
+  elements.isAdminInput.value = profile?.is_admin ? 'true' : 'false';
+  setPill(elements.adminStatusPill, `Admin: ${profile?.is_admin ? 'ja' : 'nein'}`, profile?.is_admin ? 'warning' : 'neutral');
+}
+
 async function ensureProfile(user, explicitFullName) {
   const fallbackName = explicitFullName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Monteur';
-  const payload = {
-    id: user.id,
-    email: user.email,
-    full_name: fallbackName,
-    role_label: 'Monteur'
-  };
+  const nameParts = splitFullName(fallbackName);
 
-  const { data, error } = await state.supabase.from('app_profiles').upsert(payload, { onConflict: 'id' }).select().single();
+  const { data: existingProfile, error: existingError } = await state.supabase
+    .from('app_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (existingError) {
+    showToast(`Profil konnte nicht geladen werden: ${existingError.message}`, 'error');
+    return;
+  }
+
+  const payload = existingProfile
+    ? {
+        email: user.email,
+        first_name: existingProfile.first_name || nameParts.firstName || user.user_metadata?.first_name || fallbackName,
+        last_name: existingProfile.last_name || nameParts.lastName || user.user_metadata?.last_name || '',
+        full_name:
+          existingProfile.full_name ||
+          [existingProfile.first_name, existingProfile.last_name].filter(Boolean).join(' ').trim() ||
+          fallbackName,
+        role_label: existingProfile.role_label || 'Monteur'
+      }
+    : {
+        id: user.id,
+        email: user.email,
+        first_name: nameParts.firstName || user.user_metadata?.first_name || fallbackName,
+        last_name: nameParts.lastName || user.user_metadata?.last_name || '',
+        full_name: fallbackName,
+        role_label: 'Monteur'
+      };
+
+  const query = existingProfile
+    ? state.supabase.from('app_profiles').update(payload).eq('id', user.id)
+    : state.supabase.from('app_profiles').insert(payload);
+
+  const { data, error } = await query.select().single();
   if (error) {
     showToast(`Profil konnte nicht gespeichert werden: ${error.message}`, 'error');
     return;
   }
 
-  state.profile = data;
+  state.profile = normalizeProfile(data);
+  fillSettingsForm();
 }
 
 async function signIn(event) {
@@ -487,6 +570,56 @@ async function handleAuthSubmit(event) {
   }
 
   await signIn(event);
+}
+
+async function saveSettings(event) {
+  event.preventDefault();
+  if (!state.supabase || !state.session?.user || !state.profile) {
+    showToast('Bitte zuerst anmelden.', 'error');
+    return;
+  }
+
+  const firstName = elements.firstNameInput.value.trim();
+  const lastName = elements.lastNameInput.value.trim();
+  const roleLabel = elements.roleLabelInput.value.trim();
+
+  if (!firstName || !lastName || !roleLabel) {
+    showToast('Vorname, Nachname und Rolle sind erforderlich.', 'error');
+    return;
+  }
+
+  await runWithFeedback(
+    {
+      button: elements.saveSettingsBtn,
+      section: elements.settingsCard,
+      pendingMessage: 'Account-Einstellungen werden gespeichert …',
+      loadingLabel: 'Speichern …'
+    },
+    async () => {
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+        role_label: roleLabel
+      };
+
+      const { data, error } = await state.supabase
+        .from('app_profiles')
+        .update(payload)
+        .eq('id', state.session.user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      state.profile = normalizeProfile(data);
+      fillSettingsForm();
+      render();
+      showToast('Account-Einstellungen gespeichert.');
+    }
+  );
 }
 
 async function signOut() {
@@ -991,10 +1124,18 @@ function render() {
 
   if (isAuthenticated) {
     setPill(elements.authStatusPill, `Angemeldet als ${state.session.user.email}`, 'success');
-    elements.welcomeHeading.textContent = `Hallo ${state.profile?.full_name || state.session.user.email}`;
+    elements.welcomeHeading.textContent = `Hallo ${getDisplayName(state.profile, state.session.user.email)}`;
+    fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
   } else {
+    elements.settingsForm?.reset();
+    setPill(elements.adminStatusPill, 'Admin: nein', 'neutral');
+    elements.isAdminInput.value = '';
+    elements.settingsEmailInput.value = '';
+    elements.firstNameInput.value = '';
+    elements.lastNameInput.value = '';
+    elements.roleLabelInput.value = '';
     setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
     elements.holidayList.innerHTML = '';
@@ -1011,6 +1152,7 @@ function registerEventListeners() {
   elements.authForm.addEventListener('submit', handleAuthSubmit);
   elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
   elements.signOutBtn.addEventListener('click', signOut);
+  elements.settingsForm.addEventListener('submit', saveSettings);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());

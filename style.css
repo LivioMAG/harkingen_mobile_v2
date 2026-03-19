@@ -316,6 +316,20 @@ textarea {
   margin: 0 auto;
 }
 
+.settings-card {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-form {
+  margin-top: 6px;
+}
+
+.readonly-field input {
+  background: #f8f8f8;
+  color: var(--muted);
+}
+
 .auth-switch-row {
   border-top: 1px solid var(--line);
   padding-top: 12px;

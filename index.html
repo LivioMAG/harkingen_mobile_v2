@@ -101,6 +101,51 @@
             </div>
           </section>
 
+          <section class="glass-card settings-card" id="settingsCard">
+            <div class="section-head compact">
+              <div>
+                <p class="section-label">Account-Einstellungen</p>
+                <h2>Profil &amp; Berechtigungen</h2>
+                <p>Vorname, Nachname und Rolle kann der Benutzer selbst ändern. E-Mail und Admin-Status sind nur lesbar.</p>
+              </div>
+              <span class="pill neutral" id="adminStatusPill">Admin: nein</span>
+            </div>
+
+            <form id="settingsForm" class="form-grid settings-form">
+              <div class="field-row two-columns">
+                <label class="field">
+                  <span>Vorname</span>
+                  <input id="firstNameInput" type="text" required placeholder="Max" />
+                </label>
+                <label class="field">
+                  <span>Nachname</span>
+                  <input id="lastNameInput" type="text" required placeholder="Muster" />
+                </label>
+              </div>
+
+              <div class="field-row two-columns">
+                <label class="field">
+                  <span>Rolle</span>
+                  <input id="roleLabelInput" type="text" required placeholder="Monteur" />
+                </label>
+                <label class="field readonly-field">
+                  <span>E-Mail</span>
+                  <input id="settingsEmailInput" type="email" readonly />
+                </label>
+              </div>
+
+              <label class="field readonly-field">
+                <span>Admin</span>
+                <input id="isAdminInput" type="text" readonly />
+                <small>Dieser Wert wird nur direkt in Supabase gesetzt und steuert die erweiterten Datenbankrechte.</small>
+              </label>
+
+              <div class="auth-actions stacked-on-mobile">
+                <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
+              </div>
+            </form>
+          </section>
+
           <section class="week-grid" id="weekGrid"></section>
 
           <section class="glass-card requests-card">
