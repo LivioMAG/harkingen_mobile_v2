@@ -21,9 +21,6 @@
           <p class="eyebrow">Mobile Wochenrapport-App</p>
           <h1>Rapport Mobile</h1>
         </div>
-        <button id="signOutBtn" class="icon-action-btn topbar-icon hidden" type="button" aria-label="Abmelden" title="Abmelden">
-          <span aria-hidden="true">↪</span>
-        </button>
       </header>
 
       <main class="content-stack">
@@ -73,27 +70,34 @@
         </section>
 
         <section class="app-view hidden" id="appView">
-          <section class="glass-card hero-card">
+          <section class="hero-card">
             <div class="hero-top-row">
-              <h2 id="welcomeHeading">Willkommen</h2>
-              <div class="hero-actions">
-                <button id="openHolidayDrawerBtn" class="icon-action-btn" type="button" aria-label="Abwesenheit erfassen" title="Abwesenheit erfassen">
-                  <span aria-hidden="true">🌴</span>
-                </button>
-                <button id="openSettingsViewBtn" class="icon-action-btn" type="button" aria-label="Einstellungen öffnen" title="Einstellungen öffnen">
-                  <span aria-hidden="true">⚙️</span>
-                </button>
+              <div class="hero-title-block">
+                <p class="section-label">Dashboard</p>
+                <h2 id="welcomeHeading">Willkommen</h2>
               </div>
             </div>
-            <p id="weekRangeLabel">Kalenderwoche wird geladen…</p>
-            <div class="week-nav" aria-label="Kalenderwochen-Navigation">
-              <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
-              <div id="currentWeekLabel" class="week-nav-label" aria-live="polite">KW --</div>
-              <button id="nextWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Nächste Kalenderwoche">→</button>
+            <div class="hero-toolbar">
+              <div class="hero-actions hero-actions-left">
+                <button id="openHolidayDrawerBtn" class="toolbar-btn secondary-btn" type="button">Ferien</button>
+                <button id="openSettingsViewBtn" class="toolbar-btn ghost-btn" type="button">Einstellungen</button>
+              </div>
+              <button id="signOutBtn" class="toolbar-btn ghost-btn hidden" type="button">Abmelden</button>
+            </div>
+            <div class="hero-week-panel">
+              <div>
+                <p class="week-caption">Kalenderwoche</p>
+                <div id="currentWeekLabel" class="week-nav-label" aria-live="polite">KW --</div>
+                <p id="weekRangeLabel">Kalenderwoche wird geladen…</p>
+              </div>
+              <div class="week-nav" aria-label="Kalenderwochen-Navigation">
+                <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
+                <button id="nextWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Nächste Kalenderwoche">→</button>
+              </div>
             </div>
           </section>
 
-          <section class="glass-card summary-card" id="summaryCard">
+          <section class="summary-card" id="summaryCard">
             <div class="summary-item">
               <span class="summary-label">Rapporte diese Woche</span>
               <strong id="weekEntryCount">0</strong>
