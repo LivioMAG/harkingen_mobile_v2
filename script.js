@@ -20,7 +20,7 @@ const HOLIDAY_TYPE_LABELS = {
 };
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const WEEKDAY_ABBREVIATIONS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
-const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
+const NIGHT_SHIFT_NOTE_PREFIX = 'Arbeitszeit, Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
 const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, is_admin';
@@ -311,10 +311,18 @@ function minutesBetween(startTime, endTime, lunchMinutes, breakMinutes) {
   return Math.max(0, raw - Number(lunchMinutes || 0) - Number(breakMinutes || 0));
 }
 
-function isOutsideDayShift(timeValue) {
-  const minutes = toMinutes(timeValue);
-  if (minutes === null) return false;
-  return minutes < DAY_SHIFT_START_MINUTES || minutes >= DAY_SHIFT_END_MINUTES;
+function shiftOverlapsNightWindow(startTime, endTime) {
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
+  if (start === null || end === null) return false;
+
+  const normalizedEnd = end <= start ? end + (24 * 60) : end;
+  const nightWindows = [
+    { start: DAY_SHIFT_END_MINUTES, end: 24 * 60 },
+    { start: 24 * 60, end: (24 * 60) + DAY_SHIFT_START_MINUTES }
+  ];
+
+  return nightWindows.some((window) => start < window.end && normalizedEnd > window.start);
 }
 
 function getWeekdayAbbreviation(isoDate) {
@@ -324,7 +332,7 @@ function getWeekdayAbbreviation(isoDate) {
 }
 
 function buildShiftBoundaryNote(workDate, startTime, endTime) {
-  if (!isOutsideDayShift(startTime) && !isOutsideDayShift(endTime)) {
+  if (!shiftOverlapsNightWindow(startTime, endTime)) {
     return '';
   }
 
@@ -337,7 +345,7 @@ function mergeShiftBoundaryNote(notes, autoNote) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) => !line.startsWith(`${NIGHT_SHIFT_NOTE_PREFIX} (`));
+    .filter((line) => !line.startsWith(`${NIGHT_SHIFT_NOTE_PREFIX} (`) && !line.startsWith(`Nachtzeit (`));
 
   if (autoNote) {
     lines.push(autoNote);
