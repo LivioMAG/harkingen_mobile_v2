@@ -19,6 +19,10 @@ const HOLIDAY_TYPE_LABELS = {
   krankheit: 'Krankheit'
 };
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const WEEKDAY_ABBREVIATIONS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
+const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
+const DAY_SHIFT_START_MINUTES = 6 * 60;
+const DAY_SHIFT_END_MINUTES = 22 * 60;
 const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, is_admin';
 const WEEKLY_REPORT_COLUMNS = [
   'id',
@@ -293,13 +297,53 @@ function getWeekNumber(date) {
   return Math.ceil((((copy - yearStart) / 86400000) + 1) / 7);
 }
 
+function toMinutes(timeValue) {
+  if (!timeValue || !timeValue.includes(':')) return null;
+  const [hour, minute] = timeValue.split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
 function minutesBetween(startTime, endTime, lunchMinutes, breakMinutes) {
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
-  const start = startHour * 60 + startMinute;
-  const end = endHour * 60 + endMinute;
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
   const raw = end < start ? (24 * 60 - start) + end : end - start;
   return Math.max(0, raw - Number(lunchMinutes || 0) - Number(breakMinutes || 0));
+}
+
+function isOutsideDayShift(timeValue) {
+  const minutes = toMinutes(timeValue);
+  if (minutes === null) return false;
+  return minutes < DAY_SHIFT_START_MINUTES || minutes >= DAY_SHIFT_END_MINUTES;
+}
+
+function getWeekdayAbbreviation(isoDate) {
+  if (!isoDate) return '';
+  const date = parseLocalDate(isoDate);
+  return WEEKDAY_ABBREVIATIONS[date.getDay()] || '';
+}
+
+function buildShiftBoundaryNote(workDate, startTime, endTime) {
+  if (!isOutsideDayShift(startTime) && !isOutsideDayShift(endTime)) {
+    return '';
+  }
+
+  const weekday = getWeekdayAbbreviation(workDate);
+  return `${NIGHT_SHIFT_NOTE_PREFIX} (${weekday}): ${startTime} - ${endTime}`;
+}
+
+function mergeShiftBoundaryNote(notes, autoNote) {
+  const lines = String(notes || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith(`${NIGHT_SHIFT_NOTE_PREFIX} (`));
+
+  if (autoNote) {
+    lines.push(autoNote);
+  }
+
+  return lines.join('\n');
 }
 
 function formatMinutes(totalMinutes) {
@@ -871,28 +915,26 @@ async function uploadAttachments(files, folderKey, existingFiles = []) {
 
 function getEntryPayload() {
   const workDate = elements.entryDateInput.value;
+  const startTime = elements.startTimeInput.value;
+  const endTime = elements.endTimeInput.value;
   const lunchMinutes = Number(elements.lunchMinutesInput.value || 0);
   const breakMinutes = Number(elements.breakMinutesInput.value || 0);
-  const totalMinutes = minutesBetween(
-    elements.startTimeInput.value,
-    elements.endTimeInput.value,
-    lunchMinutes,
-    breakMinutes
-  );
+  const totalMinutes = minutesBetween(startTime, endTime, lunchMinutes, breakMinutes);
+  const autoNote = buildShiftBoundaryNote(workDate, startTime, endTime);
 
   return {
     profile_id: state.session.user.id,
     work_date: workDate,
     commission_number: elements.commissionInput.value.trim(),
-    start_time: elements.startTimeInput.value,
-    end_time: elements.endTimeInput.value,
+    start_time: startTime,
+    end_time: endTime,
     lunch_break_minutes: lunchMinutes,
     additional_break_minutes: breakMinutes,
     total_work_minutes: totalMinutes,
     expenses_amount: Number(elements.expensesInput.value || 0),
     other_costs_amount: Number(elements.otherCostsInput.value || 0),
     expense_note: elements.expenseNoteInput.value.trim(),
-    notes: elements.notesInput.value.trim()
+    notes: mergeShiftBoundaryNote(elements.notesInput.value, autoNote)
   };
 }
 
