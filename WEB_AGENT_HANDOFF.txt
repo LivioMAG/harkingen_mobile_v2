@@ -395,6 +395,7 @@ Nicht vorhanden in der UI:
 Arbeitszeitberechnung:
 - `minutesBetween(startTime, endTime, lunchMinutes, breakMinutes)`
 - Formel:
+  - Bei Endzeit vor Startzeit wird eine Schicht über Mitternacht angenommen.
   - `(Ende - Start) - lunch_break_minutes - additional_break_minutes`
   - Minimum ist 0
 

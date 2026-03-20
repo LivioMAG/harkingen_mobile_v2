@@ -298,7 +298,7 @@ function minutesBetween(startTime, endTime, lunchMinutes, breakMinutes) {
   const [endHour, endMinute] = endTime.split(':').map(Number);
   const start = startHour * 60 + startMinute;
   const end = endHour * 60 + endMinute;
-  const raw = end - start;
+  const raw = end < start ? (24 * 60 - start) + end : end - start;
   return Math.max(0, raw - Number(lunchMinutes || 0) - Number(breakMinutes || 0));
 }
 
