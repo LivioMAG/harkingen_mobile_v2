@@ -61,6 +61,7 @@ const state = {
   profile: null,
   weekOffset: 0,
   authMode: 'login',
+  pendingOtpEmail: '',
   entries: [],
   holidays: [],
   selectedDate: null,
@@ -84,14 +85,25 @@ const elements = {
   authStatusPill: document.getElementById('authStatusPill'),
   authSubmitBtn: document.getElementById('authSubmitBtn'),
   authSwitchText: document.getElementById('authSwitchText'),
+  authModeSwitchRow: document.getElementById('authModeSwitchRow'),
   toggleAuthModeBtn: document.getElementById('toggleAuthModeBtn'),
   fullNameField: document.getElementById('fullNameField'),
   signOutBtn: document.getElementById('signOutBtn'),
   appView: document.getElementById('appView'),
   authForm: document.getElementById('authForm'),
+  forgotPasswordForm: document.getElementById('forgotPasswordForm'),
+  verifyOtpForm: document.getElementById('verifyOtpForm'),
   emailInput: document.getElementById('emailInput'),
   passwordInput: document.getElementById('passwordInput'),
   fullNameInput: document.getElementById('fullNameInput'),
+  forgotEmailInput: document.getElementById('forgotEmailInput'),
+  otpCodeInput: document.getElementById('otpCodeInput'),
+  forgotPasswordSubmitBtn: document.getElementById('forgotPasswordSubmitBtn'),
+  verifyOtpSubmitBtn: document.getElementById('verifyOtpSubmitBtn'),
+  openForgotPasswordBtn: document.getElementById('openForgotPasswordBtn'),
+  cancelForgotPasswordBtn: document.getElementById('cancelForgotPasswordBtn'),
+  forgotPasswordHint: document.getElementById('forgotPasswordHint'),
+  forgotPasswordActions: document.getElementById('forgotPasswordActions'),
   welcomeHeading: document.getElementById('welcomeHeading'),
   userNameLabel: document.getElementById('userNameLabel'),
   weekRangeLabel: document.getElementById('weekRangeLabel'),
@@ -106,7 +118,9 @@ const elements = {
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
   openSettingsViewBtn: document.getElementById('openSettingsViewBtn'),
   settingsView: document.getElementById('settingsView'),
+  settingsOverviewCard: document.getElementById('settingsOverviewCard'),
   backToDashboardBtn: document.getElementById('backToDashboardBtn'),
+  requestsCard: document.getElementById('requestsCard'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
   settingsCard: document.getElementById('settingsCard'),
@@ -118,6 +132,13 @@ const elements = {
   settingsEmailInput: document.getElementById('settingsEmailInput'),
   isAdminInput: document.getElementById('isAdminInput'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+  openPasswordViewBtn: document.getElementById('openPasswordViewBtn'),
+  passwordView: document.getElementById('passwordView'),
+  backToSettingsBtn: document.getElementById('backToSettingsBtn'),
+  passwordResetForm: document.getElementById('passwordResetForm'),
+  newPasswordInput: document.getElementById('newPasswordInput'),
+  confirmPasswordInput: document.getElementById('confirmPasswordInput'),
+  changePasswordBtn: document.getElementById('changePasswordBtn'),
   entryDrawer: document.getElementById('entryDrawer'),
   closeDrawerBtn: document.getElementById('closeDrawerBtn'),
   closeDrawerLinkBtn: document.getElementById('closeDrawerLinkBtn'),
@@ -240,12 +261,19 @@ function setPill(element, text, variant) {
 }
 
 function setCurrentView(view) {
-  state.currentView = view === 'settings' ? 'settings' : 'dashboard';
-  elements.settingsView?.classList.toggle('hidden', state.currentView !== 'settings');
-  elements.weekGrid?.classList.toggle('hidden', state.currentView === 'settings');
-  elements.summaryCard?.classList.toggle('hidden', state.currentView === 'settings');
-  elements.openSettingsViewBtn?.classList.toggle('hidden', state.currentView === 'settings');
-  elements.openHolidayDrawerBtn?.classList.toggle('hidden', state.currentView === 'settings');
+  state.currentView = ['settings', 'password'].includes(view) ? view : 'dashboard';
+  const inSettings = state.currentView !== 'dashboard';
+  const inPassword = state.currentView === 'password';
+
+  elements.settingsView?.classList.toggle('hidden', !inSettings);
+  elements.weekGrid?.classList.toggle('hidden', inSettings);
+  elements.summaryCard?.classList.toggle('hidden', inSettings);
+  elements.openSettingsViewBtn?.classList.toggle('hidden', inSettings);
+  elements.openHolidayDrawerBtn?.classList.toggle('hidden', inSettings);
+  elements.settingsOverviewCard?.classList.toggle('hidden', inPassword);
+  elements.settingsCard?.classList.toggle('hidden', inPassword);
+  elements.requestsCard?.classList.toggle('hidden', inPassword);
+  elements.passwordView?.classList.toggle('hidden', !inPassword);
 }
 
 function formatCurrency(value) {
@@ -405,8 +433,34 @@ function validateConfig(config) {
 }
 
 function setAuthMode(mode) {
-  state.authMode = mode;
-  const isRegister = mode === 'register';
+  state.authMode = ['register', 'forgot', 'otp'].includes(mode) ? mode : 'login';
+  const isRegister = state.authMode === 'register';
+  const isForgot = state.authMode === 'forgot';
+  const isOtp = state.authMode === 'otp';
+  const isLoginLike = !isForgot && !isOtp;
+
+  elements.authForm.classList.toggle('hidden', !isLoginLike);
+  elements.forgotPasswordForm.classList.toggle('hidden', !isForgot);
+  elements.verifyOtpForm.classList.toggle('hidden', !isOtp);
+  elements.forgotPasswordHint.classList.toggle('hidden', !isOtp);
+  elements.authModeSwitchRow.classList.toggle('hidden', isForgot || isOtp);
+  elements.forgotPasswordActions.classList.toggle('hidden', isRegister);
+  elements.openForgotPasswordBtn.classList.toggle('hidden', !isLoginLike);
+  elements.cancelForgotPasswordBtn.classList.toggle('hidden', isLoginLike);
+
+  if (isForgot) {
+    elements.authTitle.textContent = 'Passwort vergessen';
+    elements.authSubtitle.textContent = 'Wir senden dir einen 6-stelligen Code per E-Mail.';
+    elements.forgotEmailInput.value = elements.emailInput.value.trim() || elements.forgotEmailInput.value;
+    return;
+  }
+
+  if (isOtp) {
+    elements.authTitle.textContent = 'Code eingeben';
+    elements.authSubtitle.textContent = `Gib den Code ein, den wir an ${state.pendingOtpEmail} gesendet haben.`;
+    return;
+  }
+
   elements.authTitle.textContent = isRegister ? 'Registrieren' : 'Anmelden';
   elements.authSubtitle.textContent = isRegister
     ? 'Erstelle dein Konto mit E-Mail und Passwort.'
@@ -694,6 +748,92 @@ async function handleAuthSubmit(event) {
   await signIn(event);
 }
 
+async function startForgotPassword(event) {
+  event.preventDefault();
+  if (!state.supabase) {
+    showToast('Supabase ist noch nicht verbunden.', 'error');
+    return;
+  }
+
+  const email = elements.forgotEmailInput.value.trim().toLowerCase();
+  if (!email) {
+    showToast('Bitte E-Mail eingeben.', 'error');
+    return;
+  }
+
+  await runWithFeedback(
+    {
+      button: elements.forgotPasswordSubmitBtn,
+      section: elements.authCard,
+      pendingMessage: 'Code wird per E-Mail gesendet …',
+      loadingLabel: 'Code senden …'
+    },
+    async () => {
+      const { error } = await state.supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false }
+      });
+
+      if (error) {
+        showToast(`Code konnte nicht gesendet werden: ${error.message}`, 'error');
+        return;
+      }
+
+      state.pendingOtpEmail = email;
+      elements.otpCodeInput.value = '';
+      setAuthMode('otp');
+      showToast('Es wurde Ihnen eine E-Mail mit Code zugeschickt.');
+    }
+  );
+}
+
+async function verifyEmailOtp(event) {
+  event.preventDefault();
+  if (!state.supabase) {
+    showToast('Supabase ist noch nicht verbunden.', 'error');
+    return;
+  }
+
+  const token = elements.otpCodeInput.value.trim();
+  if (!state.pendingOtpEmail || !/^\d{6}$/.test(token)) {
+    showToast('Bitte einen gültigen 6-stelligen Code eingeben.', 'error');
+    return;
+  }
+
+  await runWithFeedback(
+    {
+      button: elements.verifyOtpSubmitBtn,
+      section: elements.authCard,
+      pendingMessage: 'Code wird überprüft …',
+      loadingLabel: 'Prüfen …'
+    },
+    async () => {
+      const { data, error } = await state.supabase.auth.verifyOtp({
+        email: state.pendingOtpEmail,
+        token,
+        type: 'email'
+      });
+
+      if (error) {
+        showToast(`Code ungültig oder abgelaufen: ${error.message}`, 'error');
+        return;
+      }
+
+      if (!data.user) {
+        showToast('Code bestätigt, aber keine Benutzersitzung erhalten.', 'warning');
+        return;
+      }
+
+      showToast('Code bestätigt. Du bist jetzt eingeloggt.');
+      setAuthMode('login');
+      elements.authForm.reset();
+      elements.forgotPasswordForm.reset();
+      elements.verifyOtpForm.reset();
+      state.pendingOtpEmail = '';
+    }
+  );
+}
+
 async function saveSettings(event) {
   event.preventDefault();
   if (!state.supabase || !state.session?.user || !state.profile) {
@@ -759,6 +899,47 @@ async function signOut() {
         return;
       }
       showToast('Erfolgreich abgemeldet.');
+    }
+  );
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  if (!state.supabase || !state.session?.user) {
+    showToast('Bitte zuerst anmelden.', 'error');
+    return;
+  }
+
+  const password = elements.newPasswordInput.value;
+  const confirmPassword = elements.confirmPasswordInput.value;
+
+  if (password.length < 6) {
+    showToast('Das Passwort muss mindestens 6 Zeichen haben.', 'error');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showToast('Die beiden Passwörter stimmen nicht überein.', 'error');
+    return;
+  }
+
+  await runWithFeedback(
+    {
+      button: elements.changePasswordBtn,
+      section: elements.passwordView,
+      pendingMessage: 'Passwort wird geändert …',
+      loadingLabel: 'Ändern …'
+    },
+    async () => {
+      const { error } = await state.supabase.auth.updateUser({ password });
+      if (error) {
+        showToast(`Passwort konnte nicht geändert werden: ${error.message}`, 'error');
+        return;
+      }
+
+      elements.passwordResetForm.reset();
+      showToast('Passwort wurde erfolgreich geändert.');
+      setCurrentView('settings');
     }
   );
 }
@@ -1436,16 +1617,32 @@ async function handleWeekChange(offsetDelta) {
 function registerEventListeners() {
   elements.authForm.addEventListener('submit', handleAuthSubmit);
   elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
+  elements.forgotPasswordForm.addEventListener('submit', startForgotPassword);
+  elements.verifyOtpForm.addEventListener('submit', verifyEmailOtp);
+  elements.openForgotPasswordBtn.addEventListener('click', () => setAuthMode('forgot'));
+  elements.cancelForgotPasswordBtn.addEventListener('click', () => {
+    state.pendingOtpEmail = '';
+    elements.forgotPasswordForm.reset();
+    elements.verifyOtpForm.reset();
+    setAuthMode('login');
+  });
   elements.signOutBtn.addEventListener('click', signOut);
   elements.settingsForm.addEventListener('submit', saveSettings);
+  elements.passwordResetForm.addEventListener('submit', changePassword);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
   elements.openSettingsViewBtn.addEventListener('click', () => {
     setCurrentView('settings');
   });
+  elements.openPasswordViewBtn.addEventListener('click', () => {
+    setCurrentView('password');
+  });
   elements.backToDashboardBtn.addEventListener('click', () => {
     setCurrentView('dashboard');
+  });
+  elements.backToSettingsBtn.addEventListener('click', () => {
+    setCurrentView('settings');
   });
   elements.entryForm.addEventListener('submit', saveEntry);
   elements.holidayForm.addEventListener('submit', saveHolidayRequest);

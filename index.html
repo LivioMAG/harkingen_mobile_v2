@@ -63,9 +63,57 @@
             </div>
           </form>
 
-          <div class="auth-switch-row">
+          <form id="forgotPasswordForm" class="form-grid hidden">
+            <label class="field">
+              <span>E-Mail</span>
+              <input
+                id="forgotEmailInput"
+                name="forgotEmail"
+                type="email"
+                autocomplete="email"
+                required
+                placeholder="monteur@firma.ch"
+              />
+            </label>
+
+            <div class="auth-actions stacked-on-mobile">
+              <button class="primary-btn" id="forgotPasswordSubmitBtn" type="submit">Code senden</button>
+            </div>
+          </form>
+
+          <form id="verifyOtpForm" class="form-grid hidden">
+            <label class="field">
+              <span>6-stelliger Code</span>
+              <input
+                id="otpCodeInput"
+                name="otpCode"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                required
+                minlength="6"
+                maxlength="6"
+                pattern="\d{6}"
+                placeholder="123456"
+              />
+            </label>
+
+            <div class="auth-actions stacked-on-mobile">
+              <button class="primary-btn" id="verifyOtpSubmitBtn" type="submit">Code bestätigen</button>
+            </div>
+          </form>
+
+          <div class="auth-switch-row hidden" id="forgotPasswordHint">
+            <span>Code per E-Mail erhalten?</span>
+          </div>
+
+          <div class="auth-switch-row" id="authModeSwitchRow">
             <span id="authSwitchText">Noch kein Konto?</span>
             <button class="link-btn" id="toggleAuthModeBtn" type="button">Jetzt registrieren</button>
+          </div>
+          <div class="auth-switch-row" id="forgotPasswordActions">
+            <button class="link-btn" id="openForgotPasswordBtn" type="button">Passwort vergessen?</button>
+            <button class="link-btn hidden" id="cancelForgotPasswordBtn" type="button">Zurück zum Login</button>
           </div>
         </section>
 
@@ -127,7 +175,7 @@
           <section class="week-grid" id="weekGrid"></section>
 
           <section class="settings-view hidden" id="settingsView">
-            <section class="glass-card settings-overview-card">
+            <section class="glass-card settings-overview-card" id="settingsOverviewCard">
               <div class="section-head compact settings-overview-head">
                 <div>
                   <p class="section-label">Einstellungen</p>
@@ -179,11 +227,52 @@
 
                 <div class="auth-actions stacked-on-mobile">
                   <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
+                  <button class="secondary-btn" id="openPasswordViewBtn" type="button">Passwort ändern</button>
                 </div>
               </form>
             </section>
 
-            <section class="glass-card requests-card">
+            <section class="glass-card settings-card hidden" id="passwordView">
+              <div class="section-head compact">
+                <div>
+                  <p class="section-label">Passwort</p>
+                  <h2>Neues Passwort festlegen</h2>
+                  <p>Du musst nur eingeloggt sein und dein neues Passwort zweimal eingeben.</p>
+                </div>
+                <button id="backToSettingsBtn" class="ghost-btn" type="button">← Zurück</button>
+              </div>
+
+              <form id="passwordResetForm" class="form-grid settings-form">
+                <label class="field">
+                  <span>Neues Passwort</span>
+                  <input
+                    id="newPasswordInput"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                    placeholder="Mindestens 6 Zeichen"
+                  />
+                </label>
+                <label class="field">
+                  <span>Neues Passwort wiederholen</span>
+                  <input
+                    id="confirmPasswordInput"
+                    type="password"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                    placeholder="Mindestens 6 Zeichen"
+                  />
+                </label>
+
+                <div class="auth-actions stacked-on-mobile">
+                  <button class="primary-btn" id="changePasswordBtn" type="submit">Passwort ändern</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="glass-card requests-card" id="requestsCard">
               <div class="section-head compact">
                 <div>
                   <p class="section-label">Abwesenheiten</p>
