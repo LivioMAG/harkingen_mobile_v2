@@ -579,6 +579,13 @@ function formatMinutesLong(totalMinutes) {
   return `${hours} Stunden ${String(minutes).padStart(2, '0')} Minuten`;
 }
 
+function getHourMinuteParts(totalMinutes) {
+  return {
+    hours: Math.floor(totalMinutes / 60),
+    minutes: totalMinutes % 60
+  };
+}
+
 function getOriginalWorkMinutes(entry) {
   return Number(entry?.total_work_minutes || 0);
 }
@@ -600,13 +607,16 @@ function getEffectiveWorkMinutes(entry) {
 function formatAdjustedEntryMinutes(entry) {
   const originalMinutes = getOriginalWorkMinutes(entry);
   if (!hasHigherAdjustedWorkMinutes(entry)) {
-    return formatMinutesLong(originalMinutes);
+    const { hours, minutes } = getHourMinuteParts(originalMinutes);
+    return `${hours}h ${String(minutes).padStart(2, '0')}min`;
   }
 
   const adjustedMinutes = getAdjustedWorkMinutes(entry);
   const adjustedPercentage = originalMinutes > 0 ? ((adjustedMinutes - originalMinutes) / originalMinutes) * 100 : null;
   const percentageLabel = adjustedPercentage === null ? 'neu' : `+${adjustedPercentage.toFixed(2)}%`;
-  return `${formatMinutesLong(originalMinutes)} (${formatMinutesLong(adjustedMinutes)} / ${adjustedMinutes} Minuten) ${percentageLabel}`;
+  const original = getHourMinuteParts(originalMinutes);
+  const adjusted = getHourMinuteParts(adjustedMinutes);
+  return `${original.hours}<span class="entry-minutes-adjusted">(${adjusted.hours})</span>h ${String(original.minutes).padStart(2, '0')}<span class="entry-minutes-adjusted">(${String(adjusted.minutes).padStart(2, '0')})</span>min ${percentageLabel}`;
 }
 
 function getReportTypeFromCommission(commissionNumber = '') {
@@ -1770,7 +1780,7 @@ function renderWeek() {
         button.querySelector('.entry-commission').textContent = entry.commission_number || entry.project_name || '—';
         button.querySelector('.entry-time-range').textContent = `${entry.start_time} – ${entry.end_time}`;
         button.querySelector('.entry-time').textContent = `${entry.start_time} – ${entry.end_time}`;
-        button.querySelector('.entry-minutes').textContent = formatAdjustedEntryMinutes(entry);
+        button.querySelector('.entry-minutes').innerHTML = formatAdjustedEntryMinutes(entry);
         button.querySelector('.entry-expenses').textContent = formatCurrency(
           Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0)
         );

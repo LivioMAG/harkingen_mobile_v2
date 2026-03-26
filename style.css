@@ -797,6 +797,10 @@ textarea {
   font-weight: 600;
 }
 
+.entry-minutes-adjusted {
+  color: var(--warning);
+}
+
 .entry-notes {
   padding-top: 8px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
