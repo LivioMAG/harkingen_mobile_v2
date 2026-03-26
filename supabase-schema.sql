@@ -49,6 +49,8 @@ create table if not exists public.weekly_reports (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.app_profiles (id) on delete cascade,
   work_date date not null,
+  year integer not null default extract(year from current_date)::integer,
+  kw integer not null default extract(week from current_date)::integer,
   project_name text not null default '',
   commission_number text not null,
   start_time time not null default '07:00',
@@ -67,6 +69,20 @@ create table if not exists public.weekly_reports (
 );
 
 alter table public.weekly_reports add column if not exists total_adjusted_work_minutes integer not null default 0;
+alter table public.weekly_reports add column if not exists year integer;
+alter table public.weekly_reports add column if not exists kw integer;
+
+update public.weekly_reports
+set
+  year = extract(year from work_date)::integer,
+  kw = extract(week from work_date)::integer
+where year is null or kw is null;
+
+alter table public.weekly_reports alter column year set not null;
+alter table public.weekly_reports alter column kw set not null;
+
+alter table public.weekly_reports alter column year set default extract(year from current_date)::integer;
+alter table public.weekly_reports alter column kw set default extract(week from current_date)::integer;
 update public.weekly_reports
 set total_adjusted_work_minutes = total_work_minutes
 where coalesce(total_adjusted_work_minutes, 0) = 0 and coalesce(total_work_minutes, 0) > 0;
@@ -86,6 +102,9 @@ create table if not exists public.holiday_requests (
 
 create index if not exists weekly_reports_profile_date_idx
   on public.weekly_reports (profile_id, work_date);
+
+create index if not exists weekly_reports_profile_year_kw_idx
+  on public.weekly_reports (profile_id, year, kw);
 
 create index if not exists holiday_requests_profile_date_idx
   on public.holiday_requests (profile_id, start_date, end_date);
