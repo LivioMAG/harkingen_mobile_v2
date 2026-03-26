@@ -29,7 +29,7 @@ const WEEKDAY_ABBREVIATIONS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
 const NIGHT_SHIFT_NOTE_PREFIX = 'Arbeitszeit, Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
-const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, is_admin';
+const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, is_admin';
 const WEEKLY_REPORT_COLUMNS = [
   'id',
   'profile_id',
@@ -156,6 +156,8 @@ const elements = {
   forgotPasswordActions: document.getElementById('forgotPasswordActions'),
   welcomeHeading: document.getElementById('welcomeHeading'),
   userNameLabel: document.getElementById('userNameLabel'),
+  dashboardHeroCard: document.getElementById('dashboardHeroCard'),
+  dashboardWeekPanel: document.getElementById('dashboardWeekPanel'),
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
   weekEntryCount: document.getElementById('weekEntryCount'),
@@ -179,6 +181,7 @@ const elements = {
   firstNameInput: document.getElementById('firstNameInput'),
   lastNameInput: document.getElementById('lastNameInput'),
   roleLabelInput: document.getElementById('roleLabelInput'),
+  phoneInput: document.getElementById('phoneInput'),
   settingsEmailInput: document.getElementById('settingsEmailInput'),
   isAdminInput: document.getElementById('isAdminInput'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
@@ -319,6 +322,9 @@ function setCurrentView(view) {
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
+  elements.dashboardHeroCard?.classList.toggle('hidden', inSettings);
+  elements.dashboardWeekPanel?.classList.toggle('hidden', inSettings);
+  elements.signOutBtn?.classList.toggle('hidden', inSettings);
   elements.weekGrid?.classList.toggle('hidden', inSettings);
   elements.summaryCard?.classList.toggle('hidden', inSettings);
   elements.openSettingsViewBtn?.classList.toggle('hidden', inSettings);
@@ -811,7 +817,8 @@ function areProfileFieldsEqual(left, right) {
     (left?.first_name || '') === (right?.first_name || '') &&
     (left?.last_name || '') === (right?.last_name || '') &&
     (left?.full_name || '') === (right?.full_name || '') &&
-    (left?.role_label || '') === (right?.role_label || '')
+    (left?.role_label || '') === (right?.role_label || '') &&
+    (left?.tel || '') === (right?.tel || '')
   );
 }
 
@@ -827,6 +834,7 @@ function normalizeProfile(profile) {
     last_name: lastName,
     full_name: [firstName, lastName].filter(Boolean).join(' ').trim() || profile.full_name || '',
     role_label: profile.role_label || 'Monteur',
+    tel: profile.tel || '',
     is_admin: Boolean(profile.is_admin)
   };
 }
@@ -836,9 +844,9 @@ function fillSettingsForm() {
   elements.firstNameInput.value = profile?.first_name || '';
   elements.lastNameInput.value = profile?.last_name || '';
   elements.roleLabelInput.value = profile?.role_label || 'Monteur';
+  elements.phoneInput.value = profile?.tel || '';
   elements.settingsEmailInput.value = state.session?.user?.email || profile?.email || '';
   elements.isAdminInput.value = profile?.is_admin ? 'true' : 'false';
-  setPill(elements.adminStatusPill, `Admin: ${profile?.is_admin ? 'ja' : 'nein'}`, profile?.is_admin ? 'warning' : 'neutral');
 }
 
 async function ensureProfile(user, explicitFullName) {
@@ -865,7 +873,8 @@ async function ensureProfile(user, explicitFullName) {
           existingProfile.full_name ||
           [existingProfile.first_name, existingProfile.last_name].filter(Boolean).join(' ').trim() ||
           fallbackName,
-        role_label: existingProfile.role_label || 'Monteur'
+        role_label: existingProfile.role_label || 'Monteur',
+        tel: existingProfile.tel || ''
       }
     : {
         id: user.id,
@@ -873,7 +882,8 @@ async function ensureProfile(user, explicitFullName) {
         first_name: nameParts.firstName || user.user_metadata?.first_name || fallbackName,
         last_name: nameParts.lastName || user.user_metadata?.last_name || '',
         full_name: fallbackName,
-        role_label: 'Monteur'
+        role_label: 'Monteur',
+        tel: ''
       };
 
   if (existingProfile && areProfileFieldsEqual(existingProfile, payload)) {
@@ -1085,6 +1095,7 @@ async function saveSettings(event) {
   const firstName = elements.firstNameInput.value.trim();
   const lastName = elements.lastNameInput.value.trim();
   const roleLabel = elements.roleLabelInput.value.trim();
+  const phone = elements.phoneInput.value.trim();
 
   if (!firstName || !lastName || !roleLabel) {
     showToast('Vorname, Nachname und Rolle sind erforderlich.', 'error');
@@ -1103,7 +1114,8 @@ async function saveSettings(event) {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
-        role_label: roleLabel
+        role_label: roleLabel,
+        tel: phone
       };
 
       const { data, error } = await state.supabase
@@ -1871,9 +1883,9 @@ function render() {
     elements.userNameLabel.textContent = '–';
     setCurrentView('dashboard');
     elements.settingsForm?.reset();
-    setPill(elements.adminStatusPill, 'Admin: nein', 'neutral');
     elements.isAdminInput.value = '';
     elements.settingsEmailInput.value = '';
+    elements.phoneInput.value = '';
     elements.firstNameInput.value = '';
     elements.lastNameInput.value = '';
     elements.roleLabelInput.value = '';
@@ -1920,7 +1932,7 @@ function registerEventListeners() {
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');
   });
-  elements.backToDashboardBtn.addEventListener('click', () => {
+  elements.backToDashboardBtn?.addEventListener('click', () => {
     setCurrentView('dashboard');
   });
   elements.backToSettingsBtn.addEventListener('click', () => {
