@@ -34,6 +34,8 @@ const WEEKLY_REPORT_COLUMNS = [
   'id',
   'profile_id',
   'work_date',
+  'year',
+  'kw',
   'project_name',
   'commission_number',
   'start_time',
@@ -1201,16 +1203,34 @@ async function loadEntries() {
   if (!state.session?.user) return;
   const requestId = ++state.latestEntriesRequestId;
   const days = getWeekDays();
-  const firstDay = days[0].iso;
-  const lastDay = days[days.length - 1].iso;
   const currentProfileId = state.session.user.id;
+  const searchPairs = Array.from(
+    new Map(
+      days.map((day) => {
+        const year = day.date.getFullYear();
+        const kw = getWeekNumber(day.date);
+        return [`${year}-${kw}`, { year, kw }];
+      })
+    ).values()
+  );
 
-  const { data, error } = await state.supabase
+  let query = state.supabase
     .from('weekly_reports')
     .select(WEEKLY_REPORT_COLUMNS)
-    .eq('profile_id', currentProfileId)
-    .gte('work_date', firstDay)
-    .lte('work_date', lastDay)
+    .eq('profile_id', currentProfileId);
+
+  if (searchPairs.length === 1) {
+    query = query
+      .eq('year', searchPairs[0].year)
+      .eq('kw', searchPairs[0].kw);
+  } else {
+    const conditions = searchPairs
+      .map((pair) => `and(year.eq.${pair.year},kw.eq.${pair.kw})`)
+      .join(',');
+    query = query.or(conditions);
+  }
+
+  const { data, error } = await query
     .order('work_date', { ascending: true })
     .order('start_time', { ascending: true });
 
@@ -1357,6 +1377,9 @@ async function uploadAttachments(files, folderKey, existingFiles = []) {
 
 function getEntryPayload() {
   const workDate = elements.entryDateInput.value;
+  const parsedWorkDate = workDate ? parseLocalDate(workDate) : null;
+  const reportYear = parsedWorkDate ? parsedWorkDate.getFullYear() : null;
+  const reportWeek = parsedWorkDate ? getWeekNumber(parsedWorkDate) : null;
   const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
   const startTime = isAutoType ? DEFAULT_START_TIME : elements.startTimeInput.value;
   const endTime = isAutoType ? DEFAULT_END_TIME : elements.endTimeInput.value;
@@ -1373,6 +1396,8 @@ function getEntryPayload() {
   return {
     profile_id: state.session.user.id,
     work_date: workDate,
+    year: reportYear,
+    kw: reportWeek,
     project_name: elements.projectNameInput.value.trim(),
     commission_number: elements.commissionInput.value.trim(),
     start_time: startTime,
