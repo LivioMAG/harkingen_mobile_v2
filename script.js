@@ -1,4 +1,5 @@
 const CONFIG_PATH = './supabase-config.json';
+const SURCHARGE_RULES_PATH = './surcharge-rules.json';
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
@@ -40,6 +41,7 @@ const WEEKLY_REPORT_COLUMNS = [
   'lunch_break_minutes',
   'additional_break_minutes',
   'total_work_minutes',
+  'total_adjusted_work_minutes',
   'expenses_amount',
   'other_costs_amount',
   'expense_note',
@@ -48,6 +50,47 @@ const WEEKLY_REPORT_COLUMNS = [
   'created_at',
   'updated_at'
 ].join(', ');
+const DEFAULT_SURCHARGE_RULES = {
+  version: 1,
+  timezone: 'Europe/Zurich',
+  rulesByWeekday: {
+    monday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '23:00', multiplier: 1.0 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    tuesday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '23:00', multiplier: 1.0 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    wednesday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '23:00', multiplier: 1.0 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    thursday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '23:00', multiplier: 1.0 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    friday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '23:00', multiplier: 1.0 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    saturday: [
+      { start: '00:00', end: '06:00', multiplier: 1.5 },
+      { start: '06:00', end: '13:00', multiplier: 1.0 },
+      { start: '13:00', end: '23:00', multiplier: 1.25 },
+      { start: '23:00', end: '24:00', multiplier: 1.5 }
+    ],
+    sunday: [
+      { start: '00:00', end: '24:00', multiplier: 2.0 }
+    ]
+  }
+};
+const RULE_WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const HOLIDAY_REQUEST_COLUMNS = [
   'id',
   'profile_id',
@@ -81,7 +124,8 @@ const state = {
   reportDraftAttachments: [],
   reportPendingFiles: [],
   holidayDraftAttachments: [],
-  holidayPendingFiles: []
+  holidayPendingFiles: [],
+  surchargeRules: DEFAULT_SURCHARGE_RULES
 };
 
 const elements = {
@@ -341,6 +385,89 @@ function toMinutes(timeValue) {
   return hour * 60 + minute;
 }
 
+function clampMultiplier(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 1;
+  return numeric;
+}
+
+function normalizeSurchargeRules(inputRules) {
+  const source = inputRules && typeof inputRules === 'object' ? inputRules : DEFAULT_SURCHARGE_RULES;
+  const normalized = { ...DEFAULT_SURCHARGE_RULES, ...source };
+  const rulesByWeekday = {};
+
+  RULE_WEEKDAY_KEYS.forEach((weekday) => {
+    const sourceWindows = Array.isArray(source?.rulesByWeekday?.[weekday])
+      ? source.rulesByWeekday[weekday]
+      : DEFAULT_SURCHARGE_RULES.rulesByWeekday[weekday];
+
+    rulesByWeekday[weekday] = sourceWindows
+      .map((window) => ({
+        start: window.start,
+        end: window.end,
+        multiplier: clampMultiplier(window.multiplier)
+      }))
+      .filter((window) => toMinutes(window.start) !== null && toMinutes(window.end) !== null && toMinutes(window.end) > toMinutes(window.start))
+      .sort((left, right) => toMinutes(left.start) - toMinutes(right.start));
+  });
+
+  normalized.rulesByWeekday = rulesByWeekday;
+  return normalized;
+}
+
+function getSurchargeMultiplier(weekdayIndex, minuteOfDay, rules) {
+  const weekdayKey = RULE_WEEKDAY_KEYS[weekdayIndex];
+  const dayRules = rules?.rulesByWeekday?.[weekdayKey] || [];
+  const activeRule = dayRules.find((window) => minuteOfDay >= toMinutes(window.start) && minuteOfDay < toMinutes(window.end));
+  return activeRule ? clampMultiplier(activeRule.multiplier) : 1;
+}
+
+function calculateAdjustedWorkMinutes(workDate, startTime, endTime, totalWorkMinutes, surchargeRules) {
+  const baseMinutes = Math.max(0, Number(totalWorkMinutes || 0));
+  const startMinutes = toMinutes(startTime);
+  const endMinutes = toMinutes(endTime);
+  if (!workDate || startMinutes === null || endMinutes === null || baseMinutes <= 0) {
+    return baseMinutes;
+  }
+
+  const rules = normalizeSurchargeRules(surchargeRules);
+  const shiftDuration = getShiftDurationMinutes(startTime, endTime);
+  if (!shiftDuration) return baseMinutes;
+
+  const shiftStart = parseLocalDate(workDate);
+  shiftStart.setHours(0, 0, 0, 0);
+  shiftStart.setMinutes(startMinutes);
+
+  const shiftEnd = new Date(shiftStart);
+  shiftEnd.setMinutes(shiftEnd.getMinutes() + shiftDuration);
+
+  let cursor = new Date(shiftStart);
+  let surchargeExtraMinutes = 0;
+  while (cursor < shiftEnd) {
+    const minuteOfDay = cursor.getHours() * 60 + cursor.getMinutes();
+    const weekdayIndex = cursor.getDay();
+    const multiplier = getSurchargeMultiplier(weekdayIndex, minuteOfDay, rules);
+    const weekdayKey = RULE_WEEKDAY_KEYS[weekdayIndex];
+    const dayRules = rules?.rulesByWeekday?.[weekdayKey] || [];
+    const activeWindow = dayRules.find((window) => minuteOfDay >= toMinutes(window.start) && minuteOfDay < toMinutes(window.end));
+    const currentRuleEndMinutes = activeWindow ? toMinutes(activeWindow.end) : (minuteOfDay + 1);
+
+    const cursorDayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+    const ruleEnd = new Date(cursorDayStart);
+    ruleEnd.setMinutes(Math.min(currentRuleEndMinutes, 24 * 60));
+    const segmentEnd = ruleEnd < shiftEnd ? ruleEnd : shiftEnd;
+    const segmentDuration = Math.max(0, Math.round((segmentEnd - cursor) / 60000));
+    if (segmentDuration <= 0) {
+      cursor.setMinutes(cursor.getMinutes() + 1);
+      continue;
+    }
+    surchargeExtraMinutes += segmentDuration * Math.max(0, multiplier - 1);
+    cursor = segmentEnd;
+  }
+
+  return Math.round(baseMinutes + surchargeExtraMinutes);
+}
+
 function minutesBetween(startTime, endTime, lunchMinutes, breakMinutes) {
   const raw = getShiftDurationMinutes(startTime, endTime);
   return Math.max(0, raw - Number(lunchMinutes || 0) - Number(breakMinutes || 0));
@@ -540,11 +667,19 @@ function setAuthMode(mode) {
 
 async function loadConfig() {
   try {
-    const response = await fetch(CONFIG_PATH, { cache: 'no-store' });
-    if (!response.ok) throw new Error('Konfigurationsdatei nicht gefunden.');
+    const [configResponse, surchargeRulesResponse] = await Promise.all([
+      fetch(CONFIG_PATH, { cache: 'no-store' }),
+      fetch(SURCHARGE_RULES_PATH, { cache: 'no-store' }).catch(() => null)
+    ]);
+    if (!configResponse.ok) throw new Error('Konfigurationsdatei nicht gefunden.');
 
-    const config = await response.json();
+    const config = await configResponse.json();
     state.config = config;
+    if (surchargeRulesResponse?.ok) {
+      state.surchargeRules = normalizeSurchargeRules(await surchargeRulesResponse.json());
+    } else {
+      state.surchargeRules = normalizeSurchargeRules(DEFAULT_SURCHARGE_RULES);
+    }
 
     if (!validateConfig(config)) {
       throw new Error('Konfiguration unvollständig.');
@@ -1178,6 +1313,9 @@ function getEntryPayload() {
   const totalMinutes = isAutoType
     ? Math.round(Number(elements.workHoursInput.value || 0) * 60)
     : minutesBetween(startTime, endTime, lunchMinutes, breakMinutes);
+  const adjustedTotalMinutes = isAutoType
+    ? totalMinutes
+    : calculateAdjustedWorkMinutes(workDate, startTime, endTime, totalMinutes, state.surchargeRules);
   const autoNote = buildShiftBoundaryNote(workDate, startTime, endTime);
 
   return {
@@ -1190,6 +1328,7 @@ function getEntryPayload() {
     lunch_break_minutes: lunchMinutes,
     additional_break_minutes: breakMinutes,
     total_work_minutes: totalMinutes,
+    total_adjusted_work_minutes: adjustedTotalMinutes,
     expenses_amount: Number(elements.expensesInput.value || 0),
     other_costs_amount: Number(elements.otherCostsInput.value || 0),
     expense_note: elements.expenseNoteInput.value.trim(),

@@ -10,6 +10,7 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 - `supabase-config.json` – lokale Projekt-Konfiguration mit Supabase URL + Anon Key.
 - `supabase-config.example.json` – Vorlage für die Konfiguration.
 - `supabase-schema.sql` – SQL für Tabellen, RLS-Policies und Storage-Bucket.
+- `surcharge-rules.json` – Zuschlagsregeln (Zeitfenster + Multiplikator) für die Berechnung der angepassten Arbeitszeit.
 
 ## Supabase einrichten
 
@@ -45,6 +46,7 @@ Dann `http://localhost:4173` öffnen.
 - Aktuelle Kalenderwoche mit Navigation vor/zurück.
 - Mehrere Rapporte pro Tag.
 - Standard-Arbeitszeit von 07:00 bis 17:30 Uhr mit 60 Minuten Mittagspause und 30 Minuten zusätzlicher Pause.
+- Zuschlagsberechnung je Wochentag/Zeitfenster aus `surcharge-rules.json` mit separater Speicherung in `weekly_reports.total_adjusted_work_minutes`.
 - Spesen, sonstige Auslagen und Bemerkungen.
 - Mehrfach-Upload von Belegen/Fotos direkt in Supabase Storage.
 - Ferien- und Absenzanträge mit Typwahl (Ferien, Militär, Zivildienst, Unfall, Krankheit) inklusive Anhängen.
