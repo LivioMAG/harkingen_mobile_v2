@@ -344,13 +344,23 @@ function shiftOverlapsNightWindow(startTime, endTime) {
   const end = toMinutes(endTime);
   if (start === null || end === null) return false;
 
-  const normalizedEnd = end <= start ? end + (24 * 60) : end;
+  const shiftWindows = end <= start
+    ? [
+      { start, end: 24 * 60 },
+      { start: 0, end }
+    ]
+    : [{ start, end }];
+
   const nightWindows = [
     { start: DAY_SHIFT_END_MINUTES, end: 24 * 60 },
-    { start: 24 * 60, end: (24 * 60) + DAY_SHIFT_START_MINUTES }
+    { start: 0, end: DAY_SHIFT_START_MINUTES }
   ];
 
-  return nightWindows.some((window) => start < window.end && normalizedEnd > window.start);
+  return shiftWindows.some((shiftWindow) =>
+    nightWindows.some((nightWindow) =>
+      shiftWindow.start < nightWindow.end && shiftWindow.end > nightWindow.start
+    )
+  );
 }
 
 function getWeekdayAbbreviation(isoDate) {
