@@ -118,7 +118,7 @@
         </section>
 
         <section class="app-view hidden" id="appView">
-          <section class="hero-card">
+          <section class="hero-card" id="dashboardHeroCard">
             <div class="hero-top-row">
               <div class="hero-title-block">
                 <p class="section-label">Dashboard</p>
@@ -151,7 +151,7 @@
                 </span>
               </button>
             </div>
-            <div class="hero-week-panel">
+            <div class="hero-week-panel" id="dashboardWeekPanel">
               <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
               <div class="hero-week-copy">
                 <p id="currentWeekLabel" class="week-nav-label" aria-live="polite">KW --</p>
@@ -179,10 +179,8 @@
               <div class="section-head compact settings-overview-head">
                 <div>
                   <p class="section-label">Einstellungen</p>
-                  <h2>Profil, Berechtigungen &amp; Abwesenheiten</h2>
-                  <p>Hier verwaltest du dein Profil, siehst deinen Rechte-Status und findest alle erfassten Abwesenheiten.</p>
+                  <h2>Profile, Berechtigungen &amp; Abwesenheiten</h2>
                 </div>
-                <button id="backToDashboardBtn" class="ghost-btn" type="button">← Zurück</button>
               </div>
             </section>
 
@@ -191,9 +189,8 @@
                 <div>
                   <p class="section-label">Account-Einstellungen</p>
                   <h2>Profil &amp; Berechtigungen</h2>
-                  <p>Vorname, Nachname und Rolle kann der Benutzer selbst ändern. E-Mail und Admin-Status sind nur lesbar.</p>
+                  <p>Vorname, Nachname, Rolle und Telefonnummer kann der Benutzer selbst ändern.</p>
                 </div>
-                <span class="pill neutral" id="adminStatusPill">Admin: nein</span>
               </div>
 
               <form id="settingsForm" class="form-grid settings-form">
@@ -213,17 +210,22 @@
                     <span>Rolle</span>
                     <input id="roleLabelInput" type="text" required placeholder="Monteur" />
                   </label>
+                  <label class="field">
+                    <span>Telefonnummer</span>
+                    <input id="phoneInput" type="text" placeholder="+41 79 123 45 67" />
+                  </label>
+                </div>
+
+                <div class="field-row two-columns">
+                  <label class="field readonly-field">
+                    <span>Admin</span>
+                    <input id="isAdminInput" type="text" readonly />
+                  </label>
                   <label class="field readonly-field">
                     <span>E-Mail</span>
                     <input id="settingsEmailInput" type="email" readonly />
                   </label>
                 </div>
-
-                <label class="field readonly-field">
-                  <span>Admin</span>
-                  <input id="isAdminInput" type="text" readonly />
-                  <small>Dieser Wert wird nur direkt in Supabase gesetzt und steuert die erweiterten Datenbankrechte.</small>
-                </label>
 
                 <div class="auth-actions stacked-on-mobile">
                   <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
