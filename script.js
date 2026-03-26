@@ -2,20 +2,20 @@ const CONFIG_PATH = './supabase-config.json';
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
+const DEFAULT_WORK_HOURS = 8;
 const DEFAULT_BREAK_MINUTES = 0;
 const LONG_SHIFT_THRESHOLD_MINUTES = 7 * 60;
 const LONG_SHIFT_LUNCH_MINUTES = 60;
-const EXPENSE_PORT_TYPE_LABELS = {
-  uk: 'UK',
-  berufsschule: 'Berufsschule'
-};
 const REPORT_TYPE_LABELS = {
   ferien: 'Ferien',
   krankheit: 'Krankheit',
   militaer: 'Militär',
   unfall: 'Unfall',
-  feiertag: 'Feiertag'
+  feiertag: 'Feiertag',
+  uk: 'ÜK',
+  berufsschule: 'Berufsschule'
 };
+const AUTO_REPORT_TYPES = new Set(['ferien', 'krankheit', 'militaer', 'unfall', 'feiertag', 'uk', 'berufsschule']);
 const HOLIDAY_TYPE_LABELS = {
   ferien: 'Urlaub / Ferien',
   militaer: 'Militär',
@@ -78,10 +78,6 @@ const state = {
   currentView: 'dashboard',
   latestEntriesRequestId: 0,
   latestHolidayRequestId: 0,
-  pauseOverrides: {
-    lunch: false,
-    additional: false
-  },
   reportDraftAttachments: [],
   reportPendingFiles: [],
   holidayDraftAttachments: [],
@@ -150,7 +146,6 @@ const elements = {
   confirmPasswordInput: document.getElementById('confirmPasswordInput'),
   changePasswordBtn: document.getElementById('changePasswordBtn'),
   entryDrawer: document.getElementById('entryDrawer'),
-  closeDrawerBtn: document.getElementById('closeDrawerBtn'),
   closeDrawerLinkBtn: document.getElementById('closeDrawerLinkBtn'),
   drawerTitle: document.getElementById('drawerTitle'),
   drawerDateLabel: document.getElementById('drawerDateLabel'),
@@ -160,13 +155,15 @@ const elements = {
   reportTypeInput: document.getElementById('reportTypeInput'),
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
+  normalTimeFields: document.getElementById('normalTimeFields'),
+  specialTimeFields: document.getElementById('specialTimeFields'),
   startTimeInput: document.getElementById('startTimeInput'),
   endTimeInput: document.getElementById('endTimeInput'),
   lunchMinutesInput: document.getElementById('lunchMinutesInput'),
   breakMinutesInput: document.getElementById('breakMinutesInput'),
+  workHoursInput: document.getElementById('workHoursInput'),
   expensesInput: document.getElementById('expensesInput'),
   otherCostsInput: document.getElementById('otherCostsInput'),
-  expenseTypeInput: document.getElementById('expenseTypeInput'),
   expenseNoteInput: document.getElementById('expenseNoteInput'),
   notesInput: document.getElementById('notesInput'),
   attachmentsCameraBtn: document.getElementById('attachmentsCameraBtn'),
@@ -358,43 +355,21 @@ function getShiftDurationMinutes(startTime, endTime) {
 
 function getAutomaticLunchMinutes(startTime, endTime) {
   const durationMinutes = getShiftDurationMinutes(startTime, endTime);
-  return durationMinutes > LONG_SHIFT_THRESHOLD_MINUTES ? LONG_SHIFT_LUNCH_MINUTES : 0;
+  return durationMinutes >= LONG_SHIFT_THRESHOLD_MINUTES ? LONG_SHIFT_LUNCH_MINUTES : 0;
 }
 
-function syncAutomaticBreaks() {
-  if (!elements.startTimeInput || !elements.endTimeInput) return;
-  if (!state.pauseOverrides.lunch) {
-    elements.lunchMinutesInput.value = getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+function syncNormalBreakRules() {
+  const durationMinutes = getShiftDurationMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+  if (durationMinutes < LONG_SHIFT_THRESHOLD_MINUTES) {
+    elements.lunchMinutesInput.value = 0;
+    elements.breakMinutesInput.value = 0;
+    return;
   }
-  if (!state.pauseOverrides.additional) {
+
+  elements.lunchMinutesInput.value = getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+  if (!elements.breakMinutesInput.value || Number(elements.breakMinutesInput.value) < 0) {
     elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
   }
-}
-
-function resetPauseOverrides() {
-  state.pauseOverrides.lunch = false;
-  state.pauseOverrides.additional = false;
-}
-
-function splitExpenseNote(expenseNote = '') {
-  const cleanedNote = String(expenseNote || '').trim();
-  if (!cleanedNote) return { expenseType: '', note: '' };
-
-  const match = cleanedNote.match(/^Portart:\s*(UK|Berufsschule)\s*(?:[-–:]\s*(.*))?$/i);
-  if (!match) {
-    return { expenseType: '', note: cleanedNote };
-  }
-
-  const normalizedType = match[1].toLowerCase();
-  const expenseType = normalizedType === 'uk' ? 'uk' : 'berufsschule';
-  return { expenseType, note: (match[2] || '').trim() };
-}
-
-function mergeExpenseNote(expenseType, expenseNote) {
-  const cleanedNote = String(expenseNote || '').trim();
-  const typeLabel = EXPENSE_PORT_TYPE_LABELS[expenseType] || '';
-  if (!typeLabel) return cleanedNote;
-  return cleanedNote ? `Portart: ${typeLabel} - ${cleanedNote}` : `Portart: ${typeLabel}`;
 }
 
 function entryHasAttachments() {
@@ -404,8 +379,7 @@ function entryHasAttachments() {
 function requiresExpenseAttachment(payload) {
   return (
     Number(payload.other_costs_amount || 0) > 0 ||
-    Boolean(payload.expense_note) ||
-    Boolean(elements.expenseTypeInput.value)
+    Boolean(payload.expense_note)
   );
 }
 
@@ -479,7 +453,7 @@ function formatMinutesLong(totalMinutes) {
 }
 
 function getReportTypeFromCommission(commissionNumber = '') {
-  const normalizedCommission = commissionNumber.trim().toLowerCase();
+  const normalizedCommission = String(commissionNumber || '').trim().toLowerCase();
   return (
     Object.entries(REPORT_TYPE_LABELS).find(([, label]) => label.toLowerCase() === normalizedCommission)?.[0] ||
     ''
@@ -488,19 +462,27 @@ function getReportTypeFromCommission(commissionNumber = '') {
 
 function applyReportTypeSelection(reportType) {
   const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
-  const previousAutoLabel = REPORT_TYPE_LABELS[elements.reportTypeInput.dataset.previousValue] || '';
-  const currentCommission = elements.commissionInput.value.trim();
+  const isAutoType = AUTO_REPORT_TYPES.has(reportType);
 
   if (reportLabel) {
-    elements.commissionInput.value = reportLabel;
-    elements.startTimeInput.value = DEFAULT_START_TIME;
-    elements.endTimeInput.value = DEFAULT_END_TIME;
-    resetPauseOverrides();
-    syncAutomaticBreaks();
-  } else if (previousAutoLabel && currentCommission === previousAutoLabel) {
+    elements.projectNameInput.value = reportLabel;
+    elements.commissionInput.value = '';
+  } else if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.dataset.previousValue || '')) {
+    elements.projectNameInput.value = '';
     elements.commissionInput.value = '';
   }
 
+  if (reportType === 'uk') {
+    elements.expensesInput.value = 18;
+  }
+  elements.normalTimeFields.classList.toggle('hidden', isAutoType);
+  elements.specialTimeFields.classList.toggle('hidden', !isAutoType);
+  elements.startTimeInput.required = !isAutoType;
+  elements.endTimeInput.required = !isAutoType;
+  elements.workHoursInput.required = isAutoType;
+  elements.projectNameInput.readOnly = isAutoType;
+  elements.commissionInput.readOnly = isAutoType;
+  elements.expensesInput.readOnly = reportType === 'uk';
   elements.reportTypeInput.dataset.previousValue = reportType;
 }
 
@@ -1188,13 +1170,14 @@ async function uploadAttachments(files, folderKey, existingFiles = []) {
 
 function getEntryPayload() {
   const workDate = elements.entryDateInput.value;
-  const startTime = elements.startTimeInput.value;
-  const endTime = elements.endTimeInput.value;
-  const lunchMinutes = Number(elements.lunchMinutesInput.value || 0);
-  const breakMinutes = Number(elements.breakMinutesInput.value || 0);
-  const expenseType = elements.expenseTypeInput.value;
-  const combinedExpenseNote = mergeExpenseNote(expenseType, elements.expenseNoteInput.value);
-  const totalMinutes = minutesBetween(startTime, endTime, lunchMinutes, breakMinutes);
+  const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
+  const startTime = isAutoType ? DEFAULT_START_TIME : elements.startTimeInput.value;
+  const endTime = isAutoType ? DEFAULT_END_TIME : elements.endTimeInput.value;
+  const lunchMinutes = isAutoType ? 0 : Number(elements.lunchMinutesInput.value || 0);
+  const breakMinutes = isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0);
+  const totalMinutes = isAutoType
+    ? Math.round(Number(elements.workHoursInput.value || 0) * 60)
+    : minutesBetween(startTime, endTime, lunchMinutes, breakMinutes);
   const autoNote = buildShiftBoundaryNote(workDate, startTime, endTime);
 
   return {
@@ -1209,7 +1192,7 @@ function getEntryPayload() {
     total_work_minutes: totalMinutes,
     expenses_amount: Number(elements.expensesInput.value || 0),
     other_costs_amount: Number(elements.otherCostsInput.value || 0),
-    expense_note: combinedExpenseNote,
+    expense_note: elements.expenseNoteInput.value.trim(),
     notes: mergeShiftBoundaryNote(elements.notesInput.value, autoNote)
   };
 }
@@ -1233,17 +1216,23 @@ async function saveEntry(event) {
   }
 
   const payload = getEntryPayload();
+  const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
   if (!payload.project_name) {
     showToast('Projektname fehlt.', 'error');
     return;
   }
 
-  if (!payload.commission_number) {
+  if (!isAutoType && !payload.commission_number) {
     showToast('Kommissionsnummer fehlt.', 'error');
     return;
   }
 
-  if (payload.total_work_minutes <= 0) {
+  if (isAutoType && (payload.total_work_minutes <= 0 || payload.total_work_minutes > 8 * 60)) {
+    showToast('Zeit muss zwischen 0 und 8 Stunden liegen.', 'error');
+    return;
+  }
+
+  if (!isAutoType && payload.total_work_minutes <= 0) {
     showToast('Bitte gültige Arbeitszeit eingeben.', 'error');
     return;
   }
@@ -1437,9 +1426,10 @@ async function deleteHolidayRequest() {
 function openDrawer(isoDate, entry = null) {
   state.selectedDate = isoDate;
   state.editingEntry = entry;
-  resetPauseOverrides();
   const date = parseLocalDate(isoDate);
-  const reportType = getReportTypeFromCommission(entry?.commission_number || '');
+  const reportType =
+    getReportTypeFromCommission(entry?.project_name || '') ||
+    getReportTypeFromCommission(entry?.commission_number || '');
 
   elements.entryDrawer.classList.remove('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'false');
@@ -1453,20 +1443,14 @@ function openDrawer(isoDate, entry = null) {
   elements.commissionInput.value = entry?.commission_number || '';
   elements.startTimeInput.value = entry?.start_time || DEFAULT_START_TIME;
   elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
-  if (entry) {
-    elements.lunchMinutesInput.value = entry.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
-    elements.breakMinutesInput.value = entry.additional_break_minutes ?? DEFAULT_BREAK_MINUTES;
-    state.pauseOverrides.lunch = true;
-    state.pauseOverrides.additional = true;
-  } else {
-    syncAutomaticBreaks();
-  }
+  elements.lunchMinutesInput.value = entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+  elements.breakMinutesInput.value = entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES;
+  elements.workHoursInput.value = Math.min(8, Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
-  const parsedExpenseNote = splitExpenseNote(entry?.expense_note || '');
-  elements.expenseTypeInput.value = parsedExpenseNote.expenseType;
-  elements.expenseNoteInput.value = parsedExpenseNote.note;
+  elements.expenseNoteInput.value = entry?.expense_note || '';
   elements.notesInput.value = entry?.notes || '';
+  applyReportTypeSelection(reportType);
   resetAttachmentState('report', entry?.attachments || []);
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
   renderAttachmentPreview('report');
@@ -1475,7 +1459,6 @@ function openDrawer(isoDate, entry = null) {
 function closeDrawer() {
   state.selectedDate = null;
   state.editingEntry = null;
-  resetPauseOverrides();
   elements.entryDrawer.classList.add('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'true');
   elements.entryForm.reset();
@@ -1483,9 +1466,15 @@ function closeDrawer() {
   elements.reportTypeInput.dataset.previousValue = '';
   elements.startTimeInput.value = DEFAULT_START_TIME;
   elements.endTimeInput.value = DEFAULT_END_TIME;
+  elements.lunchMinutesInput.value = getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME);
+  elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+  elements.workHoursInput.value = DEFAULT_WORK_HOURS;
   elements.projectNameInput.value = '';
-  elements.expenseTypeInput.value = '';
-  syncAutomaticBreaks();
+  elements.commissionInput.value = '';
+  elements.projectNameInput.readOnly = false;
+  elements.commissionInput.readOnly = false;
+  elements.expensesInput.readOnly = false;
+  applyReportTypeSelection('');
   resetAttachmentState('report', []);
   renderAttachmentPreview('report');
 }
@@ -1609,7 +1598,7 @@ function renderWeek() {
       dayEntries.forEach((entry) => {
         const entryNode = elements.entryCardTemplate.content.cloneNode(true);
         const button = entryNode.querySelector('.entry-card');
-        button.querySelector('.entry-commission').textContent = entry.commission_number;
+        button.querySelector('.entry-commission').textContent = entry.commission_number || entry.project_name || '—';
         button.querySelector('.entry-time-range').textContent = `${entry.start_time} – ${entry.end_time}`;
         button.querySelector('.entry-time').textContent = `${entry.start_time} – ${entry.end_time}`;
         button.querySelector('.entry-minutes').textContent = formatMinutesLong(Number(entry.total_work_minutes || 0));
@@ -1762,7 +1751,6 @@ function registerEventListeners() {
   elements.holidayForm.addEventListener('submit', saveHolidayRequest);
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
-  elements.closeDrawerBtn.addEventListener('click', closeDrawer);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
@@ -1774,21 +1762,24 @@ function registerEventListeners() {
   elements.attachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
   elements.holidayAttachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
   elements.holidayAttachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
-  elements.startTimeInput.addEventListener('change', syncAutomaticBreaks);
-  elements.endTimeInput.addEventListener('change', syncAutomaticBreaks);
-  elements.lunchMinutesInput.addEventListener('input', () => {
-    state.pauseOverrides.lunch = true;
-  });
-  elements.breakMinutesInput.addEventListener('input', () => {
-    state.pauseOverrides.additional = true;
+  elements.startTimeInput.addEventListener('change', syncNormalBreakRules);
+  elements.endTimeInput.addEventListener('change', syncNormalBreakRules);
+  elements.workHoursInput.addEventListener('input', () => {
+    const value = Number(elements.workHoursInput.value || 0);
+    if (value > 8) elements.workHoursInput.value = '8';
+    if (value < 0) elements.workHoursInput.value = '0';
   });
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
-      resetPauseOverrides();
+      elements.workHoursInput.value = DEFAULT_WORK_HOURS;
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
-      elements.expenseTypeInput.value = '';
-      syncAutomaticBreaks();
+      elements.lunchMinutesInput.value = getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME);
+      elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+      elements.projectNameInput.readOnly = false;
+      elements.commissionInput.readOnly = false;
+      elements.expensesInput.readOnly = false;
+      applyReportTypeSelection('');
       resetAttachmentState('report', []);
       renderAttachmentPreview('report');
     }, 0);
