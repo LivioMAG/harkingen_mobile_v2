@@ -54,6 +54,7 @@ create table if not exists public.weekly_reports (
   lunch_break_minutes integer not null default 60,
   additional_break_minutes integer not null default 0,
   total_work_minutes integer not null default 0,
+  total_adjusted_work_minutes integer not null default 0,
   expenses_amount numeric(10,2) not null default 0,
   other_costs_amount numeric(10,2) not null default 0,
   expense_note text,
@@ -62,6 +63,11 @@ create table if not exists public.weekly_reports (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.weekly_reports add column if not exists total_adjusted_work_minutes integer not null default 0;
+update public.weekly_reports
+set total_adjusted_work_minutes = total_work_minutes
+where coalesce(total_adjusted_work_minutes, 0) = 0 and coalesce(total_work_minutes, 0) > 0;
 
 create table if not exists public.holiday_requests (
   id uuid primary key default gen_random_uuid(),

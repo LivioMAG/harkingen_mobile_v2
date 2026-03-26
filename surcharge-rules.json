@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "timezone": "Europe/Zurich",
+  "rulesByWeekday": {
+    "monday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "23:00", "multiplier": 1.0 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "tuesday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "23:00", "multiplier": 1.0 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "wednesday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "23:00", "multiplier": 1.0 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "thursday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "23:00", "multiplier": 1.0 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "friday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "23:00", "multiplier": 1.0 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "saturday": [
+      { "start": "00:00", "end": "06:00", "multiplier": 1.5 },
+      { "start": "06:00", "end": "13:00", "multiplier": 1.0 },
+      { "start": "13:00", "end": "23:00", "multiplier": 1.25 },
+      { "start": "23:00", "end": "24:00", "multiplier": 1.5 }
+    ],
+    "sunday": [
+      { "start": "00:00", "end": "24:00", "multiplier": 2.0 }
+    ]
+  }
+}
