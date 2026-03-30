@@ -643,11 +643,9 @@ function formatAdjustedEntryMinutes(entry) {
   }
 
   const adjustedMinutes = getAdjustedWorkMinutes(entry);
-  const adjustedPercentage = originalMinutes > 0 ? ((adjustedMinutes - originalMinutes) / originalMinutes) * 100 : null;
-  const percentageLabel = adjustedPercentage === null ? 'neu' : `+${adjustedPercentage.toFixed(2)}%`;
   const original = getHourMinuteParts(originalMinutes);
   const adjusted = getHourMinuteParts(adjustedMinutes);
-  return `${original.hours}<span class="entry-minutes-adjusted">(${adjusted.hours})</span>h ${String(original.minutes).padStart(2, '0')}<span class="entry-minutes-adjusted">(${String(adjusted.minutes).padStart(2, '0')})</span>min ${percentageLabel}`;
+  return `${original.hours}<span class="entry-minutes-adjusted">(${adjusted.hours})</span>h ${String(original.minutes).padStart(2, '0')}<span class="entry-minutes-adjusted">(${String(adjusted.minutes).padStart(2, '0')})</span>min`;
 }
 
 function getReportTypeFromCommission(commissionNumber = '') {
@@ -1847,6 +1845,7 @@ function renderWeek() {
         button.querySelector('.entry-expenses').textContent = formatCurrency(
           Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0)
         );
+        button.querySelector('.entry-notes').textContent = String(entry.notes || '').trim() || 'Keine Bemerkung.';
         button.addEventListener('click', () => openDrawer(day.iso, entry));
         list.appendChild(entryNode);
       });

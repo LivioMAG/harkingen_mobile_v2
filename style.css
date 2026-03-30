@@ -797,6 +797,13 @@ textarea {
   gap: 12px;
 }
 
+.entry-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
 .entry-card-head strong,
 .entry-project {
   min-width: 0;
@@ -814,16 +821,8 @@ textarea {
   font-weight: 600;
 }
 
-.entry-icon-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-}
-
-.entry-icon-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.entry-minutes,
+.entry-expenses {
   color: var(--text);
   font-weight: 600;
 }
@@ -832,9 +831,23 @@ textarea {
   color: var(--warning);
 }
 
-.entry-notes {
-  padding-top: 8px;
+.entry-note-block {
+  padding-top: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.entry-note-label {
+  margin: 0 0 4px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.entry-notes {
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .split-pair {
