@@ -2,7 +2,10 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Rapport Mobile</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -301,6 +304,7 @@
           </div>
           <div class="drawer-head-actions">
             <button class="link-btn drawer-link-btn" id="closeDrawerLinkBtn" type="button">Schliessen</button>
+            <button class="primary-btn drawer-save-btn" id="saveEntryBtn" type="submit" form="entryForm">Speichern</button>
             <label class="field compact-field report-type-field">
               <span>Rapportart</span>
               <select id="reportTypeInput">
@@ -411,7 +415,6 @@
           <div class="drawer-actions">
             <button class="ghost-btn hidden" id="deleteEntryBtn" type="button">Eintrag löschen</button>
             <button class="secondary-btn" id="resetEntryBtn" type="reset">Zurücksetzen</button>
-            <button class="primary-btn" id="saveEntryBtn" type="submit">Speichern</button>
           </div>
         </form>
       </section>
