@@ -787,11 +787,24 @@ textarea {
   margin-bottom: 0;
 }
 
+.entry-card-head {
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.entry-card-head strong,
+.entry-project {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .entry-card-head strong {
   font-size: 1rem;
 }
 
-.entry-time-range {
+.entry-project {
   color: var(--muted);
   font-weight: 600;
 }

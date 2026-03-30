@@ -493,17 +493,33 @@ function getAutomaticLunchMinutes(startTime, endTime) {
   return durationMinutes >= LONG_SHIFT_THRESHOLD_MINUTES ? LONG_SHIFT_LUNCH_MINUTES : 0;
 }
 
-function syncNormalBreakRules() {
-  const durationMinutes = getShiftDurationMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
-  if (durationMinutes < LONG_SHIFT_THRESHOLD_MINUTES) {
-    elements.lunchMinutesInput.value = 0;
-    elements.breakMinutesInput.value = 0;
+function setSelectOrInputValue(element, value) {
+  const normalized = String(value ?? '0');
+  if (!element) return;
+  const optionExists = Array.from(element.options || []).some((option) => option.value === normalized);
+  if (optionExists || !element.options) {
+    element.value = normalized;
     return;
   }
 
-  elements.lunchMinutesInput.value = getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+  const fallbackOption = document.createElement('option');
+  fallbackOption.value = normalized;
+  fallbackOption.textContent = normalized;
+  element.appendChild(fallbackOption);
+  element.value = normalized;
+}
+
+function syncNormalBreakRules() {
+  const durationMinutes = getShiftDurationMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
+  if (durationMinutes < LONG_SHIFT_THRESHOLD_MINUTES) {
+    setSelectOrInputValue(elements.lunchMinutesInput, 0);
+    setSelectOrInputValue(elements.breakMinutesInput, 0);
+    return;
+  }
+
+  setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   if (!elements.breakMinutesInput.value || Number(elements.breakMinutesInput.value) < 0) {
-    elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+    setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
   }
 }
 
@@ -1659,8 +1675,8 @@ function openDrawer(isoDate, entry = null) {
   elements.commissionInput.value = entry?.commission_number || '';
   elements.startTimeInput.value = entry?.start_time || DEFAULT_START_TIME;
   elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
-  elements.lunchMinutesInput.value = entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value);
-  elements.breakMinutesInput.value = entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES;
+  setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
+  setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = Math.min(8, Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
@@ -1682,8 +1698,8 @@ function closeDrawer() {
   elements.reportTypeInput.dataset.previousValue = '';
   elements.startTimeInput.value = DEFAULT_START_TIME;
   elements.endTimeInput.value = DEFAULT_END_TIME;
-  elements.lunchMinutesInput.value = getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME);
-  elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+  setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
+  setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = DEFAULT_WORK_HOURS;
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
@@ -1814,14 +1830,12 @@ function renderWeek() {
       dayEntries.forEach((entry) => {
         const entryNode = elements.entryCardTemplate.content.cloneNode(true);
         const button = entryNode.querySelector('.entry-card');
-        button.querySelector('.entry-commission').textContent = entry.commission_number || entry.project_name || '—';
-        button.querySelector('.entry-time-range').textContent = `${entry.start_time} – ${entry.end_time}`;
-        button.querySelector('.entry-time').textContent = `${entry.start_time} – ${entry.end_time}`;
+        button.querySelector('.entry-commission').textContent = entry.commission_number || '—';
+        button.querySelector('.entry-project').textContent = entry.project_name || '—';
         button.querySelector('.entry-minutes').innerHTML = formatAdjustedEntryMinutes(entry);
         button.querySelector('.entry-expenses').textContent = formatCurrency(
           Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0)
         );
-        button.querySelector('.entry-notes').textContent = entry.notes || entry.expense_note || 'Keine Bemerkung';
         button.addEventListener('click', () => openDrawer(day.iso, entry));
         list.appendChild(entryNode);
       });
@@ -1990,8 +2004,8 @@ function registerEventListeners() {
       elements.workHoursInput.value = DEFAULT_WORK_HOURS;
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
-      elements.lunchMinutesInput.value = getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME);
-      elements.breakMinutesInput.value = DEFAULT_BREAK_MINUTES;
+      setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
+      setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
       elements.projectNameInput.readOnly = false;
       elements.commissionInput.readOnly = false;
       elements.expensesInput.readOnly = false;
