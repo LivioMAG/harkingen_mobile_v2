@@ -40,6 +40,11 @@ body {
     linear-gradient(180deg, #ffffff 0%, #f6f6f6 100%);
 }
 
+body.drawer-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 button,
 input,
 textarea,

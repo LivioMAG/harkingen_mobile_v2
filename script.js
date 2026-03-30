@@ -318,6 +318,13 @@ function setPill(element, text, variant) {
   element.textContent = text;
 }
 
+function syncBodyScrollLock() {
+  const hasOpenDrawer =
+    !elements.entryDrawer.classList.contains('hidden') ||
+    !elements.holidayDrawer.classList.contains('hidden');
+  document.body.classList.toggle('drawer-open', hasOpenDrawer);
+}
+
 function setCurrentView(view) {
   state.currentView = ['settings', 'password'].includes(view) ? view : 'dashboard';
   const inSettings = state.currentView !== 'dashboard';
@@ -1665,6 +1672,7 @@ function openDrawer(isoDate, entry = null) {
 
   elements.entryDrawer.classList.remove('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'false');
+  syncBodyScrollLock();
   elements.drawerDateLabel.textContent = formatDate(date);
   elements.drawerTitle.textContent = entry ? 'Rapport bearbeiten' : 'Neuer Eintrag';
   elements.entryIdInput.value = entry?.id || '';
@@ -1693,6 +1701,7 @@ function closeDrawer() {
   state.editingEntry = null;
   elements.entryDrawer.classList.add('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'true');
+  syncBodyScrollLock();
   elements.entryForm.reset();
   elements.reportTypeInput.value = '';
   elements.reportTypeInput.dataset.previousValue = '';
@@ -1715,6 +1724,7 @@ function openHolidayDrawer(holiday = null) {
   state.editingHoliday = holiday;
   elements.holidayDrawer.classList.remove('hidden');
   elements.holidayDrawer.setAttribute('aria-hidden', 'false');
+  syncBodyScrollLock();
   elements.holidayIdInput.value = holiday?.id || '';
   elements.holidayStartDateInput.value = holiday?.start_date || getISODate(new Date());
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
@@ -1729,6 +1739,7 @@ function closeHolidayDrawer() {
   state.editingHoliday = null;
   elements.holidayDrawer.classList.add('hidden');
   elements.holidayDrawer.setAttribute('aria-hidden', 'true');
+  syncBodyScrollLock();
   elements.holidayForm.reset();
   resetAttachmentState('holiday', []);
   renderAttachmentPreview('holiday');
@@ -2030,4 +2041,5 @@ function registerEventListeners() {
 
 setAuthMode('login');
 registerEventListeners();
+syncBodyScrollLock();
 loadConfig();
