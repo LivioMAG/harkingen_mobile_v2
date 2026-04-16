@@ -57,6 +57,7 @@ create table if not exists public.weekly_reports (
   other_costs_amount numeric(10,2) not null default 0,
   expense_note text,
   notes text,
+  abz_typ integer not null default 0,
   attachments jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
