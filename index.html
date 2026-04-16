@@ -22,8 +22,7 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Mobile Wochenrapport-App</p>
-          <h1>Rapport Mobile</h1>
+          <h1>MArechaux Sursee App</h1>
         </div>
       </header>
 
@@ -122,11 +121,15 @@
         </section>
 
         <section class="app-view hidden" id="appView">
+          <nav class="top-tabbar" aria-label="Hauptnavigation">
+            <button id="timesheetTabBtn" class="top-tab active" type="button" aria-selected="true">Zeiterfassung</button>
+            <button id="dashboardTabBtn" class="top-tab" type="button" aria-selected="false">Dashboard</button>
+          </nav>
+
           <section class="hero-card" id="dashboardHeroCard">
             <div class="hero-top-row">
               <div class="hero-title-block">
-                <p class="section-label">Dashboard</p>
-                <h2 id="welcomeHeading">Dashboard</h2>
+                <h2 id="welcomeHeading">Zeiterfassung</h2>
                 <p id="userNameLabel" class="hero-user-name">–</p>
               </div>
             </div>
@@ -177,6 +180,14 @@
           </section>
 
           <section class="week-grid" id="weekGrid"></section>
+          <section class="glass-card hidden" id="dashboardView">
+            <div class="section-head compact">
+              <div>
+                <h2>Dashboard</h2>
+                <p>Das Dashboard folgt als nächster Schritt.</p>
+              </div>
+            </div>
+          </section>
 
           <section class="settings-view hidden" id="settingsView">
             <section class="glass-card settings-overview-card" id="settingsOverviewCard">

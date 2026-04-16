@@ -78,6 +78,31 @@ code {
   margin-bottom: 16px;
 }
 
+.top-tabbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+}
+
+.top-tab {
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.top-tab.active {
+  border-color: rgba(215, 25, 32, 0.2);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .topbar h1,
 .hero-card h2,
 .auth-card h2,

@@ -142,7 +142,7 @@ const state = {
   editingHoliday: null,
   toastTimer: null,
   activeFeedback: null,
-  currentView: 'dashboard',
+  currentView: 'timesheet',
   latestEntriesRequestId: 0,
   latestHolidayRequestId: 0,
   reportDraftAttachments: [],
@@ -166,6 +166,8 @@ const elements = {
   fullNameField: document.getElementById('fullNameField'),
   signOutBtn: document.getElementById('signOutBtn'),
   appView: document.getElementById('appView'),
+  timesheetTabBtn: document.getElementById('timesheetTabBtn'),
+  dashboardTabBtn: document.getElementById('dashboardTabBtn'),
   authForm: document.getElementById('authForm'),
   forgotPasswordForm: document.getElementById('forgotPasswordForm'),
   verifyOtpForm: document.getElementById('verifyOtpForm'),
@@ -186,6 +188,7 @@ const elements = {
   dashboardWeekPanel: document.getElementById('dashboardWeekPanel'),
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
+  dashboardView: document.getElementById('dashboardView'),
   weekEntryCount: document.getElementById('weekEntryCount'),
   weekMinutesTotal: document.getElementById('weekMinutesTotal'),
   weekExpensesTotal: document.getElementById('weekExpensesTotal'),
@@ -351,22 +354,29 @@ function syncBodyScrollLock() {
 }
 
 function setCurrentView(view) {
-  state.currentView = ['settings', 'password'].includes(view) ? view : 'dashboard';
-  const inSettings = state.currentView !== 'dashboard';
+  state.currentView = ['timesheet', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
+  const inSettings = ['settings', 'password'].includes(state.currentView);
+  const inTimesheet = state.currentView === 'timesheet';
+  const inDashboard = state.currentView === 'dashboard';
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
-  elements.dashboardHeroCard?.classList.toggle('hidden', inSettings);
-  elements.dashboardWeekPanel?.classList.toggle('hidden', inSettings);
+  elements.dashboardHeroCard?.classList.toggle('hidden', !inTimesheet);
+  elements.dashboardWeekPanel?.classList.toggle('hidden', !inTimesheet);
   elements.signOutBtn?.classList.toggle('hidden', inSettings);
-  elements.weekGrid?.classList.toggle('hidden', inSettings);
-  elements.summaryCard?.classList.toggle('hidden', inSettings);
-  elements.openSettingsViewBtn?.classList.toggle('hidden', inSettings);
-  elements.openHolidayDrawerBtn?.classList.toggle('hidden', inSettings);
+  elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
+  elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
+  elements.dashboardView?.classList.toggle('hidden', !inDashboard);
+  elements.openSettingsViewBtn?.classList.toggle('hidden', !inTimesheet);
+  elements.openHolidayDrawerBtn?.classList.toggle('hidden', !inTimesheet);
   elements.settingsOverviewCard?.classList.toggle('hidden', inPassword);
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', inPassword);
   elements.passwordView?.classList.toggle('hidden', !inPassword);
+  elements.timesheetTabBtn?.classList.toggle('active', inTimesheet);
+  elements.timesheetTabBtn?.setAttribute('aria-selected', String(inTimesheet));
+  elements.dashboardTabBtn?.classList.toggle('active', inDashboard);
+  elements.dashboardTabBtn?.setAttribute('aria-selected', String(inDashboard));
 }
 
 function formatCurrency(value) {
@@ -2181,19 +2191,19 @@ function render() {
 
   if (isAuthenticated) {
     setPill(elements.authStatusPill, `Angemeldet als ${state.session.user.email}`, 'success');
-    elements.welcomeHeading.textContent = 'Dashboard';
+    elements.welcomeHeading.textContent = 'Zeiterfassung';
     elements.userNameLabel.textContent = getDisplayName(state.profile, state.session.user.email);
     fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
     setCurrentView(state.currentView);
   } else {
-    state.currentView = 'dashboard';
+    state.currentView = 'timesheet';
     state.projectSuggestionsLoaded = false;
     state.projectSuggestions = [];
-    elements.welcomeHeading.textContent = 'Dashboard';
+    elements.welcomeHeading.textContent = 'Zeiterfassung';
     elements.userNameLabel.textContent = '–';
-    setCurrentView('dashboard');
+    setCurrentView('timesheet');
     elements.settingsForm?.reset();
     elements.isAdminInput.value = '';
     elements.settingsEmailInput.value = '';
@@ -2241,11 +2251,17 @@ function registerEventListeners() {
   elements.openSettingsViewBtn.addEventListener('click', () => {
     setCurrentView('settings');
   });
+  elements.timesheetTabBtn?.addEventListener('click', () => {
+    setCurrentView('timesheet');
+  });
+  elements.dashboardTabBtn?.addEventListener('click', () => {
+    setCurrentView('dashboard');
+  });
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');
   });
   elements.backToDashboardBtn?.addEventListener('click', () => {
-    setCurrentView('dashboard');
+    setCurrentView('timesheet');
   });
   elements.backToSettingsBtn.addEventListener('click', () => {
     setCurrentView('settings');
