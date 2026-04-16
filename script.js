@@ -7,6 +7,9 @@ const DEFAULT_WORK_HOURS = 8;
 const DEFAULT_BREAK_MINUTES = 0;
 const LONG_SHIFT_THRESHOLD_MINUTES = 7 * 60;
 const LONG_SHIFT_LUNCH_MINUTES = 60;
+const PDF_IMAGE_SCALE = 1.5;
+const PDF_IMAGE_TYPE = 'image/jpeg';
+const PDF_IMAGE_QUALITY = 0.88;
 const REPORT_TYPE_LABELS = {
   ferien: 'Ferien',
   krankheit: 'Krankheit',
@@ -1355,20 +1358,111 @@ function removeAttachment(kind, index, isPending) {
   renderAttachmentPreview(kind);
 }
 
-function handleAttachmentSelection(kind, files) {
-  const config = getAttachmentState(kind);
-  const pending = state[config.pendingKey];
+function getFileNameWithoutExtension(fileName = '') {
+  return fileName.replace(/\.[^/.]+$/, '') || 'anhang';
+}
 
-  Array.from(files || []).forEach((file) => {
-    pending.push({
-      name: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      size: file.size || 0,
-      file,
-      isExisting: false,
-      previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : ''
-    });
+function toPdfImageName(fileName, pageNumber) {
+  const baseName = getFileNameWithoutExtension(fileName)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const normalizedBase = baseName || 'anhang';
+  return `${normalizedBase}-seite-${pageNumber}.jpg`;
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Bild konnte nicht aus PDF-Seite erstellt werden.'));
+        return;
+      }
+      resolve(blob);
+    }, type, quality);
   });
+}
+
+async function convertPdfToImageFiles(pdfFile) {
+  if (!window.pdfjsLib) {
+    throw new Error('PDF-Verarbeitung ist im Browser nicht verfügbar.');
+  }
+
+  if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
+  }
+
+  const buffer = await pdfFile.arrayBuffer();
+  const loadingTask = window.pdfjsLib.getDocument({ data: buffer });
+  const pdfDocument = await loadingTask.promise;
+  const generatedFiles = [];
+
+  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+    const page = await pdfDocument.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: PDF_IMAGE_SCALE });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { alpha: false });
+
+    if (!context) {
+      throw new Error('Canvas-Kontext konnte für PDF-Seite nicht erstellt werden.');
+    }
+
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+
+    await page.render({ canvasContext: context, viewport }).promise;
+
+    const blob = await canvasToBlob(canvas, PDF_IMAGE_TYPE, PDF_IMAGE_QUALITY);
+    generatedFiles.push(
+      new File([blob], toPdfImageName(pdfFile.name, pageNumber), {
+        type: PDF_IMAGE_TYPE,
+        lastModified: Date.now()
+      })
+    );
+  }
+
+  await loadingTask.destroy();
+  return generatedFiles;
+}
+
+async function normalizeSelectedFiles(files) {
+  const normalized = [];
+
+  for (const file of Array.from(files || [])) {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      normalized.push(file);
+      continue;
+    }
+
+    const pdfAsImages = await convertPdfToImageFiles(file);
+    normalized.push(...pdfAsImages);
+  }
+
+  return normalized;
+}
+
+async function handleAttachmentSelection(kind, files) {
+  const config = getAttachmentState(kind);
+
+  try {
+    const pending = state[config.pendingKey];
+    const selectedFiles = await normalizeSelectedFiles(files);
+
+    selectedFiles.forEach((file) => {
+      pending.push({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size || 0,
+        file,
+        isExisting: false,
+        previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : ''
+      });
+    });
+  } catch (error) {
+    console.error(error);
+    showToast(`PDF konnte nicht verarbeitet werden: ${error.message}`, 'error');
+  }
 
   if (config.cameraInput) config.cameraInput.value = '';
   if (config.galleryInput) config.galleryInput.value = '';
