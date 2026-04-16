@@ -659,13 +659,39 @@ function getReportTypeFromCommission(commissionNumber = '') {
   );
 }
 
+function getReportTypeFromText(value = '') {
+  const normalizedValue = String(value || '').trim().toLowerCase();
+  if (!normalizedValue) return '';
+
+  return (
+    Object.entries(REPORT_TYPE_LABELS).find(([, label]) => {
+      const normalizedLabel = label.toLowerCase();
+      return (
+        normalizedValue === normalizedLabel ||
+        normalizedValue.includes(normalizedLabel)
+      );
+    })?.[0] || ''
+  );
+}
+
+function syncReportTypeFromProjectOrCommission() {
+  const reportType =
+    getReportTypeFromText(elements.projectNameInput.value) ||
+    getReportTypeFromText(elements.commissionInput.value);
+
+  if (!reportType || elements.reportTypeInput.value === reportType) return;
+
+  elements.reportTypeInput.value = reportType;
+  applyReportTypeSelection(reportType);
+}
+
 function applyReportTypeSelection(reportType) {
   const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
   const isAutoType = AUTO_REPORT_TYPES.has(reportType);
 
   if (reportLabel) {
     elements.projectNameInput.value = reportLabel;
-    elements.commissionInput.value = '';
+    elements.commissionInput.value = reportLabel;
   } else if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.dataset.previousValue || '')) {
     elements.projectNameInput.value = '';
     elements.commissionInput.value = '';
@@ -2088,6 +2114,8 @@ function registerEventListeners() {
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
+  elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
+  elements.commissionInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
   elements.attachmentsGalleryBtn.addEventListener('click', () => elements.attachmentsGalleryInput.click());
   elements.holidayAttachmentsCameraBtn.addEventListener('click', () => elements.holidayAttachmentsCameraInput.click());
