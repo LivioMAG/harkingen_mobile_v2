@@ -168,6 +168,7 @@ const elements = {
   appView: document.getElementById('appView'),
   timesheetTabBtn: document.getElementById('timesheetTabBtn'),
   dashboardTabBtn: document.getElementById('dashboardTabBtn'),
+  settingsTabBtn: document.getElementById('settingsTabBtn'),
   authForm: document.getElementById('authForm'),
   forgotPasswordForm: document.getElementById('forgotPasswordForm'),
   verifyOtpForm: document.getElementById('verifyOtpForm'),
@@ -182,9 +183,6 @@ const elements = {
   cancelForgotPasswordBtn: document.getElementById('cancelForgotPasswordBtn'),
   forgotPasswordHint: document.getElementById('forgotPasswordHint'),
   forgotPasswordActions: document.getElementById('forgotPasswordActions'),
-  welcomeHeading: document.getElementById('welcomeHeading'),
-  userNameLabel: document.getElementById('userNameLabel'),
-  dashboardHeroCard: document.getElementById('dashboardHeroCard'),
   dashboardWeekPanel: document.getElementById('dashboardWeekPanel'),
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
@@ -197,7 +195,6 @@ const elements = {
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
-  openSettingsViewBtn: document.getElementById('openSettingsViewBtn'),
   settingsView: document.getElementById('settingsView'),
   settingsOverviewCard: document.getElementById('settingsOverviewCard'),
   backToDashboardBtn: document.getElementById('backToDashboardBtn'),
@@ -361,14 +358,10 @@ function setCurrentView(view) {
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
-  elements.dashboardHeroCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardWeekPanel?.classList.toggle('hidden', !inTimesheet);
-  elements.signOutBtn?.classList.toggle('hidden', inSettings);
   elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
-  elements.openSettingsViewBtn?.classList.toggle('hidden', !inTimesheet);
-  elements.openHolidayDrawerBtn?.classList.toggle('hidden', !inTimesheet);
   elements.settingsOverviewCard?.classList.toggle('hidden', inPassword);
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', inPassword);
@@ -377,6 +370,8 @@ function setCurrentView(view) {
   elements.timesheetTabBtn?.setAttribute('aria-selected', String(inTimesheet));
   elements.dashboardTabBtn?.classList.toggle('active', inDashboard);
   elements.dashboardTabBtn?.setAttribute('aria-selected', String(inDashboard));
+  elements.settingsTabBtn?.classList.toggle('active', inSettings);
+  elements.settingsTabBtn?.setAttribute('aria-selected', String(inSettings));
 }
 
 function formatCurrency(value) {
@@ -2191,8 +2186,6 @@ function render() {
 
   if (isAuthenticated) {
     setPill(elements.authStatusPill, `Angemeldet als ${state.session.user.email}`, 'success');
-    elements.welcomeHeading.textContent = 'Zeiterfassung';
-    elements.userNameLabel.textContent = getDisplayName(state.profile, state.session.user.email);
     fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
@@ -2201,8 +2194,6 @@ function render() {
     state.currentView = 'timesheet';
     state.projectSuggestionsLoaded = false;
     state.projectSuggestions = [];
-    elements.welcomeHeading.textContent = 'Zeiterfassung';
-    elements.userNameLabel.textContent = '–';
     setCurrentView('timesheet');
     elements.settingsForm?.reset();
     elements.isAdminInput.value = '';
@@ -2248,14 +2239,14 @@ function registerEventListeners() {
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
-  elements.openSettingsViewBtn.addEventListener('click', () => {
-    setCurrentView('settings');
-  });
   elements.timesheetTabBtn?.addEventListener('click', () => {
     setCurrentView('timesheet');
   });
   elements.dashboardTabBtn?.addEventListener('click', () => {
     setCurrentView('dashboard');
+  });
+  elements.settingsTabBtn?.addEventListener('click', () => {
+    setCurrentView('settings');
   });
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');
