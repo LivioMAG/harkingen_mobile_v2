@@ -707,6 +707,8 @@ function syncReportTypeFromProjectOrCommission() {
 function applyReportTypeSelection(reportType) {
   const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
   const isAutoType = AUTO_REPORT_TYPES.has(reportType);
+  const commissionField = elements.commissionInput.closest('.field');
+  const projectNameField = elements.projectNameInput.closest('.field');
 
   if (reportLabel) {
     elements.projectNameInput.value = reportLabel;
@@ -724,9 +726,12 @@ function applyReportTypeSelection(reportType) {
   elements.startTimeInput.required = !isAutoType;
   elements.endTimeInput.required = !isAutoType;
   elements.workHoursInput.required = isAutoType;
+  elements.projectNameInput.required = !isAutoType;
   elements.projectNameInput.readOnly = isAutoType;
   elements.commissionInput.readOnly = isAutoType;
   elements.expensesInput.readOnly = reportType === 'uk';
+  commissionField?.classList.toggle('hidden', isAutoType);
+  projectNameField?.classList.toggle('hidden', isAutoType);
   elements.reportTypeInput.dataset.previousValue = reportType;
 }
 
