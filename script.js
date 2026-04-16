@@ -20,6 +20,24 @@ const REPORT_TYPE_LABELS = {
   berufsschule: 'Berufsschule'
 };
 const AUTO_REPORT_TYPES = new Set(['ferien', 'krankheit', 'militaer', 'unfall', 'feiertag', 'uk', 'berufsschule']);
+const ABSENCE_TYPE_BY_REPORT_TYPE = {
+  ferien: 1,
+  krankheit: 2,
+  militaer: 3,
+  unfall: 4,
+  feiertag: 5,
+  uk: 6,
+  berufsschule: 7
+};
+const REPORT_TYPE_BY_ABSENCE_TYPE = {
+  1: 'ferien',
+  2: 'krankheit',
+  3: 'militaer',
+  4: 'unfall',
+  5: 'feiertag',
+  6: 'uk',
+  7: 'berufsschule'
+};
 const HOLIDAY_TYPE_LABELS = {
   ferien: 'Urlaub / Ferien',
   militaer: 'Militär',
@@ -52,6 +70,7 @@ const WEEKLY_REPORT_COLUMNS = [
   'expense_note',
   'notes',
   'attachments',
+  'abz_typ',
   'created_at',
   'updated_at'
 ].join(', ');
@@ -688,6 +707,8 @@ function syncReportTypeFromProjectOrCommission() {
 function applyReportTypeSelection(reportType) {
   const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
   const isAutoType = AUTO_REPORT_TYPES.has(reportType);
+  const commissionField = elements.commissionInput.closest('.field');
+  const projectNameField = elements.projectNameInput.closest('.field');
 
   if (reportLabel) {
     elements.projectNameInput.value = reportLabel;
@@ -705,9 +726,12 @@ function applyReportTypeSelection(reportType) {
   elements.startTimeInput.required = !isAutoType;
   elements.endTimeInput.required = !isAutoType;
   elements.workHoursInput.required = isAutoType;
+  elements.projectNameInput.required = !isAutoType;
   elements.projectNameInput.readOnly = isAutoType;
   elements.commissionInput.readOnly = isAutoType;
   elements.expensesInput.readOnly = reportType === 'uk';
+  commissionField?.classList.toggle('hidden', isAutoType);
+  projectNameField?.classList.toggle('hidden', isAutoType);
   elements.reportTypeInput.dataset.previousValue = reportType;
 }
 
@@ -1533,6 +1557,7 @@ function getEntryPayload() {
     ? totalMinutes
     : calculateAdjustedWorkMinutes(workDate, startTime, endTime, totalMinutes, state.surchargeRules);
   const autoNote = buildShiftBoundaryNote(workDate, startTime, endTime);
+  const absenceType = ABSENCE_TYPE_BY_REPORT_TYPE[elements.reportTypeInput.value] || 0;
 
   return {
     profile_id: state.session.user.id,
@@ -1550,7 +1575,8 @@ function getEntryPayload() {
     expenses_amount: Number(elements.expensesInput.value || 0),
     other_costs_amount: Number(elements.otherCostsInput.value || 0),
     expense_note: elements.expenseNoteInput.value.trim(),
-    notes: mergeShiftBoundaryNote(elements.notesInput.value, autoNote)
+    notes: mergeShiftBoundaryNote(elements.notesInput.value, autoNote),
+    abz_typ: absenceType
   };
 }
 
@@ -1785,6 +1811,7 @@ function openDrawer(isoDate, entry = null) {
   state.editingEntry = entry;
   const date = parseLocalDate(isoDate);
   const reportType =
+    REPORT_TYPE_BY_ABSENCE_TYPE[Number(entry?.abz_typ) || 0] ||
     getReportTypeFromCommission(entry?.project_name || '') ||
     getReportTypeFromCommission(entry?.commission_number || '');
 

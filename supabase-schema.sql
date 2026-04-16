@@ -63,6 +63,7 @@ create table if not exists public.weekly_reports (
   other_costs_amount numeric(10,2) not null default 0,
   expense_note text,
   notes text,
+  abz_typ integer not null default 0,
   attachments jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -71,6 +72,7 @@ create table if not exists public.weekly_reports (
 alter table public.weekly_reports add column if not exists total_adjusted_work_minutes integer not null default 0;
 alter table public.weekly_reports add column if not exists year integer;
 alter table public.weekly_reports add column if not exists kw integer;
+alter table public.weekly_reports add column if not exists abz_typ integer not null default 0;
 
 update public.weekly_reports
 set
