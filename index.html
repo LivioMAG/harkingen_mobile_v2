@@ -15,6 +15,7 @@
     />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
     <script defer src="script.js"></script>
   </head>
   <body>
@@ -419,7 +420,7 @@
             </div>
             <input id="attachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
             <input id="attachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*,application/pdf" multiple />
-            <small>Du kannst mehrere Fotos und Belege nacheinander hinzufügen. Unten erscheinen alle Anhänge als Liste und können wieder entfernt werden.</small>
+            <small>Du kannst mehrere Fotos und Belege nacheinander hinzufügen. PDFs werden automatisch pro Seite in Bilder umgewandelt und als einzelne Anhänge gespeichert.</small>
           </div>
 
           <div class="upload-preview hidden" id="existingAttachmentsBlock">
@@ -494,7 +495,7 @@
             </div>
             <input id="holidayAttachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
             <input id="holidayAttachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*,application/pdf" multiple />
-            <small>Fotos, Arztzeugnisse oder andere Dokumente können nacheinander hinzugefügt und wieder entfernt werden.</small>
+            <small>Fotos, Arztzeugnisse oder andere Dokumente können nacheinander hinzugefügt werden. PDFs werden automatisch pro Seite in Bilder umgewandelt.</small>
           </div>
 
           <div class="upload-preview hidden" id="existingHolidayAttachmentsBlock">
