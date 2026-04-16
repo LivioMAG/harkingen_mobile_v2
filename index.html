@@ -379,8 +379,12 @@
 
           <div class="field-row split-pair two-columns">
             <label class="field compact-field">
-              <span>Spesen (CHF)</span>
-              <input id="expensesInput" type="number" min="0" step="0.05" value="0" />
+              <span>Spesen</span>
+              <label class="checkbox-inline">
+                <input id="expensesToggleInput" type="checkbox" />
+                <span>18 CHF Pauschale</span>
+              </label>
+              <input id="expensesInput" type="hidden" value="0" />
             </label>
             <label class="field compact-field align-right-field">
               <span>Sonstige Auslagen (CHF)</span>

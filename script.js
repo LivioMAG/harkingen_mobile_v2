@@ -229,6 +229,7 @@ const elements = {
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
   commissionSuggestions: document.getElementById('commissionSuggestions'),
+  expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
   specialTimeFields: document.getElementById('specialTimeFields'),
   startTimeInput: document.getElementById('startTimeInput'),
@@ -739,7 +740,16 @@ function normalizeProjectSuggestion(record) {
   ]);
 
   if (!commissionNumber) return null;
-  return { commissionNumber, projectName };
+  return { commissionNumber, projectName, allowExpenses: Boolean(record?.allow_expenses) };
+}
+
+function findCommissionSuggestionMatch() {
+  const value = elements.commissionInput.value.trim().toLowerCase();
+  if (!value) return null;
+
+  return (
+    state.projectSuggestions.find((item) => item.commissionNumber.toLowerCase() === value) || null
+  );
 }
 
 function renderCommissionSuggestions(searchValue = '') {
@@ -764,16 +774,30 @@ function renderCommissionSuggestions(searchValue = '') {
 
 function syncProjectNameFromCommission() {
   if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) return;
-
-  const value = elements.commissionInput.value.trim().toLowerCase();
-  if (!value) return;
-
-  const match = state.projectSuggestions.find(
-    (item) => item.commissionNumber.toLowerCase() === value
-  );
+  const match = findCommissionSuggestionMatch();
   if (!match?.projectName) return;
 
   elements.projectNameInput.value = match.projectName;
+}
+
+function syncExpenseToggleState() {
+  const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
+  const isUkType = elements.reportTypeInput.value === 'uk';
+  const projectMatch = findCommissionSuggestionMatch();
+  const canToggleExpenses = !isAutoType && (!projectMatch || projectMatch.allowExpenses);
+
+  if (isUkType) {
+    elements.expensesToggleInput.checked = true;
+    elements.expensesToggleInput.disabled = true;
+    elements.expensesInput.value = '18';
+    return;
+  }
+
+  elements.expensesToggleInput.disabled = !canToggleExpenses;
+  if (!canToggleExpenses) {
+    elements.expensesToggleInput.checked = false;
+  }
+  elements.expensesInput.value = elements.expensesToggleInput.checked ? '18' : '0';
 }
 
 function closeKeyboardAndSuggestions(inputElement) {
@@ -816,6 +840,7 @@ async function handleCommissionInput() {
   await loadProjectSuggestions();
   renderCommissionSuggestions(elements.commissionInput.value);
   syncProjectNameFromCommission();
+  syncExpenseToggleState();
 }
 
 function applyReportTypeSelection(reportType) {
@@ -843,10 +868,11 @@ function applyReportTypeSelection(reportType) {
   elements.projectNameInput.required = !isAutoType;
   elements.projectNameInput.readOnly = isAutoType;
   elements.commissionInput.readOnly = isAutoType;
-  elements.expensesInput.readOnly = reportType === 'uk';
+  elements.expensesInput.readOnly = true;
   commissionField?.classList.toggle('hidden', isAutoType);
   projectNameField?.classList.toggle('hidden', isAutoType);
   elements.reportTypeInput.dataset.previousValue = reportType;
+  syncExpenseToggleState();
 }
 
 function validateConfig(config) {
@@ -1951,12 +1977,14 @@ function openDrawer(isoDate, entry = null) {
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = Math.min(8, Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
+  elements.expensesToggleInput.checked = Number(entry?.expenses_amount || 0) > 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
   elements.expenseNoteInput.value = entry?.expense_note || '';
   elements.notesInput.value = entry?.notes || '';
   applyReportTypeSelection(reportType);
   loadProjectSuggestions().then(() => {
     renderCommissionSuggestions(elements.commissionInput.value);
+    syncExpenseToggleState();
   });
   resetAttachmentState('report', entry?.attachments || []);
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
@@ -1982,7 +2010,9 @@ function closeDrawer() {
   renderCommissionSuggestions('');
   elements.projectNameInput.readOnly = false;
   elements.commissionInput.readOnly = false;
-  elements.expensesInput.readOnly = false;
+  elements.expensesInput.readOnly = true;
+  elements.expensesToggleInput.checked = false;
+  elements.expensesToggleInput.disabled = false;
   applyReportTypeSelection('');
   resetAttachmentState('report', []);
   renderAttachmentPreview('report');
@@ -2278,8 +2308,10 @@ function registerEventListeners() {
   });
   elements.commissionInput.addEventListener('change', () => {
     syncProjectNameFromCommission();
+    syncExpenseToggleState();
     closeKeyboardAndSuggestions(elements.commissionInput);
   });
+  elements.expensesToggleInput.addEventListener('change', syncExpenseToggleState);
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
   elements.attachmentsGalleryBtn.addEventListener(
     'click',
@@ -2310,7 +2342,9 @@ function registerEventListeners() {
       setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
       elements.projectNameInput.readOnly = false;
       elements.commissionInput.readOnly = false;
-      elements.expensesInput.readOnly = false;
+      elements.expensesInput.readOnly = true;
+      elements.expensesToggleInput.checked = false;
+      elements.expensesToggleInput.disabled = false;
       applyReportTypeSelection('');
       resetAttachmentState('report', []);
       renderAttachmentPreview('report');
