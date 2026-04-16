@@ -126,6 +126,8 @@ const HOLIDAY_REQUEST_COLUMNS = [
   'created_at',
   'updated_at'
 ].join(', ');
+const ROLE_OPTIONS = ['Lehrling', 'Elektrikinstallateur', 'Bauleiter', 'Projektleiter'];
+const DEFAULT_ROLE_LABEL = ROLE_OPTIONS[0];
 
 const state = {
   config: null,
@@ -196,8 +198,6 @@ const elements = {
   currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
   settingsView: document.getElementById('settingsView'),
-  settingsOverviewCard: document.getElementById('settingsOverviewCard'),
-  backToDashboardBtn: document.getElementById('backToDashboardBtn'),
   requestsCard: document.getElementById('requestsCard'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
@@ -362,7 +362,6 @@ function setCurrentView(view) {
   elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
-  elements.settingsOverviewCard?.classList.toggle('hidden', inPassword);
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', inPassword);
   elements.passwordView?.classList.toggle('hidden', !inPassword);
@@ -1018,13 +1017,14 @@ function normalizeProfile(profile) {
   const nameParts = splitFullName(profile.full_name || '');
   const firstName = profile.first_name || nameParts.firstName || '';
   const lastName = profile.last_name || nameParts.lastName || '';
+  const roleLabel = ROLE_OPTIONS.includes(profile.role_label) ? profile.role_label : DEFAULT_ROLE_LABEL;
 
   return {
     ...profile,
     first_name: firstName,
     last_name: lastName,
     full_name: [firstName, lastName].filter(Boolean).join(' ').trim() || profile.full_name || '',
-    role_label: profile.role_label || 'Monteur',
+    role_label: roleLabel,
     tel: profile.tel || '',
     is_admin: Boolean(profile.is_admin)
   };
@@ -1034,7 +1034,7 @@ function fillSettingsForm() {
   const profile = normalizeProfile(state.profile);
   elements.firstNameInput.value = profile?.first_name || '';
   elements.lastNameInput.value = profile?.last_name || '';
-  elements.roleLabelInput.value = profile?.role_label || 'Monteur';
+  elements.roleLabelInput.value = profile?.role_label || DEFAULT_ROLE_LABEL;
   elements.phoneInput.value = profile?.tel || '';
   elements.settingsEmailInput.value = state.session?.user?.email || profile?.email || '';
   elements.isAdminInput.value = profile?.is_admin ? 'true' : 'false';
@@ -1064,7 +1064,7 @@ async function ensureProfile(user, explicitFullName) {
           existingProfile.full_name ||
           [existingProfile.first_name, existingProfile.last_name].filter(Boolean).join(' ').trim() ||
           fallbackName,
-        role_label: existingProfile.role_label || 'Monteur',
+        role_label: ROLE_OPTIONS.includes(existingProfile.role_label) ? existingProfile.role_label : DEFAULT_ROLE_LABEL,
         tel: existingProfile.tel || ''
       }
     : {
@@ -1073,7 +1073,7 @@ async function ensureProfile(user, explicitFullName) {
         first_name: nameParts.firstName || user.user_metadata?.first_name || fallbackName,
         last_name: nameParts.lastName || user.user_metadata?.last_name || '',
         full_name: fallbackName,
-        role_label: 'Monteur',
+        role_label: DEFAULT_ROLE_LABEL,
         tel: ''
       };
 
@@ -1290,6 +1290,10 @@ async function saveSettings(event) {
 
   if (!firstName || !lastName || !roleLabel) {
     showToast('Vorname, Nachname und Rolle sind erforderlich.', 'error');
+    return;
+  }
+  if (!ROLE_OPTIONS.includes(roleLabel)) {
+    showToast(`Ungültige Rolle. Erlaubt: ${ROLE_OPTIONS.join(', ')}`, 'error');
     return;
   }
 
@@ -2201,7 +2205,7 @@ function render() {
     elements.phoneInput.value = '';
     elements.firstNameInput.value = '';
     elements.lastNameInput.value = '';
-    elements.roleLabelInput.value = '';
+    elements.roleLabelInput.value = DEFAULT_ROLE_LABEL;
     setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
     elements.holidayList.innerHTML = '';
@@ -2250,9 +2254,6 @@ function registerEventListeners() {
   });
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');
-  });
-  elements.backToDashboardBtn?.addEventListener('click', () => {
-    setCurrentView('timesheet');
   });
   elements.backToSettingsBtn.addEventListener('click', () => {
     setCurrentView('settings');
