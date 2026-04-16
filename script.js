@@ -772,6 +772,14 @@ function syncProjectNameFromCommission() {
   elements.projectNameInput.value = match.projectName;
 }
 
+function closeKeyboardAndSuggestions(inputElement) {
+  if (!inputElement) return;
+  inputElement.blur();
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
 async function loadProjectSuggestions() {
   if (!state.supabase || !state.session?.user || state.projectSuggestionsLoaded) return;
 
@@ -2254,15 +2262,26 @@ function registerEventListeners() {
     loadProjectSuggestions().then(() => renderCommissionSuggestions(elements.commissionInput.value));
   });
   elements.commissionInput.addEventListener('input', () => {
-    handleCommissionInput();
+    handleCommissionInput().then(() => {
+      if (findCommissionSuggestionMatch()) {
+        closeKeyboardAndSuggestions(elements.commissionInput);
+      }
+    });
   });
   elements.commissionInput.addEventListener('change', () => {
     syncProjectNameFromCommission();
+    closeKeyboardAndSuggestions(elements.commissionInput);
   });
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
-  elements.attachmentsGalleryBtn.addEventListener('click', () => elements.attachmentsGalleryInput.click());
+  elements.attachmentsGalleryBtn.addEventListener(
+    'click',
+    () => elements.attachmentsGalleryInput.showPicker?.() ?? elements.attachmentsGalleryInput.click()
+  );
   elements.holidayAttachmentsCameraBtn.addEventListener('click', () => elements.holidayAttachmentsCameraInput.click());
-  elements.holidayAttachmentsGalleryBtn.addEventListener('click', () => elements.holidayAttachmentsGalleryInput.click());
+  elements.holidayAttachmentsGalleryBtn.addEventListener(
+    'click',
+    () => elements.holidayAttachmentsGalleryInput.showPicker?.() ?? elements.holidayAttachmentsGalleryInput.click()
+  );
   elements.attachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
   elements.attachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
   elements.holidayAttachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
