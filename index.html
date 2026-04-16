@@ -122,9 +122,15 @@
 
         <section class="app-view hidden" id="appView">
           <nav class="top-tabbar" aria-label="Hauptnavigation">
-            <button id="dashboardTabBtn" class="top-tab" type="button" aria-selected="false">Dashboard</button>
-            <button id="timesheetTabBtn" class="top-tab active" type="button" aria-selected="true">Zeiterfassung</button>
-            <button id="settingsTabBtn" class="top-tab" type="button" aria-selected="false">Einstellungen</button>
+            <button id="dashboardTabBtn" class="top-tab icon-tab" type="button" aria-selected="false" aria-label="Dashboard" title="Dashboard">
+              📊
+            </button>
+            <button id="timesheetTabBtn" class="top-tab icon-tab active" type="button" aria-selected="true" aria-label="Zeiterfassung" title="Zeiterfassung">
+              ⏱️
+            </button>
+            <button id="settingsTabBtn" class="top-tab icon-tab" type="button" aria-selected="false" aria-label="Profil" title="Profil">
+              👤
+            </button>
           </nav>
 
           <section class="hero-week-panel glass-card" id="dashboardWeekPanel">
@@ -158,22 +164,12 @@
           </section>
 
           <section class="settings-view hidden" id="settingsView">
-            <section class="glass-card settings-overview-card" id="settingsOverviewCard">
-              <div class="section-head compact settings-overview-head">
-                <div>
-                  <p class="section-label">Einstellungen</p>
-                  <h2>Profile, Berechtigungen &amp; Abwesenheiten</h2>
-                </div>
-                <button id="backToDashboardBtn" class="ghost-btn" type="button">Schliessen</button>
-              </div>
-            </section>
-
             <section class="glass-card settings-card" id="settingsCard">
               <div class="section-head compact">
                 <div>
-                  <p class="section-label">Account-Einstellungen</p>
-                  <h2>Profil &amp; Berechtigungen</h2>
-                  <p>Vorname, Nachname, Rolle und Telefonnummer kann der Benutzer selbst ändern.</p>
+                  <p class="section-label">Profil</p>
+                  <h2>Profil</h2>
+                  <p>Vorname, Nachname, Rolle und Telefonnummer kannst du selbst ändern.</p>
                 </div>
               </div>
 
@@ -192,7 +188,12 @@
                 <div class="field-row two-columns">
                   <label class="field">
                     <span>Rolle</span>
-                    <input id="roleLabelInput" type="text" required placeholder="Monteur" />
+                    <select id="roleLabelInput" required>
+                      <option value="Lehrling">Lehrling</option>
+                      <option value="Elektrikinstallateur">Elektrikinstallateur</option>
+                      <option value="Bauleiter">Bauleiter</option>
+                      <option value="Projektleiter">Projektleiter</option>
+                    </select>
                   </label>
                   <label class="field">
                     <span>Telefonnummer</span>
