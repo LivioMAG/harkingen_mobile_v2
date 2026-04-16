@@ -149,7 +149,9 @@ const state = {
   reportPendingFiles: [],
   holidayDraftAttachments: [],
   holidayPendingFiles: [],
-  surchargeRules: DEFAULT_SURCHARGE_RULES
+  surchargeRules: DEFAULT_SURCHARGE_RULES,
+  projectSuggestionsLoaded: false,
+  projectSuggestions: []
 };
 
 const elements = {
@@ -226,6 +228,7 @@ const elements = {
   reportTypeInput: document.getElementById('reportTypeInput'),
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
+  commissionSuggestions: document.getElementById('commissionSuggestions'),
   normalTimeFields: document.getElementById('normalTimeFields'),
   specialTimeFields: document.getElementById('specialTimeFields'),
   startTimeInput: document.getElementById('startTimeInput'),
@@ -702,6 +705,105 @@ function syncReportTypeFromProjectOrCommission() {
 
   elements.reportTypeInput.value = reportType;
   applyReportTypeSelection(reportType);
+}
+
+function pickFirstFilledValue(record, keys) {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function normalizeProjectSuggestion(record) {
+  if (!record || typeof record !== 'object') return null;
+
+  const commissionNumber = pickFirstFilledValue(record, [
+    'commission_number',
+    'commission',
+    'kommissionsnummer',
+    'project_number',
+    'number',
+    'nummer'
+  ]);
+  const projectName = pickFirstFilledValue(record, [
+    'project_name',
+    'name',
+    'title',
+    'projektname',
+    'project_title'
+  ]);
+
+  if (!commissionNumber) return null;
+  return { commissionNumber, projectName };
+}
+
+function renderCommissionSuggestions(searchValue = '') {
+  if (!elements.commissionSuggestions) return;
+
+  const normalizedSearch = String(searchValue || '').trim().toLowerCase();
+  const suggestions = state.projectSuggestions
+    .filter((item) => {
+      if (!normalizedSearch) return true;
+      return item.commissionNumber.toLowerCase().includes(normalizedSearch);
+    })
+    .slice(0, 12);
+
+  elements.commissionSuggestions.innerHTML = '';
+  suggestions.forEach((item) => {
+    const option = document.createElement('option');
+    option.value = item.commissionNumber;
+    option.label = item.projectName || item.commissionNumber;
+    elements.commissionSuggestions.appendChild(option);
+  });
+}
+
+function syncProjectNameFromCommission() {
+  if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) return;
+
+  const value = elements.commissionInput.value.trim().toLowerCase();
+  if (!value) return;
+
+  const match = state.projectSuggestions.find(
+    (item) => item.commissionNumber.toLowerCase() === value
+  );
+  if (!match?.projectName) return;
+
+  elements.projectNameInput.value = match.projectName;
+}
+
+async function loadProjectSuggestions() {
+  if (!state.supabase || !state.session?.user || state.projectSuggestionsLoaded) return;
+
+  const { data, error } = await state.supabase
+    .from('projects')
+    .select('*')
+    .limit(2000);
+
+  state.projectSuggestionsLoaded = true;
+  if (error) {
+    console.warn('Projects-Autocomplete konnte nicht geladen werden:', error.message);
+    state.projectSuggestions = [];
+    return;
+  }
+
+  const suggestions = (data || [])
+    .map(normalizeProjectSuggestion)
+    .filter(Boolean);
+  const uniqueByCommission = new Map();
+  suggestions.forEach((item) => {
+    if (!uniqueByCommission.has(item.commissionNumber.toLowerCase())) {
+      uniqueByCommission.set(item.commissionNumber.toLowerCase(), item);
+    }
+  });
+  state.projectSuggestions = Array.from(uniqueByCommission.values());
+}
+
+async function handleCommissionInput() {
+  syncReportTypeFromProjectOrCommission();
+  await loadProjectSuggestions();
+  renderCommissionSuggestions(elements.commissionInput.value);
+  syncProjectNameFromCommission();
 }
 
 function applyReportTypeSelection(reportType) {
@@ -1836,6 +1938,9 @@ function openDrawer(isoDate, entry = null) {
   elements.expenseNoteInput.value = entry?.expense_note || '';
   elements.notesInput.value = entry?.notes || '';
   applyReportTypeSelection(reportType);
+  loadProjectSuggestions().then(() => {
+    renderCommissionSuggestions(elements.commissionInput.value);
+  });
   resetAttachmentState('report', entry?.attachments || []);
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
   renderAttachmentPreview('report');
@@ -1857,6 +1962,7 @@ function closeDrawer() {
   elements.workHoursInput.value = DEFAULT_WORK_HOURS;
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
+  renderCommissionSuggestions('');
   elements.projectNameInput.readOnly = false;
   elements.commissionInput.readOnly = false;
   elements.expensesInput.readOnly = false;
@@ -2075,6 +2181,8 @@ function render() {
     setCurrentView(state.currentView);
   } else {
     state.currentView = 'dashboard';
+    state.projectSuggestionsLoaded = false;
+    state.projectSuggestions = [];
     elements.welcomeHeading.textContent = 'Dashboard';
     elements.userNameLabel.textContent = '–';
     setCurrentView('dashboard');
@@ -2142,7 +2250,15 @@ function registerEventListeners() {
   elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
   elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
-  elements.commissionInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
+  elements.commissionInput.addEventListener('focus', () => {
+    loadProjectSuggestions().then(() => renderCommissionSuggestions(elements.commissionInput.value));
+  });
+  elements.commissionInput.addEventListener('input', () => {
+    handleCommissionInput();
+  });
+  elements.commissionInput.addEventListener('change', () => {
+    syncProjectNameFromCommission();
+  });
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
   elements.attachmentsGalleryBtn.addEventListener('click', () => elements.attachmentsGalleryInput.click());
   elements.holidayAttachmentsCameraBtn.addEventListener('click', () => elements.holidayAttachmentsCameraInput.click());

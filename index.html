@@ -329,7 +329,15 @@
 
           <label class="field">
             <span>Kommissionsnummer</span>
-            <input id="commissionInput" type="text" placeholder="z. B. K-2026-041" />
+            <input
+              id="commissionInput"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              list="commissionSuggestions"
+              placeholder="z. B. K-2026-041"
+            />
+            <datalist id="commissionSuggestions"></datalist>
           </label>
 
           <label class="field">
