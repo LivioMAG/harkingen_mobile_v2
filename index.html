@@ -184,6 +184,36 @@
                   <p>Vorname, Nachname und Telefonnummer kannst du selbst ändern.</p>
                 </div>
               </div>
+              <div class="profile-icon-actions" aria-label="Profilaktionen">
+                <button
+                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
+                  id="openHolidayDrawerBtn"
+                  type="button"
+                  aria-label="Ferien beantragen"
+                  title="Ferien beantragen"
+                >
+                  🏖️
+                </button>
+                <span class="profile-icon-actions-spacer" aria-hidden="true"></span>
+                <button
+                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
+                  id="openPasswordViewBtn"
+                  type="button"
+                  aria-label="Passwort ändern"
+                  title="Passwort ändern"
+                >
+                  🔒
+                </button>
+                <button
+                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn hidden"
+                  id="signOutBtn"
+                  type="button"
+                  aria-label="Abmelden"
+                  title="Abmelden"
+                >
+                  🚪
+                </button>
+              </div>
 
               <form id="settingsForm" class="form-grid settings-form">
                 <div class="field-row two-columns">
@@ -206,13 +236,8 @@
 
                 <div class="auth-actions stacked-on-mobile">
                   <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
-                  <button class="secondary-btn" id="openPasswordViewBtn" type="button">Passwort ändern</button>
                 </div>
               </form>
-              <div class="auth-actions stacked-on-mobile settings-extra-actions">
-                <button class="secondary-btn" id="openHolidayDrawerBtn" type="button">Ferien beantragen</button>
-                <button class="ghost-btn hidden" id="signOutBtn" type="button">Abmelden</button>
-              </div>
             </section>
 
             <section class="glass-card settings-card hidden" id="passwordView">
