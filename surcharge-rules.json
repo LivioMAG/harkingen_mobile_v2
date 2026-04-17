@@ -1,6 +1,18 @@
 {
   "version": 1,
   "timezone": "Europe/Zurich",
+  "holidayCompensation": {
+    "enabled": true,
+    "reportType": "feiertag",
+    "paidMultiplier": 2,
+    "unpaidMultiplier": 1,
+    "platformHolidayTable": "Platform Holiday",
+    "columns": {
+      "date": "date",
+      "label": "label",
+      "isPaid": "is_underlined_paid"
+    }
+  },
   "rulesByWeekday": {
     "monday": [
       { "start": "00:00", "end": "06:00", "multiplier": 1.5 },

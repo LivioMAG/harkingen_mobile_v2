@@ -47,6 +47,7 @@ Dann `http://localhost:4173` öffnen.
 - Mehrere Rapporte pro Tag.
 - Standard-Arbeitszeit von 07:00 bis 17:30 Uhr mit 60 Minuten Mittagspause und 30 Minuten zusätzlicher Pause.
 - Zuschlagsberechnung je Wochentag/Zeitfenster aus `surcharge-rules.json` mit separater Speicherung in `weekly_reports.total_adjusted_work_minutes`.
+- Feiertagsrapport (`feiertag`) unterstützt bezahlte/unbezahlte Feiertage aus der Tabelle `Platform Holiday` (`is_underlined_paid`) mit konfigurierbaren Multiplikatoren in `surcharge-rules.json`.
 - Spesen, sonstige Auslagen und Bemerkungen.
 - Mehrfach-Upload von Belegen/Fotos direkt in Supabase Storage.
 - Ferien- und Absenzanträge mit Typwahl (Ferien, Militär, Zivildienst, Unfall, Krankheit) inklusive Anhängen.
