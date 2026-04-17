@@ -76,6 +76,18 @@ const WEEKLY_REPORT_COLUMNS = [
 const DEFAULT_SURCHARGE_RULES = {
   version: 1,
   timezone: 'Europe/Zurich',
+  holidayCompensation: {
+    enabled: true,
+    reportType: 'feiertag',
+    paidMultiplier: 2,
+    unpaidMultiplier: 1,
+    platformHolidayTable: 'Platform Holiday',
+    columns: {
+      date: 'date',
+      label: 'label',
+      isPaid: 'is_underlined_paid'
+    }
+  },
   rulesByWeekday: {
     monday: [
       { start: '00:00', end: '06:00', multiplier: 1.5 },
@@ -437,6 +449,20 @@ function clampMultiplier(value) {
 function normalizeSurchargeRules(inputRules) {
   const source = inputRules && typeof inputRules === 'object' ? inputRules : DEFAULT_SURCHARGE_RULES;
   const normalized = { ...DEFAULT_SURCHARGE_RULES, ...source };
+  const holidaySource = source?.holidayCompensation && typeof source.holidayCompensation === 'object'
+    ? source.holidayCompensation
+    : {};
+  const holidayDefaults = DEFAULT_SURCHARGE_RULES.holidayCompensation;
+  normalized.holidayCompensation = {
+    ...holidayDefaults,
+    ...holidaySource,
+    columns: {
+      ...holidayDefaults.columns,
+      ...(holidaySource.columns && typeof holidaySource.columns === 'object' ? holidaySource.columns : {})
+    },
+    paidMultiplier: clampMultiplier(holidaySource.paidMultiplier ?? holidayDefaults.paidMultiplier),
+    unpaidMultiplier: clampMultiplier(holidaySource.unpaidMultiplier ?? holidayDefaults.unpaidMultiplier)
+  };
   const rulesByWeekday = {};
 
   RULE_WEEKDAY_KEYS.forEach((weekday) => {
@@ -456,6 +482,62 @@ function normalizeSurchargeRules(inputRules) {
 
   normalized.rulesByWeekday = rulesByWeekday;
   return normalized;
+}
+
+function parseBooleanValue(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return ['true', '1', 'yes', 'ja'].includes(normalized);
+  }
+  return false;
+}
+
+function getHolidayConfig() {
+  return state.surchargeRules?.holidayCompensation || DEFAULT_SURCHARGE_RULES.holidayCompensation;
+}
+
+async function resolveHolidayCompensation(workDate) {
+  const config = getHolidayConfig();
+  if (!state.supabase || !workDate || config.enabled === false) {
+    return { multiplier: 1, isPaid: false, found: false, label: '' };
+  }
+
+  const tableName = config.platformHolidayTable || DEFAULT_SURCHARGE_RULES.holidayCompensation.platformHolidayTable;
+  const dateColumn = config.columns?.date || DEFAULT_SURCHARGE_RULES.holidayCompensation.columns.date;
+  const labelColumn = config.columns?.label || DEFAULT_SURCHARGE_RULES.holidayCompensation.columns.label;
+  const isPaidColumn = config.columns?.isPaid || DEFAULT_SURCHARGE_RULES.holidayCompensation.columns.isPaid;
+
+  try {
+    const { data, error } = await state.supabase
+      .from(tableName)
+      .select('*')
+      .eq(dateColumn, workDate)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      return {
+        multiplier: clampMultiplier(config.unpaidMultiplier),
+        isPaid: false,
+        found: false,
+        label: ''
+      };
+    }
+
+    const isPaid = parseBooleanValue(data?.[isPaidColumn]);
+    return {
+      multiplier: isPaid ? clampMultiplier(config.paidMultiplier) : clampMultiplier(config.unpaidMultiplier),
+      isPaid,
+      found: true,
+      label: data?.[labelColumn] || ''
+    };
+  } catch (error) {
+    console.warn('Feiertagsdaten konnten nicht geladen werden.', error);
+    return { multiplier: 1, isPaid: false, found: false, label: '' };
+  }
 }
 
 function getSurchargeMultiplier(weekdayIndex, minuteOfDay, rules) {
@@ -1774,6 +1856,13 @@ async function saveEntry(event) {
   if (requiresExpenseAttachment(payload) && !entryHasAttachments()) {
     showToast('Für Sonstige Auslagen muss mindestens ein Beleg/Foto angehängt werden.', 'error');
     return;
+  }
+
+  const holidayConfig = getHolidayConfig();
+  const isHolidayReportType = elements.reportTypeInput.value === (holidayConfig.reportType || 'feiertag');
+  if (isHolidayReportType && payload.total_work_minutes > 0) {
+    const holidayCompensation = await resolveHolidayCompensation(payload.work_date);
+    payload.total_adjusted_work_minutes = Math.round(payload.total_work_minutes * holidayCompensation.multiplier);
   }
 
   try {
