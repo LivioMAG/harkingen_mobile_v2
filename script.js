@@ -46,8 +46,7 @@ const HOLIDAY_TYPE_LABELS = {
   krankheit: 'Krankheit'
 };
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-const WEEKDAY_ABBREVIATIONS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
-const NIGHT_SHIFT_NOTE_PREFIX = 'Arbeitszeit, Nachtzeit';
+const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
 const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, is_admin';
@@ -239,7 +238,6 @@ const elements = {
   workHoursInput: document.getElementById('workHoursInput'),
   expensesInput: document.getElementById('expensesInput'),
   otherCostsInput: document.getElementById('otherCostsInput'),
-  expenseNoteInput: document.getElementById('expenseNoteInput'),
   notesInput: document.getElementById('notesInput'),
   attachmentsCameraBtn: document.getElementById('attachmentsCameraBtn'),
   attachmentsGalleryBtn: document.getElementById('attachmentsGalleryBtn'),
@@ -565,10 +563,7 @@ function entryHasAttachments() {
 }
 
 function requiresExpenseAttachment(payload) {
-  return (
-    Number(payload.other_costs_amount || 0) > 0 ||
-    Boolean(payload.expense_note)
-  );
+  return Number(payload.other_costs_amount || 0) > 0;
 }
 
 function commissionRequiresGeneralNote(commissionNumber = '') {
@@ -599,10 +594,16 @@ function shiftOverlapsNightWindow(startTime, endTime) {
   );
 }
 
-function getWeekdayAbbreviation(isoDate) {
+function getWeekdayLabel(isoDate) {
   if (!isoDate) return '';
   const date = parseLocalDate(isoDate);
-  return WEEKDAY_ABBREVIATIONS[date.getDay()] || '';
+  return WEEKDAY_LABELS[(date.getDay() + 6) % 7] || '';
+}
+
+function formatTimeWithoutSeconds(timeValue) {
+  const value = String(timeValue || '').trim();
+  if (!value) return '';
+  return value.slice(0, 5);
 }
 
 function buildShiftBoundaryNote(workDate, startTime, endTime) {
@@ -610,8 +611,8 @@ function buildShiftBoundaryNote(workDate, startTime, endTime) {
     return '';
   }
 
-  const weekday = getWeekdayAbbreviation(workDate);
-  return `${NIGHT_SHIFT_NOTE_PREFIX} (${weekday}): ${startTime} - ${endTime}`;
+  const weekday = getWeekdayLabel(workDate);
+  return `${NIGHT_SHIFT_NOTE_PREFIX} ${weekday}: ${formatTimeWithoutSeconds(startTime)} - ${formatTimeWithoutSeconds(endTime)}`;
 }
 
 function mergeShiftBoundaryNote(notes, autoNote) {
@@ -619,7 +620,7 @@ function mergeShiftBoundaryNote(notes, autoNote) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) => !line.startsWith(`${NIGHT_SHIFT_NOTE_PREFIX} (`) && !line.startsWith(`Nachtzeit (`));
+    .filter((line) => !line.startsWith(`${NIGHT_SHIFT_NOTE_PREFIX} `) && !line.startsWith(`Arbeitszeit, Nachtzeit (`));
 
   if (autoNote) {
     lines.push(autoNote);
@@ -1719,7 +1720,7 @@ function getEntryPayload() {
     total_adjusted_work_minutes: adjustedTotalMinutes,
     expenses_amount: Number(elements.expensesInput.value || 0),
     other_costs_amount: Number(elements.otherCostsInput.value || 0),
-    expense_note: elements.expenseNoteInput.value.trim(),
+    expense_note: null,
     notes: mergeShiftBoundaryNote(elements.notesInput.value, autoNote),
     abz_typ: absenceType
   };
@@ -1979,8 +1980,8 @@ function openDrawer(isoDate, entry = null) {
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.expensesToggleInput.checked = Number(entry?.expenses_amount || 0) > 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
-  elements.expenseNoteInput.value = entry?.expense_note || '';
-  elements.notesInput.value = entry?.notes || '';
+  const mergedNotes = [entry?.notes, entry?.expense_note].map((value) => String(value || '').trim()).filter(Boolean).join('\n');
+  elements.notesInput.value = mergedNotes;
   applyReportTypeSelection(reportType);
   loadProjectSuggestions().then(() => {
     renderCommissionSuggestions(elements.commissionInput.value);
