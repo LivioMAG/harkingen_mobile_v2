@@ -240,7 +240,6 @@ const elements = {
   reportTypeInput: document.getElementById('reportTypeInput'),
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
-  commissionSuggestions: document.getElementById('commissionSuggestions'),
   commissionSuggestionsList: document.getElementById('commissionSuggestionsList'),
   expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
@@ -870,23 +869,13 @@ function findCommissionSuggestionMatch() {
 }
 
 function renderCommissionSuggestions(searchValue = '') {
-  if (!elements.commissionSuggestions) return [];
-
   const normalizedSearch = String(searchValue || '').trim().toLowerCase();
   const suggestions = state.projectSuggestions
     .filter((item) => {
       if (!normalizedSearch) return true;
       return item.commissionNumber.toLowerCase().includes(normalizedSearch);
     })
-    .slice(0, 12);
-
-  elements.commissionSuggestions.innerHTML = '';
-  suggestions.forEach((item) => {
-    const option = document.createElement('option');
-    option.value = item.commissionNumber;
-    option.label = item.projectName || item.commissionNumber;
-    elements.commissionSuggestions.appendChild(option);
-  });
+    .slice(0, 5);
 
   renderCommissionSuggestionsList(suggestions);
   return suggestions;
