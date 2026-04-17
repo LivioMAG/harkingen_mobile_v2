@@ -873,7 +873,9 @@ function renderCommissionSuggestions(searchValue = '') {
   const suggestions = state.projectSuggestions
     .filter((item) => {
       if (!normalizedSearch) return true;
-      return item.commissionNumber.toLowerCase().includes(normalizedSearch);
+      const commissionMatches = item.commissionNumber.toLowerCase().includes(normalizedSearch);
+      const projectNameMatches = (item.projectName || '').toLowerCase().includes(normalizedSearch);
+      return commissionMatches || projectNameMatches;
     })
     .slice(0, 5);
 
