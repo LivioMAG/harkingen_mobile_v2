@@ -218,10 +218,7 @@ const elements = {
   settingsForm: document.getElementById('settingsForm'),
   firstNameInput: document.getElementById('firstNameInput'),
   lastNameInput: document.getElementById('lastNameInput'),
-  roleLabelInput: document.getElementById('roleLabelInput'),
   phoneInput: document.getElementById('phoneInput'),
-  settingsEmailInput: document.getElementById('settingsEmailInput'),
-  isAdminInput: document.getElementById('isAdminInput'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
   openPasswordViewBtn: document.getElementById('openPasswordViewBtn'),
   passwordView: document.getElementById('passwordView'),
@@ -1214,10 +1211,7 @@ function fillSettingsForm() {
   const profile = normalizeProfile(state.profile);
   elements.firstNameInput.value = profile?.first_name || '';
   elements.lastNameInput.value = profile?.last_name || '';
-  elements.roleLabelInput.value = profile?.role_label || DEFAULT_ROLE_LABEL;
   elements.phoneInput.value = profile?.tel || '';
-  elements.settingsEmailInput.value = state.session?.user?.email || profile?.email || '';
-  elements.isAdminInput.value = profile?.is_admin ? 'true' : 'false';
 }
 
 async function ensureProfile(user, explicitFullName) {
@@ -1465,15 +1459,10 @@ async function saveSettings(event) {
 
   const firstName = elements.firstNameInput.value.trim();
   const lastName = elements.lastNameInput.value.trim();
-  const roleLabel = elements.roleLabelInput.value.trim();
   const phone = elements.phoneInput.value.trim();
 
-  if (!firstName || !lastName || !roleLabel) {
-    showToast('Vorname, Nachname und Rolle sind erforderlich.', 'error');
-    return;
-  }
-  if (!ROLE_OPTIONS.includes(roleLabel)) {
-    showToast(`Ungültige Rolle. Erlaubt: ${ROLE_OPTIONS.join(', ')}`, 'error');
+  if (!firstName || !lastName) {
+    showToast('Vorname und Nachname sind erforderlich.', 'error');
     return;
   }
 
@@ -1489,7 +1478,7 @@ async function saveSettings(event) {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
-        role_label: roleLabel,
+        role_label: state.profile.role_label || DEFAULT_ROLE_LABEL,
         tel: phone
       };
 
@@ -2392,12 +2381,9 @@ function render() {
     state.projectSuggestions = [];
     setCurrentView('timesheet');
     elements.settingsForm?.reset();
-    elements.isAdminInput.value = '';
-    elements.settingsEmailInput.value = '';
     elements.phoneInput.value = '';
     elements.firstNameInput.value = '';
     elements.lastNameInput.value = '';
-    elements.roleLabelInput.value = DEFAULT_ROLE_LABEL;
     setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
     elements.holidayList.innerHTML = '';
