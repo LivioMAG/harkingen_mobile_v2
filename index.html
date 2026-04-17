@@ -181,7 +181,7 @@
                 <div>
                   <p class="section-label">Profil</p>
                   <h2>Profil</h2>
-                  <p>Vorname, Nachname, Rolle und Telefonnummer kannst du selbst ändern.</p>
+                  <p>Vorname, Nachname und Telefonnummer kannst du selbst ändern.</p>
                 </div>
               </div>
 
@@ -197,41 +197,28 @@
                   </label>
                 </div>
 
-                <div class="field-row two-columns">
-                  <label class="field">
-                    <span>Rolle</span>
-                    <select id="roleLabelInput" required>
-                      <option value="Lehrling">Lehrling</option>
-                      <option value="Elektrikinstallateur">Elektrikinstallateur</option>
-                      <option value="Bauleiter">Bauleiter</option>
-                      <option value="Projektleiter">Projektleiter</option>
-                    </select>
-                  </label>
+                <div class="field-row">
                   <label class="field">
                     <span>Telefonnummer</span>
                     <input id="phoneInput" type="text" placeholder="+41 79 123 45 67" />
                   </label>
                 </div>
 
-                <div class="field-row two-columns">
-                  <label class="field readonly-field">
-                    <span>Admin</span>
-                    <input id="isAdminInput" type="text" readonly />
-                  </label>
-                  <label class="field readonly-field">
-                    <span>E-Mail</span>
-                    <input id="settingsEmailInput" type="email" readonly />
-                  </label>
-                </div>
-
-                <div class="auth-actions stacked-on-mobile">
+                <div class="auth-actions">
                   <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
-                  <button class="secondary-btn" id="openPasswordViewBtn" type="button">Passwort ändern</button>
                 </div>
               </form>
-              <div class="auth-actions stacked-on-mobile settings-extra-actions">
-                <button class="secondary-btn" id="openHolidayDrawerBtn" type="button">Ferien beantragen</button>
-                <button class="ghost-btn hidden" id="signOutBtn" type="button">Abmelden</button>
+              <div class="settings-quick-actions settings-extra-actions">
+                <button class="secondary-btn quick-action-btn" id="openHolidayDrawerBtn" type="button">
+                  <span aria-hidden="true">🌴</span><span>Ferien beantragen</span>
+                </button>
+                <div class="quick-action-spacer" aria-hidden="true"></div>
+                <button class="secondary-btn quick-action-btn" id="openPasswordViewBtn" type="button">
+                  <span aria-hidden="true">🔒</span><span>Passwort ändern</span>
+                </button>
+                <button class="ghost-btn quick-action-btn hidden" id="signOutBtn" type="button">
+                  <span aria-hidden="true">🚪</span><span>Abmelden</span>
+                </button>
               </div>
             </section>
 
