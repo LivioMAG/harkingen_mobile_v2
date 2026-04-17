@@ -208,25 +208,6 @@ code {
   margin-top: 14px;
 }
 
-.settings-quick-actions {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-
-.quick-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.quick-action-spacer {
-  flex: 1 1 auto;
-}
-
 .summary-item,
 .request-item {
   flex: 1 1 150px;
@@ -1069,20 +1050,6 @@ textarea {
   .stacked-on-mobile > button,
   .drawer-actions > button {
     width: 100%;
-  }
-
-  .settings-quick-actions {
-    overflow-x: auto;
-  }
-
-  .settings-quick-actions > button {
-    width: auto;
-    flex: 0 0 auto;
-  }
-
-  .settings-quick-actions > .quick-action-spacer {
-    min-width: 18px;
-    flex: 0 0 18px;
   }
 
   .topbar {
