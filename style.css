@@ -362,6 +362,40 @@ small {
   font-weight: 600;
 }
 
+.suggestions-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  max-height: 220px;
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.suggestion-item {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  background: #ffffff;
+  color: var(--text);
+  display: grid;
+  gap: 2px;
+}
+
+.suggestion-item strong {
+  font-size: 0.95rem;
+}
+
+.suggestion-item span {
+  color: var(--muted);
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
 input,
 textarea,
 select {
