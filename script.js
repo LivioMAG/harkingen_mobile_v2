@@ -241,6 +241,7 @@ const elements = {
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
   commissionSuggestions: document.getElementById('commissionSuggestions'),
+  commissionSuggestionsList: document.getElementById('commissionSuggestionsList'),
   expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
   specialTimeFields: document.getElementById('specialTimeFields'),
@@ -827,6 +828,15 @@ function pickFirstFilledValue(record, keys) {
   return '';
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function normalizeProjectSuggestion(record) {
   if (!record || typeof record !== 'object') return null;
 
@@ -860,7 +870,7 @@ function findCommissionSuggestionMatch() {
 }
 
 function renderCommissionSuggestions(searchValue = '') {
-  if (!elements.commissionSuggestions) return;
+  if (!elements.commissionSuggestions) return [];
 
   const normalizedSearch = String(searchValue || '').trim().toLowerCase();
   const suggestions = state.projectSuggestions
@@ -877,6 +887,51 @@ function renderCommissionSuggestions(searchValue = '') {
     option.label = item.projectName || item.commissionNumber;
     elements.commissionSuggestions.appendChild(option);
   });
+
+  renderCommissionSuggestionsList(suggestions);
+  return suggestions;
+}
+
+function renderCommissionSuggestionsList(suggestions = []) {
+  if (!elements.commissionSuggestionsList) return;
+  elements.commissionSuggestionsList.innerHTML = '';
+
+  if (!suggestions.length || AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
+    elements.commissionSuggestionsList.classList.add('hidden');
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  suggestions.forEach((item) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'suggestion-item';
+    button.dataset.commission = item.commissionNumber;
+    button.dataset.projectName = item.projectName || '';
+    button.setAttribute('role', 'option');
+    button.innerHTML = `
+      <strong>${escapeHtml(item.commissionNumber)}</strong>
+      <span>${escapeHtml(item.projectName || 'Ohne Projektname')}</span>
+    `;
+    fragment.appendChild(button);
+  });
+
+  elements.commissionSuggestionsList.appendChild(fragment);
+  elements.commissionSuggestionsList.classList.remove('hidden');
+}
+
+function hideCommissionSuggestionsList() {
+  if (!elements.commissionSuggestionsList) return;
+  elements.commissionSuggestionsList.classList.add('hidden');
+}
+
+function applyCommissionSuggestion(commissionNumber) {
+  if (!commissionNumber) return;
+  elements.commissionInput.value = commissionNumber;
+  syncProjectNameFromCommission();
+  syncExpenseToggleState();
+  hideCommissionSuggestionsList();
+  closeKeyboardAndSuggestions(elements.commissionInput);
 }
 
 function syncProjectNameFromCommission() {
@@ -945,9 +1000,10 @@ async function loadProjectSuggestions() {
 async function handleCommissionInput() {
   syncReportTypeFromProjectOrCommission();
   await loadProjectSuggestions();
-  renderCommissionSuggestions(elements.commissionInput.value);
+  const suggestions = renderCommissionSuggestions(elements.commissionInput.value);
   syncProjectNameFromCommission();
   syncExpenseToggleState();
+  return suggestions;
 }
 
 function applyReportTypeSelection(reportType) {
@@ -2420,10 +2476,29 @@ function registerEventListeners() {
       }
     });
   });
+  elements.commissionInput.addEventListener('blur', () => {
+    window.setTimeout(hideCommissionSuggestionsList, 120);
+  });
   elements.commissionInput.addEventListener('change', () => {
     syncProjectNameFromCommission();
     syncExpenseToggleState();
     closeKeyboardAndSuggestions(elements.commissionInput);
+  });
+  elements.commissionSuggestionsList?.addEventListener('mousedown', (event) => {
+    const target = event.target.closest('.suggestion-item');
+    if (!target) return;
+    event.preventDefault();
+  });
+  elements.commissionSuggestionsList?.addEventListener('click', (event) => {
+    const target = event.target.closest('.suggestion-item');
+    if (!target) return;
+    applyCommissionSuggestion(target.dataset.commission || '');
+  });
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (elements.commissionInput.contains(target) || elements.commissionSuggestionsList?.contains(target)) return;
+    hideCommissionSuggestionsList();
   });
   elements.expensesToggleInput.addEventListener('change', syncExpenseToggleState);
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
