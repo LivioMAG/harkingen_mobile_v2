@@ -179,9 +179,10 @@ const elements = {
   fullNameField: document.getElementById('fullNameField'),
   signOutBtn: document.getElementById('signOutBtn'),
   appView: document.getElementById('appView'),
-  timesheetTabBtn: document.getElementById('timesheetTabBtn'),
-  dashboardTabBtn: document.getElementById('dashboardTabBtn'),
-  settingsTabBtn: document.getElementById('settingsTabBtn'),
+  navMenuToggleBtn: document.getElementById('navMenuToggleBtn'),
+  navMenuDrawer: document.getElementById('navMenuDrawer'),
+  navMenuBackdrop: document.getElementById('navMenuBackdrop'),
+  navMenuItems: document.querySelectorAll('[data-nav-view]'),
   authForm: document.getElementById('authForm'),
   forgotPasswordForm: document.getElementById('forgotPasswordForm'),
   verifyOtpForm: document.getElementById('verifyOtpForm'),
@@ -357,8 +358,31 @@ function setPill(element, text, variant) {
 function syncBodyScrollLock() {
   const hasOpenDrawer =
     !elements.entryDrawer.classList.contains('hidden') ||
-    !elements.holidayDrawer.classList.contains('hidden');
+    !elements.holidayDrawer.classList.contains('hidden') ||
+    !elements.navMenuDrawer.classList.contains('hidden');
   document.body.classList.toggle('drawer-open', hasOpenDrawer);
+}
+
+function closeNavMenu() {
+  elements.navMenuDrawer?.classList.add('hidden');
+  elements.navMenuDrawer?.setAttribute('aria-hidden', 'true');
+  elements.navMenuToggleBtn?.setAttribute('aria-expanded', 'false');
+  syncBodyScrollLock();
+}
+
+function openNavMenu() {
+  elements.navMenuDrawer?.classList.remove('hidden');
+  elements.navMenuDrawer?.setAttribute('aria-hidden', 'false');
+  elements.navMenuToggleBtn?.setAttribute('aria-expanded', 'true');
+  syncBodyScrollLock();
+}
+
+function toggleNavMenu() {
+  if (elements.navMenuDrawer?.classList.contains('hidden')) {
+    openNavMenu();
+  } else {
+    closeNavMenu();
+  }
 }
 
 function setCurrentView(view) {
@@ -376,12 +400,12 @@ function setCurrentView(view) {
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', inPassword);
   elements.passwordView?.classList.toggle('hidden', !inPassword);
-  elements.timesheetTabBtn?.classList.toggle('active', inTimesheet);
-  elements.timesheetTabBtn?.setAttribute('aria-selected', String(inTimesheet));
-  elements.dashboardTabBtn?.classList.toggle('active', inDashboard);
-  elements.dashboardTabBtn?.setAttribute('aria-selected', String(inDashboard));
-  elements.settingsTabBtn?.classList.toggle('active', inSettings);
-  elements.settingsTabBtn?.setAttribute('aria-selected', String(inSettings));
+  elements.navMenuItems?.forEach((item) => {
+    const itemView = item.dataset.navView;
+    const isActive = itemView === 'settings' ? inSettings : itemView === state.currentView;
+    item.classList.toggle('active', isActive);
+    item.setAttribute('aria-current', isActive ? 'page' : 'false');
+  });
 }
 
 function formatCurrency(value) {
@@ -2304,6 +2328,7 @@ function renderHolidayRequests() {
 
 function render() {
   const isAuthenticated = Boolean(state.session?.user);
+  closeNavMenu();
   elements.authCard.classList.toggle('hidden', isAuthenticated);
   elements.appView.classList.toggle('hidden', !isAuthenticated);
   elements.signOutBtn.classList.toggle('hidden', !isAuthenticated);
@@ -2363,14 +2388,13 @@ function registerEventListeners() {
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
   elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
-  elements.timesheetTabBtn?.addEventListener('click', () => {
-    setCurrentView('timesheet');
-  });
-  elements.dashboardTabBtn?.addEventListener('click', () => {
-    setCurrentView('dashboard');
-  });
-  elements.settingsTabBtn?.addEventListener('click', () => {
-    setCurrentView('settings');
+  elements.navMenuToggleBtn?.addEventListener('click', toggleNavMenu);
+  elements.navMenuBackdrop?.addEventListener('click', closeNavMenu);
+  elements.navMenuItems?.forEach((item) => {
+    item.addEventListener('click', () => {
+      setCurrentView(item.dataset.navView);
+      closeNavMenu();
+    });
   });
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');

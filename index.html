@@ -20,12 +20,6 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <h1>MArechaux Sursee App</h1>
-        </div>
-      </header>
-
       <main class="content-stack">
         <section class="glass-card auth-card" id="authCard">
           <div class="section-head compact auth-head">
@@ -121,17 +115,35 @@
         </section>
 
         <section class="app-view hidden" id="appView">
-          <nav class="top-tabbar" aria-label="Hauptnavigation">
-            <button id="dashboardTabBtn" class="top-tab icon-tab" type="button" aria-selected="false" aria-label="Dashboard" title="Dashboard">
-              📊
+          <header class="app-nav">
+            <button
+              id="navMenuToggleBtn"
+              class="menu-toggle-btn"
+              type="button"
+              aria-label="Navigation öffnen"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="navMenuDrawer"
+              title="Navigation öffnen"
+            >
+              ☰
             </button>
-            <button id="timesheetTabBtn" class="top-tab icon-tab active" type="button" aria-selected="true" aria-label="Zeiterfassung" title="Zeiterfassung">
-              ⏱️
-            </button>
-            <button id="settingsTabBtn" class="top-tab icon-tab" type="button" aria-selected="false" aria-label="Profil" title="Profil">
-              👤
-            </button>
-          </nav>
+          </header>
+
+          <aside class="nav-menu hidden" id="navMenuDrawer" aria-hidden="true" aria-label="Hauptnavigation">
+            <button class="nav-menu-backdrop" id="navMenuBackdrop" type="button" aria-label="Navigation schliessen"></button>
+            <nav class="nav-menu-panel">
+              <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung">
+                ⏱️
+              </button>
+              <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard">
+                📊
+              </button>
+              <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil">
+                👤
+              </button>
+            </nav>
+          </aside>
 
           <section class="hero-week-panel glass-card" id="dashboardWeekPanel">
             <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
