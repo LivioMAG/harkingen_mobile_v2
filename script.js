@@ -357,7 +357,6 @@ function setPill(element, text, variant) {
 function syncBodyScrollLock() {
   const hasOpenDrawer =
     !elements.entryDrawer.classList.contains('hidden') ||
-    !elements.holidayDrawer.classList.contains('hidden') ||
     !elements.navMenuDrawer.classList.contains('hidden');
   document.body.classList.toggle('drawer-open', hasOpenDrawer);
 }
@@ -2175,9 +2174,6 @@ function closeDrawer() {
 
 function openHolidayDrawer(holiday = null) {
   state.editingHoliday = holiday;
-  elements.holidayDrawer.classList.remove('hidden');
-  elements.holidayDrawer.setAttribute('aria-hidden', 'false');
-  syncBodyScrollLock();
   elements.holidayIdInput.value = holiday?.id || '';
   elements.holidayStartDateInput.value = holiday?.start_date || getISODate(new Date());
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
@@ -2190,12 +2186,11 @@ function openHolidayDrawer(holiday = null) {
 
 function closeHolidayDrawer() {
   state.editingHoliday = null;
-  elements.holidayDrawer.classList.add('hidden');
-  elements.holidayDrawer.setAttribute('aria-hidden', 'true');
-  syncBodyScrollLock();
   elements.holidayForm.reset();
   resetAttachmentState('holiday', []);
   renderAttachmentPreview('holiday');
+  elements.holidayStartDateInput.value = getISODate(new Date());
+  elements.holidayEndDateInput.value = getISODate(new Date());
 }
 
 function renderAttachmentPreview(kind) {
@@ -2425,7 +2420,6 @@ function registerEventListeners() {
   elements.passwordResetForm.addEventListener('submit', changePassword);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
-  elements.openHolidayDrawerBtn.addEventListener('click', () => openHolidayDrawer());
   elements.navMenuToggleBtn?.addEventListener('click', toggleNavMenu);
   elements.navMenuBackdrop?.addEventListener('click', closeNavMenu);
   elements.navMenuItems?.forEach((item) => {
@@ -2445,7 +2439,6 @@ function registerEventListeners() {
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
-  elements.closeHolidayDrawerBtn.addEventListener('click', closeHolidayDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
   elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
   elements.commissionInput.addEventListener('focus', () => {
@@ -2530,12 +2523,10 @@ function registerEventListeners() {
   elements.entryDrawer.addEventListener('click', (event) => {
     if (event.target.dataset.closeDrawer === 'true') closeDrawer();
   });
-  elements.holidayDrawer.addEventListener('click', (event) => {
-    if (event.target.dataset.closeHolidayDrawer === 'true') closeHolidayDrawer();
-  });
 }
 
 setAuthMode('login');
 registerEventListeners();
+openHolidayDrawer();
 syncBodyScrollLock();
 loadConfig();
