@@ -302,11 +302,13 @@
         <div class="drawer-head">
           <div>
             <p class="section-label">Rapport erfassen</p>
-            <h2 id="drawerTitle">Neuer Eintrag</h2>
+            <div class="drawer-title-row">
+              <h2 id="drawerTitle">Neuer Eintrag</h2>
+              <button class="icon-btn drawer-close-icon-btn" id="closeDrawerLinkBtn" type="button" aria-label="Schliessen">×</button>
+            </div>
             <p id="drawerDateLabel">Datum</p>
           </div>
           <div class="drawer-head-actions">
-            <button class="link-btn drawer-link-btn" id="closeDrawerLinkBtn" type="button">Schliessen</button>
             <label class="field compact-field report-type-field">
               <span>Rapportart</span>
               <select id="reportTypeInput">
@@ -392,9 +394,9 @@
             </label>
           </div>
 
-          <div class="field-row split-pair two-columns">
+          <div class="field-row split-pair two-columns" id="normalCostFields">
             <label class="field compact-field">
-              <span>Spesen</span>
+              <span>Mittagsspesen</span>
               <label class="checkbox-inline">
                 <input id="expensesToggleInput" type="checkbox" />
                 <span>18 CHF Pauschale</span>
