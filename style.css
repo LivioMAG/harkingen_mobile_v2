@@ -208,6 +208,16 @@ code {
   margin-top: 14px;
 }
 
+.inline-form-card {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.inline-drawer-head {
+  margin-bottom: 14px;
+}
+
 .profile-icon-actions {
   display: flex;
   align-items: center;

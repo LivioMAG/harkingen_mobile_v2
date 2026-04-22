@@ -187,17 +187,77 @@
                   <p>Beantrage hier Ferien oder erfasse weitere Abwesenheiten.</p>
                 </div>
               </div>
-              <div class="settings-extra-actions">
-                <button
-                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
-                  id="openHolidayDrawerBtn"
-                  type="button"
-                  aria-label="Ferien beantragen"
-                  title="Ferien beantragen"
-                >
-                  🏖️
-                </button>
-              </div>
+              <section class="inline-form-card" id="holidayDrawer" aria-hidden="false">
+                <div class="drawer-head inline-drawer-head">
+                  <div>
+                    <p class="section-label">Abwesenheit erfassen</p>
+                    <h2 id="holidayDrawerTitle">Ferien beantragen</h2>
+                    <p>Ferien, Militär, Zivildienst, Unfall oder Krankheit bequem erfassen.</p>
+                  </div>
+                </div>
+
+                <form id="holidayForm" class="form-grid">
+                  <input id="holidayIdInput" type="hidden" />
+
+                  <div class="field-row two-columns">
+                    <label class="field">
+                      <span>Von</span>
+                      <input id="holidayStartDateInput" type="date" required />
+                    </label>
+                    <label class="field">
+                      <span>Bis</span>
+                      <input id="holidayEndDateInput" type="date" required />
+                    </label>
+                  </div>
+
+                  <label class="field">
+                    <span>Art der Abwesenheit</span>
+                    <select id="holidayTypeInput" required>
+                      <option value="ferien">Urlaub / Ferien</option>
+                      <option value="militaer">Militär</option>
+                      <option value="zivildienst">Zivildienst</option>
+                      <option value="unfall">Unfall</option>
+                      <option value="krankheit">Krankheit</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Bemerkung</span>
+                    <textarea id="holidayNotesInput" rows="4" placeholder="Optional: Zusatzinfos, Hinweise, Einsatznummer oder Bemerkung"></textarea>
+                  </label>
+
+                  <div class="field media-upload-field">
+                    <div class="media-upload-head">
+                      <span>Beweise &amp; Anhänge</span>
+                      <div class="media-upload-actions">
+                        <button class="icon-action-btn media-upload-btn" id="holidayAttachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
+                          <span aria-hidden="true">📷</span>
+                        </button>
+                        <button class="secondary-btn media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button">
+                          Galerie öffnen
+                        </button>
+                      </div>
+                    </div>
+                    <input id="holidayAttachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
+                    <input id="holidayAttachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*" multiple />
+                    <small>Fotos, Arztzeugnisse oder andere Dokumente können nacheinander hinzugefügt werden.</small>
+                  </div>
+
+                  <div class="upload-preview hidden" id="existingHolidayAttachmentsBlock">
+                    <div class="inline-head upload-preview-head">
+                      <strong>Beweise &amp; Anhänge</strong>
+                      <span class="muted" id="holidayAttachmentCountLabel">0 Dateien</span>
+                    </div>
+                    <div id="existingHolidayAttachmentsList" class="attachment-list"></div>
+                  </div>
+
+                  <div class="drawer-actions">
+                    <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button">Antrag löschen</button>
+                    <button class="secondary-btn" id="resetHolidayBtn" type="reset">Zurücksetzen</button>
+                    <button class="primary-btn" id="saveHolidayBtn" type="submit">Antrag speichern</button>
+                  </div>
+                </form>
+              </section>
             </section>
 
             <section class="glass-card requests-card" id="requestsCard">
@@ -459,82 +519,6 @@
           <div class="drawer-actions">
             <button class="ghost-btn hidden" id="deleteEntryBtn" type="button">Eintrag löschen</button>
             <button class="primary-btn" id="saveEntryBtn" type="submit">Speichern</button>
-          </div>
-        </form>
-      </section>
-    </div>
-
-    <div class="drawer hidden" id="holidayDrawer" aria-hidden="true">
-      <div class="drawer-backdrop" data-close-holiday-drawer="true"></div>
-      <section class="drawer-panel">
-        <div class="drawer-head">
-          <div>
-            <p class="section-label">Abwesenheit erfassen</p>
-            <h2 id="holidayDrawerTitle">Ferien beantragen</h2>
-            <p>Ferien, Militär, Zivildienst, Unfall oder Krankheit bequem erfassen.</p>
-          </div>
-          <button class="icon-btn" id="closeHolidayDrawerBtn" type="button" aria-label="Schliessen">×</button>
-        </div>
-
-        <form id="holidayForm" class="form-grid">
-          <input id="holidayIdInput" type="hidden" />
-
-          <div class="field-row two-columns">
-            <label class="field">
-              <span>Von</span>
-              <input id="holidayStartDateInput" type="date" required />
-            </label>
-            <label class="field">
-              <span>Bis</span>
-              <input id="holidayEndDateInput" type="date" required />
-            </label>
-          </div>
-
-          <label class="field">
-            <span>Art der Abwesenheit</span>
-            <select id="holidayTypeInput" required>
-              <option value="ferien">Urlaub / Ferien</option>
-              <option value="militaer">Militär</option>
-              <option value="zivildienst">Zivildienst</option>
-              <option value="unfall">Unfall</option>
-              <option value="krankheit">Krankheit</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Bemerkung</span>
-            <textarea id="holidayNotesInput" rows="4" placeholder="Optional: Zusatzinfos, Hinweise, Einsatznummer oder Bemerkung"></textarea>
-          </label>
-
-          <div class="field media-upload-field">
-            <div class="media-upload-head">
-              <span>Beweise &amp; Anhänge</span>
-              <div class="media-upload-actions">
-                <button class="icon-action-btn media-upload-btn" id="holidayAttachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
-                  <span aria-hidden="true">📷</span>
-                </button>
-                <button class="secondary-btn media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button">
-                  Galerie öffnen
-                </button>
-              </div>
-            </div>
-            <input id="holidayAttachmentsCameraInput" class="visually-hidden-input" type="file" accept="image/*" capture="environment" multiple />
-            <input id="holidayAttachmentsGalleryInput" class="visually-hidden-input" type="file" accept="image/*" multiple />
-            <small>Fotos, Arztzeugnisse oder andere Dokumente können nacheinander hinzugefügt werden.</small>
-          </div>
-
-          <div class="upload-preview hidden" id="existingHolidayAttachmentsBlock">
-            <div class="inline-head upload-preview-head">
-              <strong>Beweise &amp; Anhänge</strong>
-              <span class="muted" id="holidayAttachmentCountLabel">0 Dateien</span>
-            </div>
-            <div id="existingHolidayAttachmentsList" class="attachment-list"></div>
-          </div>
-
-          <div class="drawer-actions">
-            <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button">Antrag löschen</button>
-            <button class="secondary-btn" id="resetHolidayBtn" type="reset">Zurücksetzen</button>
-            <button class="primary-btn" id="saveHolidayBtn" type="submit">Antrag speichern</button>
           </div>
         </form>
       </section>
