@@ -209,6 +209,7 @@ const elements = {
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
+  holidayAbsencesView: document.getElementById('holidayAbsencesView'),
   settingsView: document.getElementById('settingsView'),
   requestsCard: document.getElementById('requestsCard'),
   holidayList: document.getElementById('holidayList'),
@@ -384,19 +385,21 @@ function toggleNavMenu() {
 }
 
 function setCurrentView(view) {
-  state.currentView = ['timesheet', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
+  state.currentView = ['timesheet', 'holidayAbsences', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
   const inSettings = ['settings', 'password'].includes(state.currentView);
   const inTimesheet = state.currentView === 'timesheet';
+  const inHolidayAbsences = state.currentView === 'holidayAbsences';
   const inDashboard = state.currentView === 'dashboard';
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
+  elements.holidayAbsencesView?.classList.toggle('hidden', !inHolidayAbsences);
   elements.dashboardWeekPanel?.classList.toggle('hidden', !inTimesheet);
   elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
   elements.settingsCard?.classList.toggle('hidden', inPassword);
-  elements.requestsCard?.classList.toggle('hidden', inPassword);
+  elements.requestsCard?.classList.toggle('hidden', !inHolidayAbsences);
   elements.passwordView?.classList.toggle('hidden', !inPassword);
   elements.navMenuItems?.forEach((item) => {
     const itemView = item.dataset.navView;

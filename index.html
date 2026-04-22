@@ -136,6 +136,9 @@
               <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung">
                 ⏱️
               </button>
+              <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Ferienabwesenheiten" title="Ferienabwesenheiten">
+                🏖️
+              </button>
               <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard">
                 📊
               </button>
@@ -175,6 +178,41 @@
             </div>
           </section>
 
+          <section class="settings-view hidden" id="holidayAbsencesView">
+            <section class="glass-card settings-card">
+              <div class="section-head compact">
+                <div>
+                  <p class="section-label">Ferienabwesenheiten</p>
+                  <h2>Ferien &amp; Absenzen</h2>
+                  <p>Beantrage hier Ferien oder erfasse weitere Abwesenheiten.</p>
+                </div>
+              </div>
+              <div class="settings-extra-actions">
+                <button
+                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
+                  id="openHolidayDrawerBtn"
+                  type="button"
+                  aria-label="Ferien beantragen"
+                  title="Ferien beantragen"
+                >
+                  🏖️
+                </button>
+              </div>
+            </section>
+
+            <section class="glass-card requests-card" id="requestsCard">
+              <div class="section-head compact">
+                <div>
+                  <p class="section-label">Abwesenheiten</p>
+                  <h2>Ferien &amp; Absenzen</h2>
+                  <p>Hier siehst du deine erfassten Ferien-, Krankheits- und sonstigen Abwesenheitsanträge.</p>
+                </div>
+                <span class="pill neutral" id="holidayCountPill">0 Anträge</span>
+              </div>
+              <div id="holidayList" class="request-list"></div>
+            </section>
+          </section>
+
           <section class="settings-view hidden" id="settingsView">
             <section class="glass-card settings-card" id="settingsCard">
               <div class="section-head compact">
@@ -185,16 +223,6 @@
                 </div>
               </div>
               <div class="profile-icon-actions" aria-label="Profilaktionen">
-                <button
-                  class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
-                  id="openHolidayDrawerBtn"
-                  type="button"
-                  aria-label="Ferien beantragen"
-                  title="Ferien beantragen"
-                >
-                  🏖️
-                </button>
-                <span class="profile-icon-actions-spacer" aria-hidden="true"></span>
                 <button
                   class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn"
                   id="openPasswordViewBtn"
@@ -280,17 +308,6 @@
               </form>
             </section>
 
-            <section class="glass-card requests-card" id="requestsCard">
-              <div class="section-head compact">
-                <div>
-                  <p class="section-label">Abwesenheiten</p>
-                  <h2>Ferien &amp; Absenzen</h2>
-                  <p>Hier siehst du deine erfassten Ferien-, Krankheits- und sonstigen Abwesenheitsanträge.</p>
-                </div>
-                <span class="pill neutral" id="holidayCountPill">0 Anträge</span>
-              </div>
-              <div id="holidayList" class="request-list"></div>
-            </section>
           </section>
         </section>
       </main>
