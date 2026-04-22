@@ -331,6 +331,22 @@ small {
   justify-content: flex-end;
 }
 
+.drawer-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.drawer-close-icon-btn {
+  min-height: 38px;
+  width: 38px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 .drawer-head-actions .report-type-field {
   flex: 1 1 100%;
 }

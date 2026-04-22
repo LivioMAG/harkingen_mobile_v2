@@ -240,6 +240,7 @@ const elements = {
   commissionSuggestionsList: document.getElementById('commissionSuggestionsList'),
   expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
+  normalCostFields: document.getElementById('normalCostFields'),
   specialTimeFields: document.getElementById('specialTimeFields'),
   startTimeInput: document.getElementById('startTimeInput'),
   endTimeInput: document.getElementById('endTimeInput'),
@@ -1012,6 +1013,7 @@ function applyReportTypeSelection(reportType) {
     elements.expensesInput.value = 18;
   }
   elements.normalTimeFields.classList.toggle('hidden', isAutoType);
+  elements.normalCostFields?.classList.toggle('hidden', isAutoType);
   elements.specialTimeFields.classList.toggle('hidden', !isAutoType);
   elements.startTimeInput.required = !isAutoType;
   elements.endTimeInput.required = !isAutoType;
