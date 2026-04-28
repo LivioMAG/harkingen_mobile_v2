@@ -132,11 +132,17 @@ const HOLIDAY_REQUEST_COLUMNS = [
   'start_date',
   'end_date',
   'request_type',
+  'approval_status',
   'notes',
   'attachments',
   'created_at',
   'updated_at'
 ].join(', ');
+const HOLIDAY_APPROVAL_STATUS = {
+  rejected: 0,
+  pending: 1,
+  approved: 2
+};
 const ROLE_OPTIONS = ['Lehrling', 'Elektrikinstallateur', 'Bauleiter', 'Projektleiter'];
 const DEFAULT_ROLE_LABEL = ROLE_OPTIONS[0];
 
@@ -1928,6 +1934,18 @@ function getHolidayPayload(existingAttachments) {
   };
 }
 
+function getHolidayApprovalMeta(approvalStatus) {
+  if (approvalStatus === HOLIDAY_APPROVAL_STATUS.rejected) {
+    return { label: 'Abgelehnt', pillClass: 'danger' };
+  }
+
+  if (approvalStatus === HOLIDAY_APPROVAL_STATUS.approved) {
+    return { label: 'Angenommen', pillClass: 'success' };
+  }
+
+  return { label: 'In Bearbeitung', pillClass: 'warning' };
+}
+
 async function saveEntry(event) {
   event.preventDefault();
   if (!state.supabase || !state.session?.user) {
@@ -2027,6 +2045,11 @@ async function saveHolidayRequest(event) {
   event.preventDefault();
   if (!state.supabase || !state.session?.user) {
     showToast('Bitte zuerst anmelden.', 'error');
+    return;
+  }
+
+  if (state.editingHoliday?.id) {
+    showToast('Eingereichte Anträge können nicht mehr bearbeitet werden.', 'warning');
     return;
   }
 
@@ -2220,13 +2243,23 @@ function closeDrawer() {
 
 function openHolidayDrawer(holiday = null) {
   state.editingHoliday = holiday;
+  const isExistingRequest = Boolean(holiday?.id);
+  const actionLabel = holiday?.approval_status === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
   elements.holidayIdInput.value = holiday?.id || '';
   elements.holidayStartDateInput.value = holiday?.start_date || getISODate(new Date());
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
   elements.holidayTypeInput.value = holiday?.request_type || 'ferien';
   elements.holidayNotesInput.value = holiday?.notes || '';
+  elements.holidayStartDateInput.disabled = isExistingRequest;
+  elements.holidayEndDateInput.disabled = isExistingRequest;
+  elements.holidayTypeInput.disabled = isExistingRequest;
+  elements.holidayNotesInput.readOnly = isExistingRequest;
+  elements.holidayAttachmentsCameraBtn.disabled = isExistingRequest;
+  elements.holidayAttachmentsGalleryBtn.disabled = isExistingRequest;
+  elements.saveHolidayBtn.classList.toggle('hidden', isExistingRequest);
+  elements.deleteHolidayBtn.textContent = `Antrag ${actionLabel}`;
   resetAttachmentState('holiday', holiday?.attachments || []);
-  elements.deleteHolidayBtn.classList.toggle('hidden', !holiday);
+  elements.deleteHolidayBtn.classList.toggle('hidden', !isExistingRequest);
   renderAttachmentPreview('holiday');
 }
 
@@ -2237,6 +2270,14 @@ function closeHolidayDrawer() {
   renderAttachmentPreview('holiday');
   elements.holidayStartDateInput.value = getISODate(new Date());
   elements.holidayEndDateInput.value = getISODate(new Date());
+  elements.holidayStartDateInput.disabled = false;
+  elements.holidayEndDateInput.disabled = false;
+  elements.holidayTypeInput.disabled = false;
+  elements.holidayNotesInput.readOnly = false;
+  elements.holidayAttachmentsCameraBtn.disabled = false;
+  elements.holidayAttachmentsGalleryBtn.disabled = false;
+  elements.saveHolidayBtn.classList.remove('hidden');
+  elements.deleteHolidayBtn.textContent = 'Antrag löschen';
 }
 
 function renderAttachmentPreview(kind) {
@@ -2280,10 +2321,14 @@ function renderAttachmentPreview(kind) {
     `;
 
     const removeBtn = document.createElement('button');
+    const allowAttachmentRemoval = !(kind === 'holiday' && state.editingHoliday?.id);
     removeBtn.type = 'button';
     removeBtn.className = 'ghost-btn attachment-remove-btn';
     removeBtn.textContent = 'Entfernen';
-    removeBtn.addEventListener('click', () => removeAttachment(kind, isPending ? index - existingFiles.length : index, isPending));
+    removeBtn.disabled = !allowAttachmentRemoval;
+    if (allowAttachmentRemoval) {
+      removeBtn.addEventListener('click', () => removeAttachment(kind, isPending ? index - existingFiles.length : index, isPending));
+    }
 
     item.append(preview, body, removeBtn);
     config.list.appendChild(item);
@@ -2376,6 +2421,8 @@ function renderHolidayRequests() {
     const end = formatDate(parseLocalDate(holiday.end_date));
     const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
     const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
+    const status = getHolidayApprovalMeta(Number(holiday.approval_status));
+    const actionLabel = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
 
     article.innerHTML = `
       <div class="request-item-header">
@@ -2388,7 +2435,8 @@ function renderHolidayRequests() {
       </div>
       <div class="chip-list"></div>
       <div class="request-item-actions">
-        <button class="secondary-btn" type="button">Bearbeiten</button>
+        <span class="pill ${status.pillClass}">${status.label}</span>
+        <button class="secondary-btn" type="button">${actionLabel}</button>
       </div>
     `;
 
