@@ -816,7 +816,7 @@ function syncReportTypeFromProjectOrCommission() {
   if (!reportType || elements.reportTypeInput.value === reportType) return;
 
   elements.reportTypeInput.value = reportType;
-  applyReportTypeSelection(reportType);
+  applyReportTypeSelection(reportType, { setDefaultAutoHours: true });
 }
 
 function pickFirstFilledValue(record, keys) {
@@ -997,7 +997,8 @@ async function handleCommissionInput() {
   return suggestions;
 }
 
-function applyReportTypeSelection(reportType) {
+function applyReportTypeSelection(reportType, options = {}) {
+  const { setDefaultAutoHours = true } = options;
   const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
   const isAutoType = AUTO_REPORT_TYPES.has(reportType);
   const commissionField = elements.commissionInput.closest('.field');
@@ -1027,6 +1028,7 @@ function applyReportTypeSelection(reportType) {
   commissionField?.classList.toggle('hidden', isAutoType);
   projectNameField?.classList.toggle('hidden', isAutoType);
   elements.reportTypeInput.dataset.previousValue = reportType;
+  syncAutoReportHourConstraints({ setDefaultForAutoType: isAutoType && setDefaultAutoHours });
   syncExpenseToggleState();
 }
 
@@ -1133,6 +1135,7 @@ async function syncSessionState(session) {
 
   try {
     await ensureProfile(session.user);
+    await loadOptionalProfileWeeklyHours(session.user.id);
     await Promise.all([loadEntries(), loadHolidayRequests()]);
   } catch (error) {
     console.error(error);
@@ -1180,6 +1183,48 @@ function getDisplayName(profile, fallbackEmail = '') {
   const last = profile?.last_name?.trim() || '';
   const full = [first, last].filter(Boolean).join(' ').trim();
   return full || profile?.full_name || fallbackEmail;
+}
+
+function getAutoReportMaxHours() {
+  const weeklyHours = Number(state.profile?.weekly_hours || 0);
+  const profileDailyHours = Number.isFinite(weeklyHours) && weeklyHours > 0 ? weeklyHours / 5 : 0;
+  return Math.max(DEFAULT_WORK_HOURS, profileDailyHours);
+}
+
+function syncAutoReportHourConstraints({ setDefaultForAutoType = false } = {}) {
+  const maxHours = getAutoReportMaxHours();
+  elements.workHoursInput.max = String(maxHours);
+
+  if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
+    if (setDefaultForAutoType) {
+      elements.workHoursInput.value = String(maxHours);
+    } else {
+      const current = Number(elements.workHoursInput.value || 0);
+      if (current > maxHours) elements.workHoursInput.value = String(maxHours);
+      if (current < 0) elements.workHoursInput.value = '0';
+    }
+  }
+}
+
+async function loadOptionalProfileWeeklyHours(profileId) {
+  if (!state.supabase || !profileId) return;
+
+  const { data, error } = await state.supabase
+    .from('app_profiles')
+    .select('weekly_hours')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  if (error) {
+    const message = String(error.message || '').toLowerCase();
+    if (message.includes('weekly_hours') && message.includes('does not exist')) return;
+    console.warn('Weekly Hours konnte nicht geladen werden:', error.message);
+    return;
+  }
+
+  if (!state.profile) return;
+  state.profile = normalizeProfile({ ...state.profile, weekly_hours: Number(data?.weekly_hours || 0) || 0 });
+  syncAutoReportHourConstraints();
 }
 
 function areProfileFieldsEqual(left, right) {
@@ -1902,8 +1947,9 @@ async function saveEntry(event) {
     return;
   }
 
-  if (isAutoType && (payload.total_work_minutes <= 0 || payload.total_work_minutes > 8 * 60)) {
-    showToast('Zeit muss zwischen 0 und 8 Stunden liegen.', 'error');
+  const maxAutoMinutes = Math.round(getAutoReportMaxHours() * 60);
+  if (isAutoType && (payload.total_work_minutes <= 0 || payload.total_work_minutes > maxAutoMinutes)) {
+    showToast(`Zeit muss zwischen 0 und ${getAutoReportMaxHours()} Stunden liegen.`, 'error');
     return;
   }
 
@@ -2129,13 +2175,13 @@ function openDrawer(isoDate, entry = null) {
   elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = Math.min(8, Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
+  elements.workHoursInput.value = Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.expensesToggleInput.checked = Number(entry?.expenses_amount || 0) > 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
   const mergedNotes = [entry?.notes, entry?.expense_note].map((value) => String(value || '').trim()).filter(Boolean).join('\n');
   elements.notesInput.value = mergedNotes;
-  applyReportTypeSelection(reportType);
+  applyReportTypeSelection(reportType, { setDefaultAutoHours: !entry });
   loadProjectSuggestions().then(() => {
     renderCommissionSuggestions(elements.commissionInput.value);
     syncExpenseToggleState();
@@ -2158,7 +2204,7 @@ function closeDrawer() {
   elements.endTimeInput.value = DEFAULT_END_TIME;
   setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
   setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = DEFAULT_WORK_HOURS;
+  elements.workHoursInput.value = getAutoReportMaxHours();
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
   renderCommissionSuggestions('');
@@ -2167,7 +2213,7 @@ function closeDrawer() {
   elements.expensesInput.readOnly = true;
   elements.expensesToggleInput.checked = false;
   elements.expensesToggleInput.disabled = false;
-  applyReportTypeSelection('');
+  applyReportTypeSelection('', { setDefaultAutoHours: false });
   resetAttachmentState('report', []);
   renderAttachmentPreview('report');
 }
@@ -2439,7 +2485,7 @@ function registerEventListeners() {
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
-  elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value));
+  elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value, { setDefaultAutoHours: true }));
   elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
   elements.commissionInput.addEventListener('focus', () => {
     loadProjectSuggestions().then(() => renderCommissionSuggestions(elements.commissionInput.value));
@@ -2494,12 +2540,13 @@ function registerEventListeners() {
   elements.endTimeInput.addEventListener('change', syncNormalBreakRules);
   elements.workHoursInput.addEventListener('input', () => {
     const value = Number(elements.workHoursInput.value || 0);
-    if (value > 8) elements.workHoursInput.value = '8';
+    const maxHours = getAutoReportMaxHours();
+    if (value > maxHours) elements.workHoursInput.value = String(maxHours);
     if (value < 0) elements.workHoursInput.value = '0';
   });
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
-      elements.workHoursInput.value = DEFAULT_WORK_HOURS;
+      elements.workHoursInput.value = getAutoReportMaxHours();
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
       setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
@@ -2509,7 +2556,7 @@ function registerEventListeners() {
       elements.expensesInput.readOnly = true;
       elements.expensesToggleInput.checked = false;
       elements.expensesToggleInput.disabled = false;
-      applyReportTypeSelection('');
+      applyReportTypeSelection('', { setDefaultAutoHours: false });
       resetAttachmentState('report', []);
       renderAttachmentPreview('report');
     }, 0);
@@ -2528,5 +2575,6 @@ function registerEventListeners() {
 setAuthMode('login');
 registerEventListeners();
 openHolidayDrawer();
+syncAutoReportHourConstraints();
 syncBodyScrollLock();
 loadConfig();
