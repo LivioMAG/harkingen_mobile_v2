@@ -170,7 +170,8 @@ const state = {
   holidayPendingFiles: [],
   surchargeRules: DEFAULT_SURCHARGE_RULES,
   projectSuggestionsLoaded: false,
-  projectSuggestions: []
+  projectSuggestions: [],
+  dashboardReportDownloadLoading: false
 };
 
 const elements = {
@@ -207,6 +208,9 @@ const elements = {
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
   dashboardView: document.getElementById('dashboardView'),
+  dashboardReportYearInput: document.getElementById('dashboardReportYearInput'),
+  dashboardReportWeekInput: document.getElementById('dashboardReportWeekInput'),
+  dashboardReportDownloadBtn: document.getElementById('dashboardReportDownloadBtn'),
   weekEntryCount: document.getElementById('weekEntryCount'),
   weekMinutesTotal: document.getElementById('weekMinutesTotal'),
   weekExpensesTotal: document.getElementById('weekExpensesTotal'),
@@ -461,6 +465,83 @@ function getWeekNumber(date) {
   copy.setUTCDate(copy.getUTCDate() + 4 - dayNumber);
   const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
   return Math.ceil((((copy - yearStart) / 86400000) + 1) / 7);
+}
+
+function getIsoWeekStartForYearAndWeek(year, week) {
+  const jan4 = new Date(year, 0, 4);
+  const jan4IsoDay = (jan4.getDay() + 6) % 7;
+  const week1Monday = new Date(year, 0, 4 - jan4IsoDay);
+  week1Monday.setHours(0, 0, 0, 0);
+  const monday = new Date(week1Monday);
+  monday.setDate(week1Monday.getDate() + (week - 1) * 7);
+  return monday;
+}
+
+function getIsoWeekYearAndNumber(date = new Date()) {
+  const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = copy.getUTCDay() || 7;
+  copy.setUTCDate(copy.getUTCDate() + 4 - dayNumber);
+  const isoYear = copy.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const isoWeek = Math.ceil((((copy - yearStart) / 86400000) + 1) / 7);
+  return { isoYear, isoWeek };
+}
+
+function buildWeeklyMatrixRows(reports) { return reports || []; }
+function buildAbsenceMatrixRows(reports) { return reports || []; }
+function buildWeeklyRemarkLines() { return []; }
+function drawReportHeader() {}
+function drawWeeklyTotalRow() {}
+function drawAbsenceTable() {}
+function drawRemarksBox() {}
+
+function drawWeeklyReportPage(doc, payload) {
+  const { profileName, week, year, weekStart, weekEnd, reports } = payload;
+  const absenceRows = buildAbsenceMatrixRows(reports);
+  const remarkLines = buildWeeklyRemarkLines();
+  drawReportHeader(doc, payload);
+  drawWeeklyTotalRow(doc, buildWeeklyMatrixRows(reports));
+  drawAbsenceTable(doc, absenceRows);
+  drawRemarksBox(doc, remarkLines);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Wochenrapport', 14, 18);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Name: ${profileName || '—'}`, 14, 28);
+  doc.text(`KW ${week} / ${year}`, 14, 34);
+  doc.text(`Zeitraum: ${formatDate(weekStart)} – ${formatDate(weekEnd)}`, 14, 40);
+  doc.text(`Einträge: ${reports.length}`, 14, 46);
+}
+
+async function exportWeekPdf({ year, week, profileId, currentUserOnly = false } = {}) {
+  if (!state.supabase || !state.session?.user) throw new Error('Nicht angemeldet.');
+  const selectedProfileId = currentUserOnly ? state.session.user.id : profileId;
+  if (!selectedProfileId) throw new Error('Profil nicht gefunden.');
+  const weekStart = getIsoWeekStartForYearAndWeek(year, week);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 5);
+  const startIso = getISODate(weekStart);
+  const endIso = getISODate(weekEnd);
+  const { data: reports, error } = await state.supabase
+    .from('weekly_reports')
+    .select(WEEKLY_REPORT_COLUMNS)
+    .eq('profile_id', selectedProfileId)
+    .gte('work_date', startIso)
+    .lte('work_date', endIso)
+    .order('work_date', { ascending: true });
+  if (error) throw error;
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  drawWeeklyReportPage(doc, {
+    profileName: getProfileDisplayName(state.profile),
+    week,
+    year,
+    weekStart,
+    weekEnd,
+    reports: reports || []
+  });
+  const safeName = String(getProfileDisplayName(state.profile) || 'user').replace(/[^\w.-]+/g, '_');
+  doc.save(`wochenrapport_KW-${week}_${year}_${safeName}.pdf`);
 }
 
 function toMinutes(timeValue) {
@@ -2514,6 +2595,29 @@ function registerEventListeners() {
   elements.passwordResetForm.addEventListener('submit', changePassword);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
+  elements.dashboardReportDownloadBtn?.addEventListener('click', async () => {
+    if (state.dashboardReportDownloadLoading) return;
+    const year = Number(elements.dashboardReportYearInput.value);
+    const week = Number(elements.dashboardReportWeekInput.value);
+    if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1 || week > 53) {
+      showToast('Bitte gültiges Jahr und KW wählen.', 'error');
+      return;
+    }
+    state.dashboardReportDownloadLoading = true;
+    elements.dashboardReportDownloadBtn.disabled = true;
+    elements.dashboardReportDownloadBtn.textContent = 'PDF wird erstellt…';
+    try {
+      await exportWeekPdf({ year, week, currentUserOnly: true });
+      showToast('Rapport wurde heruntergeladen.', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(`PDF-Export fehlgeschlagen: ${error.message}`, 'error');
+    } finally {
+      state.dashboardReportDownloadLoading = false;
+      elements.dashboardReportDownloadBtn.disabled = false;
+      elements.dashboardReportDownloadBtn.textContent = 'Rapport Download';
+    }
+  });
   elements.navMenuToggleBtn?.addEventListener('click', toggleNavMenu);
   elements.navMenuBackdrop?.addEventListener('click', closeNavMenu);
   elements.navMenuItems?.forEach((item) => {
@@ -2622,6 +2726,9 @@ function registerEventListeners() {
 
 setAuthMode('login');
 registerEventListeners();
+const nowIsoWeek = getIsoWeekYearAndNumber(new Date());
+if (elements.dashboardReportYearInput) elements.dashboardReportYearInput.value = String(nowIsoWeek.isoYear);
+if (elements.dashboardReportWeekInput) elements.dashboardReportWeekInput.value = String(nowIsoWeek.isoWeek);
 openHolidayDrawer();
 syncAutoReportHourConstraints();
 syncBodyScrollLock();

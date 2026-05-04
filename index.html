@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script defer src="script.js"></script>
   </head>
   <body>
@@ -173,8 +174,21 @@
             <div class="section-head compact">
               <div>
                 <h2>Dashboard</h2>
-                <p>Das Dashboard folgt als nächster Schritt.</p>
+                <p>Wochenrapport als PDF für die gewünschte Kalenderwoche herunterladen.</p>
               </div>
+            </div>
+            <div class="field-row two-columns">
+              <label class="field">
+                <span>Jahr</span>
+                <input id="dashboardReportYearInput" type="number" min="2020" max="2100" />
+              </label>
+              <label class="field">
+                <span>Kalenderwoche</span>
+                <input id="dashboardReportWeekInput" type="number" min="1" max="53" />
+              </label>
+            </div>
+            <div class="drawer-actions">
+              <button class="primary-btn" id="dashboardReportDownloadBtn" type="button">Rapport Download</button>
             </div>
           </section>
 
