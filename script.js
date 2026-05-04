@@ -533,14 +533,14 @@ async function exportWeekPdf({ year, week, profileId, currentUserOnly = false } 
   if (error) throw error;
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   drawWeeklyReportPage(doc, {
-    profileName: getProfileDisplayName(state.profile),
+    profileName: getDisplayName(state.profile, state.session?.user?.email || ''),
     week,
     year,
     weekStart,
     weekEnd,
     reports: reports || []
   });
-  const safeName = String(getProfileDisplayName(state.profile) || 'user').replace(/[^\w.-]+/g, '_');
+  const safeName = String(getDisplayName(state.profile, state.session?.user?.email || '') || 'user').replace(/[^\w.-]+/g, '_');
   doc.save(`wochenrapport_KW-${week}_${year}_${safeName}.pdf`);
 }
 
