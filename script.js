@@ -422,6 +422,10 @@ function formatCurrency(value) {
   return new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF' }).format(Number(value || 0));
 }
 
+function formatPdfCurrency(value) {
+  return new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
+}
+
 function formatDate(date) {
   return new Intl.DateTimeFormat('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 }
@@ -585,7 +589,7 @@ function drawWeeklyReportPage(doc, payload) {
     so: scaleX(106),
     total: scaleX(114),
     expenses: scaleX(124),
-    notes: scaleX(152),
+    notes: scaleX(134),
     end: scaleX(200)
   };
   const dayCenters = [
@@ -622,7 +626,7 @@ function drawWeeklyReportPage(doc, payload) {
       doc.text(String(row.commissionNumber || '').slice(0, 15), colX.commission + 1, y + 4);
       row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
       doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
-      doc.text(formatCurrency(row.expenses), colX.notes - 1, y + 4, { align: 'right' });
+      doc.text(formatPdfCurrency(row.expenses), colX.notes - 1, y + 4, { align: 'right' });
       doc.text((row.notes[0] || '').slice(0, 24), colX.notes + 1, y + 4);
     }
     y += 6;
@@ -636,7 +640,7 @@ function drawWeeklyReportPage(doc, payload) {
   doc.text('Wochentotal', 11, y + 5);
   dayTotals.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 5, { align: 'center' }));
   doc.text(formatPdfHours(weekTotalMinutes), colX.expenses - 1, y + 5, { align: 'right' });
-  doc.text(formatCurrency(weekTotalExpenses), colX.notes - 1, y + 5, { align: 'right' });
+  doc.text(formatPdfCurrency(weekTotalExpenses), colX.notes - 1, y + 5, { align: 'right' });
   y += 12;
   const drawAbsenceGridRow = (rowY, rowHeight = 6) => {
     doc.rect(colX.project, rowY, colX.end - colX.project, rowHeight);
