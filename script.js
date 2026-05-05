@@ -585,7 +585,7 @@ function drawWeeklyReportPage(doc, payload) {
     so: scaleX(102),
     total: scaleX(112),
     expenses: scaleX(122),
-    notes: scaleX(136),
+    notes: scaleX(141),
     end: scaleX(200)
   };
   const dayCenters = [
@@ -623,7 +623,7 @@ function drawWeeklyReportPage(doc, payload) {
       row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
       doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
       doc.text(formatCurrency(row.expenses), colX.notes - 1, y + 4, { align: 'right' });
-      doc.text((row.notes[0] || '').slice(0, 40), colX.notes + 1, y + 4);
+      doc.text((row.notes[0] || '').slice(0, 36), colX.notes + 1, y + 4);
     }
     y += 6;
   }
