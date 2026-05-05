@@ -487,9 +487,59 @@ function getIsoWeekYearAndNumber(date = new Date()) {
   return { isoYear, isoWeek };
 }
 
-function buildWeeklyMatrixRows(reports) { return reports || []; }
-function buildAbsenceMatrixRows(reports) { return reports || []; }
-function buildWeeklyRemarkLines() { return []; }
+function formatPdfHours(minutes) {
+  const hours = Number(minutes || 0) / 60;
+  return hours > 0 ? hours.toFixed(2) : '';
+}
+
+function buildWeeklyMatrixRows(reports) {
+  const grouped = new Map();
+  (reports || []).forEach((entry) => {
+    const reportType = REPORT_TYPE_BY_ABSENCE_TYPE[Number(entry?.abz_typ) || 0] || '';
+    if (reportType === 'berufsschule') {
+      entry.project_name = REPORT_TYPE_LABELS.berufsschule;
+    }
+    if (AUTO_REPORT_TYPES.has(reportType) && reportType !== 'berufsschule') return;
+    const dayIndex = Math.max(0, Math.min(5, ((parseLocalDate(entry.work_date).getDay() + 6) % 7)));
+    const key = `${entry.project_name || '—'}|${entry.commission_number || ''}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        projectName: entry.project_name || '—',
+        commissionNumber: entry.commission_number || '',
+        days: Array(6).fill(0),
+        total: 0,
+        expenses: 0,
+        notes: []
+      });
+    }
+    const row = grouped.get(key);
+    const minutes = Number(entry.total_work_minutes || 0);
+    row.days[dayIndex] += minutes;
+    row.total += minutes;
+    row.expenses += Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0);
+    if (entry.notes) row.notes.push(String(entry.notes).trim());
+    if (entry.expense_note) row.notes.push(String(entry.expense_note).trim());
+  });
+  return Array.from(grouped.values());
+}
+
+function buildAbsenceMatrixRows(reports) {
+  const types = ['ferien', 'krankheit', 'militaer', 'unfall', 'feiertag', 'uk'];
+  return types.map((type) => {
+    const days = Array(6).fill(0);
+    (reports || []).forEach((entry) => {
+      const reportType = REPORT_TYPE_BY_ABSENCE_TYPE[Number(entry?.abz_typ) || 0] || '';
+      if (reportType !== type) return;
+      const dayIndex = Math.max(0, Math.min(5, ((parseLocalDate(entry.work_date).getDay() + 6) % 7)));
+      days[dayIndex] += Number(entry.total_work_minutes || 0);
+    });
+    return { label: REPORT_TYPE_LABELS[type], days, total: days.reduce((sum, n) => sum + n, 0) };
+  });
+}
+
+function buildWeeklyRemarkLines(reports) {
+  return (reports || []).map((entry) => entry.notes || entry.expense_note).filter(Boolean).slice(0, 4);
+}
 function drawReportHeader() {}
 function drawWeeklyTotalRow() {}
 function drawAbsenceTable() {}
@@ -497,21 +547,64 @@ function drawRemarksBox() {}
 
 function drawWeeklyReportPage(doc, payload) {
   const { profileName, week, year, weekStart, weekEnd, reports } = payload;
+  const rows = buildWeeklyMatrixRows(reports);
   const absenceRows = buildAbsenceMatrixRows(reports);
-  const remarkLines = buildWeeklyRemarkLines();
-  drawReportHeader(doc, payload);
-  drawWeeklyTotalRow(doc, buildWeeklyMatrixRows(reports));
-  drawAbsenceTable(doc, absenceRows);
-  drawRemarksBox(doc, remarkLines);
+  const remarkLines = buildWeeklyRemarkLines(reports);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text('Wochenrapport', 14, 18);
+  doc.setFontSize(20);
+  doc.text('Wochenrapport', 105, 16, { align: 'center' });
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Name: ${profileName || '—'}`, 14, 28);
-  doc.text(`KW ${week} / ${year}`, 14, 34);
-  doc.text(`Zeitraum: ${formatDate(weekStart)} – ${formatDate(weekEnd)}`, 14, 40);
-  doc.text(`Einträge: ${reports.length}`, 14, 46);
+  doc.rect(10, 22, 190, 10);
+  doc.text(profileName || '—', 12, 28);
+  doc.text(`${weekStart.getDate()}.${weekStart.getMonth() + 1}.${weekStart.getFullYear()} - ${weekEnd.getDate()}.${weekEnd.getMonth() + 1}.${weekEnd.getFullYear()}`, 105, 28, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(`KW ${week}`, 197, 28, { align: 'right' });
+  const startY = 38;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Projektname', 11, startY + 4);
+  doc.text('Kom. Nr.', 62, startY + 4);
+  ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'Total', 'Spesen', 'Bemerkungen'].forEach((h, i) => doc.text(h, [78, 86, 94, 102, 110, 118, 128, 141, 165][i], startY + 4, { align: i >= 6 ? 'right' : 'center' }));
+  doc.rect(10, startY, 190, 6);
+  let y = startY + 6;
+  doc.setFont('helvetica', 'normal');
+  rows.slice(0, 10).forEach((row) => {
+    doc.rect(10, y, 190, 6);
+    doc.text(row.projectName, 11, y + 4);
+    doc.text(String(row.commissionNumber || ''), 62, y + 4);
+    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 4, { align: 'center' }));
+    doc.text(formatPdfHours(row.total), 128, y + 4, { align: 'right' });
+    doc.text(formatCurrency(row.expenses), 141, y + 4, { align: 'right' });
+    doc.text((row.notes[0] || '').slice(0, 34), 145, y + 4);
+    y += 6;
+  });
+  const dayTotals = Array(6).fill(0);
+  const weekTotalMinutes = rows.reduce((sum, row) => sum + row.total, 0);
+  const weekTotalExpenses = rows.reduce((sum, row) => sum + row.expenses, 0);
+  rows.forEach((row) => row.days.forEach((m, idx) => { dayTotals[idx] += m; }));
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.rect(10, y, 190, 8);
+  doc.text('Wochentotal', 11, y + 5);
+  dayTotals.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 5, { align: 'center' }));
+  doc.text(formatPdfHours(weekTotalMinutes), 128, y + 5, { align: 'right' });
+  doc.text(formatCurrency(weekTotalExpenses), 141, y + 5, { align: 'right' });
+  y += 12;
+  absenceRows.forEach((row) => {
+    doc.setFont('helvetica', 'normal');
+    doc.rect(10, y, 190, 6);
+    doc.text(row.label, 11, y + 4);
+    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 4, { align: 'center' }));
+    doc.text(formatPdfHours(row.total), 128, y + 4, { align: 'right' });
+    y += 6;
+  });
+  y += 4;
+  doc.rect(10, y, 190, 18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Bemerkung', 11, y + 5);
+  doc.setFont('helvetica', 'normal');
+  remarkLines.forEach((line, idx) => doc.text(`- ${String(line).slice(0, 120)}`, 30, y + 5 + (idx * 4)));
 }
 
 async function exportWeekPdf({ year, week, profileId, currentUserOnly = false } = {}) {
