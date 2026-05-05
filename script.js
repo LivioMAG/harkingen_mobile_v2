@@ -2419,6 +2419,8 @@ function openDrawer(isoDate, entry = null) {
   elements.commissionInput.value = entry?.commission_number || '';
   elements.startTimeInput.value = entry?.start_time || DEFAULT_START_TIME;
   elements.endTimeInput.value = entry?.end_time || DEFAULT_END_TIME;
+  enforceQuarterHourInput(elements.startTimeInput);
+  enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
@@ -2448,6 +2450,8 @@ function closeDrawer() {
   elements.reportTypeInput.dataset.previousValue = '';
   elements.startTimeInput.value = DEFAULT_START_TIME;
   elements.endTimeInput.value = DEFAULT_END_TIME;
+  enforceQuarterHourInput(elements.startTimeInput);
+  enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
   setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = getAutoReportMaxHours();
@@ -2845,8 +2849,15 @@ function registerEventListeners() {
   elements.attachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
   elements.holidayAttachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
   elements.holidayAttachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('holiday', event.target.files));
-  elements.startTimeInput.addEventListener('change', syncNormalBreakRules);
-  elements.endTimeInput.addEventListener('change', syncNormalBreakRules);
+  const handleTimeInputChange = (event) => {
+    enforceQuarterHourInput(event.target);
+    syncNormalBreakRules();
+  };
+
+  elements.startTimeInput.addEventListener('input', (event) => enforceQuarterHourInput(event.target));
+  elements.endTimeInput.addEventListener('input', (event) => enforceQuarterHourInput(event.target));
+  elements.startTimeInput.addEventListener('change', handleTimeInputChange);
+  elements.endTimeInput.addEventListener('change', handleTimeInputChange);
   elements.workHoursInput.addEventListener('input', () => {
     const value = Number(elements.workHoursInput.value || 0);
     const maxHours = getAutoReportMaxHours();
@@ -2890,3 +2901,26 @@ openHolidayDrawer();
 syncAutoReportHourConstraints();
 syncBodyScrollLock();
 loadConfig();
+function roundTimeToQuarterHour(timeValue) {
+  if (!timeValue || !timeValue.includes(':')) return timeValue;
+  const [hourPart, minutePart] = timeValue.split(':');
+  const hours = Number.parseInt(hourPart, 10);
+  const minutes = Number.parseInt(minutePart, 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeValue;
+
+  const totalMinutes = Math.min(23 * 60 + 59, Math.max(0, hours * 60 + minutes));
+  const roundedMinutes = Math.round(totalMinutes / 15) * 15;
+  const normalizedMinutes = ((roundedMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+  const normalizedHours = Math.floor(normalizedMinutes / 60);
+  const normalizedMinutePart = normalizedMinutes % 60;
+  return `${String(normalizedHours).padStart(2, '0')}:${String(normalizedMinutePart).padStart(2, '0')}`;
+}
+
+function enforceQuarterHourInput(input) {
+  if (!input) return;
+  const normalized = roundTimeToQuarterHour(input.value);
+  if (normalized && normalized !== input.value) {
+    input.value = normalized;
+  }
+}
+
