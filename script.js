@@ -525,21 +525,27 @@ function buildWeeklyMatrixRows(reports) {
 
 function buildAbsenceMatrixRows(reports) {
   const types = ['ferien', 'krankheit', 'militaer', 'unfall', 'feiertag', 'uk'];
-  return types.map((type) => {
-    const days = Array(6).fill(0);
+  const mapped = types.map((type) => {
+    const days = Array(7).fill(0);
     (reports || []).forEach((entry) => {
       const reportType = REPORT_TYPE_BY_ABSENCE_TYPE[Number(entry?.abz_typ) || 0] || '';
       if (reportType !== type) return;
-      const dayIndex = Math.max(0, Math.min(5, ((parseLocalDate(entry.work_date).getDay() + 6) % 7)));
+      const dayIndex = Math.max(0, Math.min(6, ((parseLocalDate(entry.work_date).getDay() + 6) % 7)));
       days[dayIndex] += Number(entry.total_work_minutes || 0);
     });
     return { label: REPORT_TYPE_LABELS[type], days, total: days.reduce((sum, n) => sum + n, 0) };
   });
+  const totalDays = Array(7).fill(0);
+  mapped.forEach((row) => row.days.forEach((minutes, idx) => { totalDays[idx] += minutes; }));
+  mapped.push({
+    label: 'Absenzen Total',
+    days: totalDays,
+    total: totalDays.reduce((sum, n) => sum + n, 0),
+    isTotal: true
+  });
+  return mapped;
 }
 
-function buildWeeklyRemarkLines(reports) {
-  return (reports || []).map((entry) => entry.notes || entry.expense_note).filter(Boolean).slice(0, 4);
-}
 function drawReportHeader() {}
 function drawWeeklyTotalRow() {}
 function drawAbsenceTable() {}
@@ -549,7 +555,6 @@ function drawWeeklyReportPage(doc, payload) {
   const { profileName, week, year, weekStart, weekEnd, reports } = payload;
   const rows = buildWeeklyMatrixRows(reports);
   const absenceRows = buildAbsenceMatrixRows(reports);
-  const remarkLines = buildWeeklyRemarkLines(reports);
   const pageWidth = doc.internal.pageSize.getWidth();
   const leftMargin = 10;
   const rightMargin = 10;
@@ -567,19 +572,20 @@ function drawWeeklyReportPage(doc, payload) {
   doc.setFont('helvetica', 'bold');
   doc.text(`KW ${week}`, pageWidth - rightMargin - 1, 28, { align: 'right' });
   const startY = 38;
-  const dayLabels = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
+  const dayLabels = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
   const colX = {
     project: scaleX(10),
-    commission: scaleX(56),
-    mo: scaleX(84),
-    di: scaleX(94),
-    mi: scaleX(104),
-    do: scaleX(114),
-    fr: scaleX(124),
-    sa: scaleX(134),
-    total: scaleX(144),
-    expenses: scaleX(158),
-    notes: scaleX(172),
+    commission: scaleX(26),
+    mo: scaleX(42),
+    di: scaleX(52),
+    mi: scaleX(62),
+    do: scaleX(72),
+    fr: scaleX(82),
+    sa: scaleX(92),
+    so: scaleX(102),
+    total: scaleX(112),
+    expenses: scaleX(122),
+    notes: scaleX(136),
     end: scaleX(200)
   };
   const dayCenters = [
@@ -588,9 +594,10 @@ function drawWeeklyReportPage(doc, payload) {
     (colX.mi + colX.do) / 2,
     (colX.do + colX.fr) / 2,
     (colX.fr + colX.sa) / 2,
-    (colX.sa + colX.total) / 2
+    (colX.sa + colX.so) / 2,
+    (colX.so + colX.total) / 2
   ];
-  const tableColumns = [colX.project, colX.commission, colX.mo, colX.di, colX.mi, colX.do, colX.fr, colX.sa, colX.total, colX.expenses, colX.notes, colX.end];
+  const tableColumns = [colX.project, colX.commission, colX.mo, colX.di, colX.mi, colX.do, colX.fr, colX.sa, colX.so, colX.total, colX.expenses, colX.notes, colX.end];
   const drawTableGridRow = (rowY, rowHeight = 6) => {
     doc.rect(colX.project, rowY, colX.end - colX.project, rowHeight);
     tableColumns.slice(1, -1).forEach((x) => doc.line(x, rowY, x, rowY + rowHeight));
@@ -598,8 +605,8 @@ function drawWeeklyReportPage(doc, payload) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   drawTableGridRow(startY, 6);
-  doc.text('Projektname', 11, startY + 4);
-  doc.text('Kom. Nr.', 57, startY + 4);
+  doc.text('Projektname', colX.project + 1, startY + 4);
+  doc.text('Kom. Nr.', colX.commission + 1, startY + 4);
   dayLabels.forEach((label, idx) => doc.text(label, dayCenters[idx], startY + 4, { align: 'center' }));
   doc.text('Total', colX.expenses - 1, startY + 4, { align: 'right' });
   doc.text('Spesen', colX.notes - 1, startY + 4, { align: 'right' });
@@ -611,7 +618,7 @@ function drawWeeklyReportPage(doc, payload) {
     const row = rows[rowIndex];
     drawTableGridRow(y, 6);
     if (row) {
-      doc.text(String(row.projectName || '').slice(0, 28), colX.project + 1, y + 4);
+      doc.text(String(row.projectName || '').slice(0, 15), colX.project + 1, y + 4);
       doc.text(String(row.commissionNumber || '').slice(0, 15), colX.commission + 1, y + 4);
       row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
       doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
@@ -620,11 +627,10 @@ function drawWeeklyReportPage(doc, payload) {
     }
     y += 6;
   }
-  const dayTotals = Array(6).fill(0);
+  const dayTotals = Array(7).fill(0);
   const weekTotalMinutes = rows.reduce((sum, row) => sum + row.total, 0);
   const weekTotalExpenses = rows.reduce((sum, row) => sum + row.expenses, 0);
   rows.forEach((row) => row.days.forEach((m, idx) => { dayTotals[idx] += m; }));
-  y += 4;
   doc.setFont('helvetica', 'bold');
   drawTableGridRow(y, 8);
   doc.text('Wochentotal', 11, y + 5);
@@ -634,22 +640,16 @@ function drawWeeklyReportPage(doc, payload) {
   y += 12;
   const drawAbsenceGridRow = (rowY, rowHeight = 6) => {
     doc.rect(colX.project, rowY, colX.end - colX.project, rowHeight);
-    [colX.mo, colX.di, colX.mi, colX.do, colX.fr, colX.sa, colX.total, colX.expenses].forEach((x) => doc.line(x, rowY, x, rowY + rowHeight));
+    [colX.mo, colX.di, colX.mi, colX.do, colX.fr, colX.sa, colX.so, colX.total, colX.expenses].forEach((x) => doc.line(x, rowY, x, rowY + rowHeight));
   };
   absenceRows.forEach((row) => {
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', row.isTotal ? 'bold' : 'normal');
     drawAbsenceGridRow(y, 6);
     doc.text(row.label, 11, y + 4);
     row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
     doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
     y += 6;
   });
-  y += 4;
-  drawTableGridRow(y, 18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Bemerkung', 11, y + 5);
-  doc.setFont('helvetica', 'normal');
-  remarkLines.forEach((line, idx) => doc.text(`- ${String(line).slice(0, 120)}`, 30, y + 5 + (idx * 4)));
 }
 
 async function exportWeekPdf({ year, week, profileId, currentUserOnly = false } = {}) {
@@ -658,7 +658,7 @@ async function exportWeekPdf({ year, week, profileId, currentUserOnly = false } 
   if (!selectedProfileId) throw new Error('Profil nicht gefunden.');
   const weekStart = getIsoWeekStartForYearAndWeek(year, week);
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 5);
+  weekEnd.setDate(weekStart.getDate() + 6);
   const startIso = getISODate(weekStart);
   const endIso = getISODate(weekEnd);
   const { data: reports, error } = await state.supabase
