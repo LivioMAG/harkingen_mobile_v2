@@ -575,17 +575,17 @@ function drawWeeklyReportPage(doc, payload) {
   const dayLabels = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
   const colX = {
     project: scaleX(10),
-    commission: scaleX(26),
-    mo: scaleX(42),
-    di: scaleX(52),
-    mi: scaleX(62),
-    do: scaleX(72),
-    fr: scaleX(82),
-    sa: scaleX(92),
-    so: scaleX(102),
-    total: scaleX(112),
-    expenses: scaleX(122),
-    notes: scaleX(141),
+    commission: scaleX(42),
+    mo: scaleX(58),
+    di: scaleX(66),
+    mi: scaleX(74),
+    do: scaleX(82),
+    fr: scaleX(90),
+    sa: scaleX(98),
+    so: scaleX(106),
+    total: scaleX(114),
+    expenses: scaleX(124),
+    notes: scaleX(152),
     end: scaleX(200)
   };
   const dayCenters = [
@@ -618,12 +618,12 @@ function drawWeeklyReportPage(doc, payload) {
     const row = rows[rowIndex];
     drawTableGridRow(y, 6);
     if (row) {
-      doc.text(String(row.projectName || '').slice(0, 15), colX.project + 1, y + 4);
+      doc.text(String(row.projectName || '').slice(0, 30), colX.project + 1, y + 4);
       doc.text(String(row.commissionNumber || '').slice(0, 15), colX.commission + 1, y + 4);
       row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
       doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
       doc.text(formatCurrency(row.expenses), colX.notes - 1, y + 4, { align: 'right' });
-      doc.text((row.notes[0] || '').slice(0, 36), colX.notes + 1, y + 4);
+      doc.text((row.notes[0] || '').slice(0, 24), colX.notes + 1, y + 4);
     }
     y += 6;
   }
