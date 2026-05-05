@@ -561,22 +561,53 @@ function drawWeeklyReportPage(doc, payload) {
   doc.setFont('helvetica', 'bold');
   doc.text(`KW ${week}`, 197, 28, { align: 'right' });
   const startY = 38;
+  const dayLabels = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
+  const colX = {
+    project: 10,
+    commission: 56,
+    mo: 84,
+    di: 94,
+    mi: 104,
+    do: 114,
+    fr: 124,
+    sa: 134,
+    total: 144,
+    expenses: 158,
+    notes: 172,
+    end: 200
+  };
+  const dayCenters = [
+    (colX.mo + colX.di) / 2,
+    (colX.di + colX.mi) / 2,
+    (colX.mi + colX.do) / 2,
+    (colX.do + colX.fr) / 2,
+    (colX.fr + colX.sa) / 2,
+    (colX.sa + colX.total) / 2
+  ];
+  const tableColumns = [colX.project, colX.commission, colX.mo, colX.di, colX.mi, colX.do, colX.fr, colX.sa, colX.total, colX.expenses, colX.notes, colX.end];
+  const drawTableGridRow = (rowY, rowHeight = 6) => {
+    doc.rect(colX.project, rowY, colX.end - colX.project, rowHeight);
+    tableColumns.slice(1, -1).forEach((x) => doc.line(x, rowY, x, rowY + rowHeight));
+  };
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
+  drawTableGridRow(startY, 6);
   doc.text('Projektname', 11, startY + 4);
-  doc.text('Kom. Nr.', 62, startY + 4);
-  ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'Total', 'Spesen', 'Bemerkungen'].forEach((h, i) => doc.text(h, [78, 86, 94, 102, 110, 118, 128, 141, 165][i], startY + 4, { align: i >= 6 ? 'right' : 'center' }));
-  doc.rect(10, startY, 190, 6);
+  doc.text('Kom. Nr.', 57, startY + 4);
+  dayLabels.forEach((label, idx) => doc.text(label, dayCenters[idx], startY + 4, { align: 'center' }));
+  doc.text('Total', colX.expenses - 1, startY + 4, { align: 'right' });
+  doc.text('Spesen', colX.notes - 1, startY + 4, { align: 'right' });
+  doc.text('Bemerkungen', colX.notes + 1, startY + 4);
   let y = startY + 6;
   doc.setFont('helvetica', 'normal');
   rows.slice(0, 10).forEach((row) => {
-    doc.rect(10, y, 190, 6);
-    doc.text(row.projectName, 11, y + 4);
-    doc.text(String(row.commissionNumber || ''), 62, y + 4);
-    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 4, { align: 'center' }));
-    doc.text(formatPdfHours(row.total), 128, y + 4, { align: 'right' });
-    doc.text(formatCurrency(row.expenses), 141, y + 4, { align: 'right' });
-    doc.text((row.notes[0] || '').slice(0, 34), 145, y + 4);
+    drawTableGridRow(y, 6);
+    doc.text(String(row.projectName || '').slice(0, 28), 11, y + 4);
+    doc.text(String(row.commissionNumber || '').slice(0, 15), 57, y + 4);
+    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
+    doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
+    doc.text(formatCurrency(row.expenses), colX.notes - 1, y + 4, { align: 'right' });
+    doc.text((row.notes[0] || '').slice(0, 26), colX.notes + 1, y + 4);
     y += 6;
   });
   const dayTotals = Array(6).fill(0);
@@ -587,16 +618,16 @@ function drawWeeklyReportPage(doc, payload) {
   doc.setFont('helvetica', 'bold');
   doc.rect(10, y, 190, 8);
   doc.text('Wochentotal', 11, y + 5);
-  dayTotals.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 5, { align: 'center' }));
-  doc.text(formatPdfHours(weekTotalMinutes), 128, y + 5, { align: 'right' });
-  doc.text(formatCurrency(weekTotalExpenses), 141, y + 5, { align: 'right' });
+  dayTotals.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 5, { align: 'center' }));
+  doc.text(formatPdfHours(weekTotalMinutes), colX.expenses - 1, y + 5, { align: 'right' });
+  doc.text(formatCurrency(weekTotalExpenses), colX.notes - 1, y + 5, { align: 'right' });
   y += 12;
   absenceRows.forEach((row) => {
     doc.setFont('helvetica', 'normal');
     doc.rect(10, y, 190, 6);
     doc.text(row.label, 11, y + 4);
-    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), [78, 86, 94, 102, 110, 118][idx], y + 4, { align: 'center' }));
-    doc.text(formatPdfHours(row.total), 128, y + 4, { align: 'right' });
+    row.days.forEach((minutes, idx) => doc.text(formatPdfHours(minutes), dayCenters[idx], y + 4, { align: 'center' }));
+    doc.text(formatPdfHours(row.total), colX.expenses - 1, y + 4, { align: 'right' });
     y += 6;
   });
   y += 4;
