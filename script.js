@@ -2720,6 +2720,21 @@ async function handleWeekChange(offsetDelta) {
   }
 }
 
+function triggerFileInput(input) {
+  if (!input) return;
+
+  if (typeof input.showPicker === 'function') {
+    try {
+      input.showPicker();
+      return;
+    } catch (error) {
+      console.warn('showPicker fehlgeschlagen, verwende click() Fallback.', error);
+    }
+  }
+
+  input.click();
+}
+
 function registerEventListeners() {
   elements.authForm.addEventListener('submit', handleAuthSubmit);
   elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
@@ -2819,12 +2834,12 @@ function registerEventListeners() {
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());
   elements.attachmentsGalleryBtn.addEventListener(
     'click',
-    () => elements.attachmentsGalleryInput.showPicker?.() ?? elements.attachmentsGalleryInput.click()
+    () => triggerFileInput(elements.attachmentsGalleryInput)
   );
   elements.holidayAttachmentsCameraBtn.addEventListener('click', () => elements.holidayAttachmentsCameraInput.click());
   elements.holidayAttachmentsGalleryBtn.addEventListener(
     'click',
-    () => elements.holidayAttachmentsGalleryInput.showPicker?.() ?? elements.holidayAttachmentsGalleryInput.click()
+    () => triggerFileInput(elements.holidayAttachmentsGalleryInput)
   );
   elements.attachmentsCameraInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
   elements.attachmentsGalleryInput.addEventListener('change', (event) => handleAttachmentSelection('report', event.target.files));
