@@ -1,0 +1,10 @@
+{
+  "name": "Rapport Mobile",
+  "short_name": "Rapport",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d3001b",
+  "icons": []
+}

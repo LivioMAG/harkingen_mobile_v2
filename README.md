@@ -52,3 +52,13 @@ Dann `http://localhost:4173` öffnen.
 - Mehrfach-Upload von Belegen/Fotos direkt in Supabase Storage.
 - Ferien- und Absenzanträge mit Typwahl (Ferien, Militär, Zivildienst, Unfall, Krankheit) inklusive Anhängen.
 - Bearbeiten und Löschen von vorhandenen Rapporten und Abwesenheitsanträgen.
+
+## PWA-Update-Strategie
+
+- Service Worker: `sw.js` mit versionierten Caches (`static-*`, `runtime-*`).
+- Bei neuer Version wird per `skipWaiting()` + `clients.claim()` sofort übernommen.
+- App registriert den SW mit `updateViaCache: 'none'` und prüft jede Minute auf Updates.
+- Bei neuem SW zeigt die App kurz „Neue Version verfügbar – App wird aktualisiert.“ und lädt danach automatisch neu.
+- `index.html`, `manifest.webmanifest` und `sw.js` sollten mit `Cache-Control: no-cache` ausgeliefert werden.
+- Versionierte Assets (hier über `?v=...`) dürfen lange gecacht werden (`immutable`).
+- Beispiel-Header für Netlify (`_headers`) und Vercel (`vercel.json`) sind enthalten.
