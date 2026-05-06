@@ -999,6 +999,21 @@ textarea {
   text-align: right;
 }
 
+
+.hidden-label {
+  visibility: hidden;
+}
+
+.simple-mode-toggle-field {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.simple-mode-toggle-field .secondary-btn {
+  width: 100%;
+}
+
 .checkbox-inline {
   display: inline-flex;
   align-items: center;
