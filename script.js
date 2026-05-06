@@ -50,6 +50,8 @@ const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
 const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, is_admin';
+const ENTRY_MODE_SIMPLE = 'simple';
+const ENTRY_MODE_DETAILED = 'detailed';
 const WEEKLY_REPORT_COLUMNS = [
   'id',
   'profile_id',
@@ -172,6 +174,8 @@ const state = {
   projectSuggestionsLoaded: false,
   projectSuggestions: [],
   dashboardReportDownloadLoading: false
+  ,
+  entryMode: ENTRY_MODE_SIMPLE
 };
 
 const elements = {
@@ -253,11 +257,14 @@ const elements = {
   normalTimeFields: document.getElementById('normalTimeFields'),
   normalCostFields: document.getElementById('normalCostFields'),
   specialTimeFields: document.getElementById('specialTimeFields'),
+  simpleTimeFields: document.getElementById('simpleTimeFields'),
   startTimeInput: document.getElementById('startTimeInput'),
   endTimeInput: document.getElementById('endTimeInput'),
   lunchMinutesInput: document.getElementById('lunchMinutesInput'),
   breakMinutesInput: document.getElementById('breakMinutesInput'),
   workHoursInput: document.getElementById('workHoursInput'),
+  simpleDurationInput: document.getElementById('simpleDurationInput'),
+  toggleEntryModeBtn: document.getElementById('toggleEntryModeBtn'),
   expensesInput: document.getElementById('expensesInput'),
   otherCostsInput: document.getElementById('otherCostsInput'),
   notesInput: document.getElementById('notesInput'),
@@ -1244,11 +1251,14 @@ function applyReportTypeSelection(reportType, options = {}) {
   if (reportType === 'uk') {
     elements.expensesInput.value = 18;
   }
-  elements.normalTimeFields.classList.toggle('hidden', isAutoType);
+  const isDetailedEntryMode = state.entryMode === ENTRY_MODE_DETAILED;
+  elements.normalTimeFields.classList.toggle('hidden', isAutoType || !isDetailedEntryMode);
+  elements.simpleTimeFields.classList.toggle('hidden', isAutoType || isDetailedEntryMode);
   elements.normalCostFields?.classList.toggle('hidden', isAutoType);
   elements.specialTimeFields.classList.toggle('hidden', !isAutoType);
-  elements.startTimeInput.required = !isAutoType;
-  elements.endTimeInput.required = !isAutoType;
+  elements.startTimeInput.required = !isAutoType && isDetailedEntryMode;
+  elements.endTimeInput.required = !isAutoType && isDetailedEntryMode;
+  elements.simpleDurationInput.required = !isAutoType && !isDetailedEntryMode;
   elements.workHoursInput.required = isAutoType;
   elements.projectNameInput.required = !isAutoType;
   elements.projectNameInput.readOnly = isAutoType;
@@ -2112,17 +2122,24 @@ function getEntryPayload() {
   const reportYear = parsedWorkDate ? parsedWorkDate.getFullYear() : null;
   const reportWeek = parsedWorkDate ? getWeekNumber(parsedWorkDate) : null;
   const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
-  const startTime = isAutoType ? DEFAULT_START_TIME : elements.startTimeInput.value;
-  const endTime = isAutoType ? DEFAULT_END_TIME : elements.endTimeInput.value;
-  const lunchMinutes = isAutoType ? 0 : Number(elements.lunchMinutesInput.value || 0);
-  const breakMinutes = isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0);
+  const isDetailedEntryMode = state.entryMode === ENTRY_MODE_DETAILED;
+  const isDetailed = isAutoType || isDetailedEntryMode;
+  const startTime = isDetailed ? (isAutoType ? DEFAULT_START_TIME : elements.startTimeInput.value) : '00:00';
+  const endTime = isDetailed ? (isAutoType ? DEFAULT_END_TIME : elements.endTimeInput.value) : '00:00';
+  const lunchMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.lunchMinutesInput.value || 0)) : 0;
+  const breakMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0)) : 0;
+  const simpleDurationMinutes = parseDurationMinutes(elements.simpleDurationInput.value);
   const totalMinutes = isAutoType
     ? Math.round(Number(elements.workHoursInput.value || 0) * 60)
-    : minutesBetween(startTime, endTime, lunchMinutes, breakMinutes);
+    : isDetailedEntryMode
+      ? minutesBetween(startTime, endTime, lunchMinutes, breakMinutes)
+      : simpleDurationMinutes;
   const adjustedTotalMinutes = isAutoType
     ? totalMinutes
-    : calculateAdjustedWorkMinutes(workDate, startTime, endTime, totalMinutes, state.surchargeRules);
-  const autoNote = buildShiftBoundaryNote(workDate, startTime, endTime);
+    : isDetailedEntryMode
+      ? calculateAdjustedWorkMinutes(workDate, startTime, endTime, totalMinutes, state.surchargeRules)
+      : totalMinutes;
+  const autoNote = isDetailed ? buildShiftBoundaryNote(workDate, startTime, endTime) : '';
   const absenceType = ABSENCE_TYPE_BY_REPORT_TYPE[elements.reportTypeInput.value] || 0;
 
   return {
@@ -2155,6 +2172,45 @@ function getHolidayPayload(existingAttachments) {
     notes: elements.holidayNotesInput.value.trim(),
     attachments: existingAttachments
   };
+}
+
+function parseDurationMinutes(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return NaN;
+  if (raw.includes(':')) {
+    const [h, m] = raw.split(':');
+    const hours = Number(h);
+    const minutes = Number(m);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes) || minutes < 0 || minutes >= 60) return NaN;
+    return Math.round(hours * 60 + minutes);
+  }
+  const normalized = raw.replace(',', '.');
+  const hours = Number(normalized);
+  if (!Number.isFinite(hours)) return NaN;
+  return Math.round(hours * 60);
+}
+
+function formatDurationForInput(minutes) {
+  const total = Math.max(0, Number(minutes) || 0);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${hours}:${String(mins).padStart(2, '0')}`;
+}
+
+function setEntryMode(mode) {
+  const resolvedMode = mode === ENTRY_MODE_DETAILED ? ENTRY_MODE_DETAILED : ENTRY_MODE_SIMPLE;
+  state.entryMode = resolvedMode;
+  const isDetailed = resolvedMode === ENTRY_MODE_DETAILED;
+  elements.simpleTimeFields.classList.toggle('hidden', isDetailed);
+  elements.normalTimeFields.classList.toggle('hidden', !isDetailed);
+  elements.startTimeInput.required = isDetailed;
+  elements.endTimeInput.required = isDetailed;
+  elements.simpleDurationInput.required = !isDetailed;
+  elements.toggleEntryModeBtn.textContent = isDetailed ? 'Einfache Ansicht' : 'Detaillierte Ansicht';
+}
+
+function isSimpleEntryByTimes(entry) {
+  return entry?.start_time === '00:00:00' && entry?.end_time === '00:00:00';
 }
 
 function getHolidayApprovalMeta(approvalStatus) {
@@ -2196,6 +2252,10 @@ async function saveEntry(event) {
 
   if (!isAutoType && payload.total_work_minutes <= 0) {
     showToast('Bitte gültige Arbeitszeit eingeben.', 'error');
+    return;
+  }
+  if (!isAutoType && payload.total_work_minutes > 24 * 60) {
+    showToast('Arbeitszeit darf maximal 24 Stunden betragen.', 'error');
     return;
   }
 
@@ -2424,6 +2484,10 @@ function openDrawer(isoDate, entry = null) {
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
+  const entryMode = entry ? (isSimpleEntryByTimes(entry) ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED) : ENTRY_MODE_SIMPLE;
+  elements.simpleDurationInput.value = formatDurationForInput(entry?.total_work_minutes ?? (DEFAULT_WORK_HOURS * 60));
+  setEntryMode(entry ? entryMode : ENTRY_MODE_SIMPLE);
+  elements.toggleEntryModeBtn.classList.toggle('hidden', Boolean(entry));
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.expensesToggleInput.checked = Number(entry?.expenses_amount || 0) > 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
@@ -2455,6 +2519,9 @@ function closeDrawer() {
   setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
   setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = getAutoReportMaxHours();
+  elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
+  setEntryMode(ENTRY_MODE_SIMPLE);
+  elements.toggleEntryModeBtn.classList.remove('hidden');
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
   renderCommissionSuggestions('');
@@ -2799,6 +2866,10 @@ function registerEventListeners() {
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value, { setDefaultAutoHours: true }));
+  elements.toggleEntryModeBtn.addEventListener('click', () => {
+    setEntryMode(state.entryMode === ENTRY_MODE_DETAILED ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED);
+    applyReportTypeSelection(elements.reportTypeInput.value, { setDefaultAutoHours: false });
+  });
   elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
   elements.commissionInput.addEventListener('focus', () => {
     loadProjectSuggestions().then(() => renderCommissionSuggestions(elements.commissionInput.value));
@@ -2867,6 +2938,7 @@ function registerEventListeners() {
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
       elements.workHoursInput.value = getAutoReportMaxHours();
+      elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
       setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
@@ -2877,6 +2949,7 @@ function registerEventListeners() {
       elements.expensesToggleInput.checked = false;
       elements.expensesToggleInput.disabled = false;
       applyReportTypeSelection('', { setDefaultAutoHours: false });
+      setEntryMode(ENTRY_MODE_SIMPLE);
       resetAttachmentState('report', []);
       renderAttachmentPreview('report');
     }, 0);
@@ -2923,4 +2996,3 @@ function enforceQuarterHourInput(input) {
     input.value = normalized;
   }
 }
-
