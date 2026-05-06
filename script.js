@@ -2965,6 +2965,44 @@ function registerEventListeners() {
   });
 }
 
+
+function getAppBuildVersion() {
+  return document.querySelector('meta[name="app-build-version"]')?.content || 'dev';
+}
+
+function showUpdateNotification() {
+  showToast('Neue Version verfügbar – App wird aktualisiert.', 'info');
+}
+
+async function registerAppServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const appVersion = encodeURIComponent(getAppBuildVersion());
+  let hasReloadedForUpdate = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hasReloadedForUpdate) return;
+    hasReloadedForUpdate = true;
+    window.location.reload();
+  });
+
+  const registration = await navigator.serviceWorker.register(`./sw.js?v=${appVersion}`, { updateViaCache: 'none' });
+
+  const promptAndActivate = (worker) => {
+    if (!worker) return;
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateNotification();
+        worker.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
+  };
+
+  promptAndActivate(registration.installing);
+  registration.addEventListener('updatefound', () => promptAndActivate(registration.installing));
+
+  window.setInterval(() => registration.update().catch(() => null), 60 * 1000);
+}
+
 setAuthMode('login');
 registerEventListeners();
 const nowIsoWeek = getIsoWeekYearAndNumber(new Date());
@@ -2973,6 +3011,7 @@ if (elements.dashboardReportWeekInput) elements.dashboardReportWeekInput.value =
 openHolidayDrawer();
 syncAutoReportHourConstraints();
 syncBodyScrollLock();
+registerAppServiceWorker().catch(() => null);
 loadConfig();
 function roundTimeToQuarterHour(timeValue) {
   if (!timeValue || !timeValue.includes(':')) return timeValue;
