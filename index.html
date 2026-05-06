@@ -430,15 +430,15 @@
             <input id="projectNameInput" type="text" required placeholder="z. B. Neubau Musterstrasse" />
           </label>
 
-          <div class="field-row">
-            <button class="secondary-btn" id="toggleEntryModeBtn" type="button">Detaillierte Ansicht</button>
-          </div>
-
           <div class="field-row split-pair" id="simpleTimeFields">
             <label class="field compact-field">
               <span>Arbeitszeit total (Stunden)</span>
               <input id="simpleDurationInput" type="text" inputmode="decimal" placeholder="z. B. 8 oder 8:00" />
             </label>
+            <div class="field compact-field align-right-field simple-mode-toggle-field">
+              <span>&nbsp;</span>
+              <button class="secondary-btn" id="toggleEntryModeBtn" type="button">Detaillierte Ansicht</button>
+            </div>
           </div>
 
           <div id="normalTimeFields">
