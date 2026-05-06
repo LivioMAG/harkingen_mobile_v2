@@ -1675,7 +1675,10 @@ async function startForgotPassword(event) {
     async () => {
       const { error } = await state.supabase.auth.signInWithOtp({
         email,
-        options: { shouldCreateUser: false }
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: 'https://marechaux.io/mobile/'
+        }
       });
 
       if (error) {
