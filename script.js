@@ -52,6 +52,7 @@ const DAY_SHIFT_END_MINUTES = 22 * 60;
 const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, is_admin';
 const ENTRY_MODE_SIMPLE = 'simple';
 const ENTRY_MODE_DETAILED = 'detailed';
+const PROJECT_NAME_PREVIEW_MAX_LENGTH = 30;
 const WEEKLY_REPORT_COLUMNS = [
   'id',
   'profile_id',
@@ -981,6 +982,13 @@ function formatMinutesLong(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours} Stunden ${String(minutes).padStart(2, '0')} Minuten`;
+}
+
+function truncateTextWithEllipsis(value, maxLength = PROJECT_NAME_PREVIEW_MAX_LENGTH) {
+  const normalizedValue = String(value || '').trim();
+  if (!normalizedValue) return '';
+  if (normalizedValue.length <= maxLength) return normalizedValue;
+  return `${normalizedValue.slice(0, maxLength)}...`;
 }
 
 function getHourMinuteParts(totalMinutes) {
@@ -2678,7 +2686,7 @@ function renderWeek() {
         const entryNode = elements.entryCardTemplate.content.cloneNode(true);
         const button = entryNode.querySelector('.entry-card');
         button.querySelector('.entry-commission').textContent = entry.commission_number || '—';
-        button.querySelector('.entry-project').textContent = entry.project_name || '—';
+        button.querySelector('.entry-project').textContent = truncateTextWithEllipsis(entry.project_name) || '—';
         button.querySelector('.entry-minutes').innerHTML = formatAdjustedEntryMinutes(entry);
         button.querySelector('.entry-expenses').textContent = formatCurrency(
           Number(entry.expenses_amount || 0) + Number(entry.other_costs_amount || 0)
