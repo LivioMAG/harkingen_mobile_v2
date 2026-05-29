@@ -174,8 +174,6 @@ const state = {
   holidayDraftAttachments: [],
   holidayPendingFiles: [],
   surchargeRules: DEFAULT_SURCHARGE_RULES,
-  projectSuggestionsLoaded: false,
-  projectSuggestions: [],
   dashboardReportDownloadLoading: false,
   savedCommissionEditorOpen: false,
   entryMode: ENTRY_MODE_SIMPLE
@@ -268,7 +266,6 @@ const elements = {
   commissionInput: document.getElementById('commissionInput'),
   savedCommissionDropdownBtn: document.getElementById('savedCommissionDropdownBtn'),
   savedCommissionMenu: document.getElementById('savedCommissionMenu'),
-  commissionSuggestionsList: document.getElementById('commissionSuggestionsList'),
   expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
   normalCostFields: document.getElementById('normalCostFields'),
@@ -1134,117 +1131,10 @@ function getSavedCommissions() {
   return normalizeSavedCommissions(state.profile?.saved_commissions);
 }
 
-function getSavedCommissionSuggestions() {
-  return getSavedCommissions().map((item) => ({
-    commissionNumber: item.commission_number,
-    projectName: item.project_name,
-    allowExpenses: true,
-    saved: true
-  }));
-}
-
-function normalizeProjectSuggestion(record) {
-  if (!record || typeof record !== 'object') return null;
-
-  const commissionNumber = pickFirstFilledValue(record, [
-    'commission_number',
-    'commission',
-    'kommissionsnummer',
-    'project_number',
-    'number',
-    'nummer'
-  ]);
-  const projectName = pickFirstFilledValue(record, [
-    'project_name',
-    'name',
-    'title',
-    'projektname',
-    'project_title'
-  ]);
-
-  if (!commissionNumber) return null;
-  return { commissionNumber, projectName, allowExpenses: Boolean(record?.allow_expenses) };
-}
-
-function findCommissionSuggestionMatch() {
-  const value = elements.commissionInput.value.trim().toLowerCase();
-  if (!value) return null;
-
-  return (
-    state.projectSuggestions.find((item) => item.commissionNumber.toLowerCase() === value) || null
-  );
-}
-
-function renderCommissionSuggestions(searchValue = '') {
-  const normalizedSearch = String(searchValue || '').trim().toLowerCase();
-  const suggestions = state.projectSuggestions
-    .filter((item) => {
-      if (!normalizedSearch) return true;
-      const commissionMatches = item.commissionNumber.toLowerCase().includes(normalizedSearch);
-      const projectNameMatches = (item.projectName || '').toLowerCase().includes(normalizedSearch);
-      return commissionMatches || projectNameMatches;
-    })
-    .slice(0, 5);
-
-  renderCommissionSuggestionsList(suggestions);
-  return suggestions;
-}
-
-function renderCommissionSuggestionsList(suggestions = []) {
-  if (!elements.commissionSuggestionsList) return;
-  elements.commissionSuggestionsList.innerHTML = '';
-
-  if (!suggestions.length || AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
-    elements.commissionSuggestionsList.classList.add('hidden');
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  suggestions.forEach((item) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'suggestion-item';
-    button.dataset.commission = item.commissionNumber;
-    button.dataset.projectName = item.projectName || '';
-    button.setAttribute('role', 'option');
-    button.innerHTML = `
-      <strong>${escapeHtml(item.commissionNumber)}</strong>
-      <span>${escapeHtml(item.projectName || 'Ohne Projektname')}</span>
-    `;
-    fragment.appendChild(button);
-  });
-
-  elements.commissionSuggestionsList.appendChild(fragment);
-  elements.commissionSuggestionsList.classList.remove('hidden');
-}
-
-function hideCommissionSuggestionsList() {
-  if (!elements.commissionSuggestionsList) return;
-  elements.commissionSuggestionsList.classList.add('hidden');
-}
-
-function applyCommissionSuggestion(commissionNumber) {
-  if (!commissionNumber) return;
-  elements.commissionInput.value = commissionNumber;
-  syncProjectNameFromCommission();
-  syncExpenseToggleState();
-  hideCommissionSuggestionsList();
-  closeKeyboardAndSuggestions(elements.commissionInput);
-}
-
-function syncProjectNameFromCommission() {
-  if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) return;
-  const match = findCommissionSuggestionMatch();
-  if (!match?.projectName) return;
-
-  elements.projectNameInput.value = match.projectName;
-}
-
 function syncExpenseToggleState() {
   const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput.value);
   const isUkType = elements.reportTypeInput.value === 'uk';
-  const projectMatch = findCommissionSuggestionMatch();
-  const canToggleExpenses = !isAutoType && (!projectMatch || projectMatch.allowExpenses);
+  const canToggleExpenses = !isAutoType;
 
   if (isUkType) {
     elements.expensesToggleInput.checked = true;
@@ -1258,52 +1148,6 @@ function syncExpenseToggleState() {
     elements.expensesToggleInput.checked = false;
   }
   elements.expensesInput.value = elements.expensesToggleInput.checked ? '18' : '0';
-}
-
-function closeKeyboardAndSuggestions(inputElement) {
-  if (!inputElement) return;
-  inputElement.blur();
-  if (document.activeElement instanceof HTMLElement) {
-    document.activeElement.blur();
-  }
-}
-
-async function loadProjectSuggestions() {
-  if (!state.supabase || !state.session?.user || state.projectSuggestionsLoaded) return;
-
-  const savedSuggestions = getSavedCommissionSuggestions();
-  const { data, error } = await state.supabase
-    .from('projects')
-    .select('*')
-    .limit(2000);
-
-  state.projectSuggestionsLoaded = true;
-  if (error) {
-    console.warn('Projects-Autocomplete konnte nicht geladen werden:', error.message);
-    state.projectSuggestions = savedSuggestions;
-    return;
-  }
-
-  const suggestions = [
-    ...savedSuggestions,
-    ...(data || []).map(normalizeProjectSuggestion).filter(Boolean)
-  ];
-  const uniqueByCommission = new Map();
-  suggestions.forEach((item) => {
-    if (!uniqueByCommission.has(item.commissionNumber.toLowerCase())) {
-      uniqueByCommission.set(item.commissionNumber.toLowerCase(), item);
-    }
-  });
-  state.projectSuggestions = Array.from(uniqueByCommission.values());
-}
-
-async function handleCommissionInput() {
-  syncReportTypeFromProjectOrCommission();
-  await loadProjectSuggestions();
-  const suggestions = renderCommissionSuggestions(elements.commissionInput.value);
-  syncProjectNameFromCommission();
-  syncExpenseToggleState();
-  return suggestions;
 }
 
 function applyReportTypeSelection(reportType, options = {}) {
@@ -1746,7 +1590,6 @@ async function persistSavedCommissions(commissions, successMessage) {
 
       if (error) throw error;
       state.profile = normalizeProfile(data);
-      state.projectSuggestionsLoaded = false;
       fillSettingsForm();
       showToast(successMessage);
     }
@@ -2854,10 +2697,7 @@ function openDrawer(isoDate, entry = null) {
   elements.notesInput.value = mergedNotes;
   applyReportTypeSelection(reportType, { setDefaultAutoHours: !entry });
   syncSavedCommissionDropdownState();
-  loadProjectSuggestions().then(() => {
-    renderCommissionSuggestions(elements.commissionInput.value);
-    syncExpenseToggleState();
-  });
+  syncExpenseToggleState();
   resetAttachmentState('report', entry?.attachments || []);
   elements.deleteEntryBtn.classList.toggle('hidden', !entry);
   renderAttachmentPreview('report');
@@ -2884,7 +2724,6 @@ function closeDrawer() {
   elements.toggleEntryModeBtn.classList.remove('hidden');
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
-  renderCommissionSuggestions('');
   hideSavedCommissionMenu();
   syncSavedCommissionDropdownState();
   elements.projectNameInput.readOnly = false;
@@ -3142,8 +2981,6 @@ function render() {
     setCurrentView(state.currentView);
   } else {
     state.currentView = 'timesheet';
-    state.projectSuggestionsLoaded = false;
-    state.projectSuggestions = [];
     setCurrentView('timesheet');
     elements.settingsForm?.reset();
     elements.phoneInput.value = '';
@@ -3273,24 +3110,11 @@ function registerEventListeners() {
     applyReportTypeSelection(elements.reportTypeInput.value, { setDefaultAutoHours: false });
   });
   elements.projectNameInput.addEventListener('input', syncReportTypeFromProjectOrCommission);
-  elements.commissionInput.addEventListener('focus', () => {
-    loadProjectSuggestions().then(() => renderCommissionSuggestions(elements.commissionInput.value));
-  });
   elements.commissionInput.addEventListener('input', () => {
-    handleCommissionInput().then(() => {
-      if (findCommissionSuggestionMatch()) {
-        closeKeyboardAndSuggestions(elements.commissionInput);
-      }
-    });
-  });
-  elements.commissionInput.addEventListener('blur', () => {
-    window.setTimeout(hideCommissionSuggestionsList, 120);
-  });
-  elements.commissionInput.addEventListener('change', () => {
-    syncProjectNameFromCommission();
+    syncReportTypeFromProjectOrCommission();
     syncExpenseToggleState();
-    closeKeyboardAndSuggestions(elements.commissionInput);
   });
+  elements.commissionInput.addEventListener('change', syncExpenseToggleState);
   elements.savedCommissionDropdownBtn?.addEventListener('click', () => {
     if (elements.savedCommissionMenu?.classList.contains('hidden')) renderSavedCommissionMenu();
     else hideSavedCommissionMenu();
@@ -3305,22 +3129,10 @@ function registerEventListeners() {
     if (!target) return;
     applySavedCommission(Number(target.dataset.savedCommissionIndex));
   });
-  elements.commissionSuggestionsList?.addEventListener('mousedown', (event) => {
-    const target = event.target.closest('.suggestion-item');
-    if (!target) return;
-    event.preventDefault();
-  });
-  elements.commissionSuggestionsList?.addEventListener('click', (event) => {
-    const target = event.target.closest('.suggestion-item');
-    if (!target) return;
-    applyCommissionSuggestion(target.dataset.commission || '');
-  });
   document.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
-    if (elements.commissionInput.contains(target) || elements.commissionSuggestionsList?.contains(target)) return;
     if (elements.savedCommissionDropdownBtn?.contains(target) || elements.savedCommissionMenu?.contains(target)) return;
-    hideCommissionSuggestionsList();
     hideSavedCommissionMenu();
   });
   elements.expensesToggleInput.addEventListener('change', syncExpenseToggleState);
