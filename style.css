@@ -1014,6 +1014,70 @@ textarea {
   width: 100%;
 }
 
+.partial-absence-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(215, 25, 32, 0.14);
+  border-radius: 18px;
+  background: rgba(215, 25, 32, 0.05);
+}
+
+.partial-absence-head,
+.partial-absence-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.partial-absence-slider {
+  flex: 1 1 220px;
+}
+
+.partial-absence-slider input[type='range'] {
+  padding-inline: 0;
+  accent-color: var(--brand);
+}
+
+.partial-absence-head strong {
+  min-width: 72px;
+  text-align: right;
+  font-size: 1.2rem;
+}
+
+.partial-absence-summary {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.weekday-distribution {
+  display: grid;
+  gap: 10px;
+}
+
+.weekday-distribution p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.weekday-hours-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.danger-text {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+@media (min-width: 720px) {
+  .weekday-hours-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .checkbox-inline {
   display: inline-flex;
   align-items: center;
