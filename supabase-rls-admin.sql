@@ -71,10 +71,18 @@ create table if not exists public.holiday_requests (
   request_type text not null check (request_type in ('ferien', 'militaer', 'zivildienst', 'unfall', 'krankheit')),
   notes text,
   attachments jsonb not null default '[]'::jsonb,
+  special_request_hours jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint holiday_requests_date_check check (end_date >= start_date)
 );
+
+alter table public.holiday_requests drop column if exists special_request;
+alter table public.holiday_requests add column if not exists special_request_hours jsonb not null default '{}'::jsonb;
+
+update public.holiday_requests
+set special_request_hours = '{}'::jsonb
+where special_request_hours is null;
 
 create index if not exists weekly_reports_profile_date_idx
   on public.weekly_reports (profile_id, work_date);

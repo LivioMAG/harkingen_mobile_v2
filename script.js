@@ -46,6 +46,8 @@ const HOLIDAY_TYPE_LABELS = {
   krankheit: 'Krankheit'
 };
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const WORKDAY_LABELS = WEEKDAY_LABELS.slice(0, 5);
+const PARTIAL_ABSENCE_TYPES = new Set(['unfall', 'krankheit']);
 const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
@@ -137,6 +139,7 @@ const HOLIDAY_REQUEST_COLUMNS = [
   'approval_status',
   'notes',
   'attachments',
+  'special_request_hours',
   'created_at',
   'updated_at'
 ].join(', ');
@@ -284,6 +287,13 @@ const elements = {
   holidayStartDateInput: document.getElementById('holidayStartDateInput'),
   holidayEndDateInput: document.getElementById('holidayEndDateInput'),
   holidayTypeInput: document.getElementById('holidayTypeInput'),
+  partialAbsencePanel: document.getElementById('partialAbsencePanel'),
+  holidayIncapacityPercentInput: document.getElementById('holidayIncapacityPercentInput'),
+  holidayIncapacityPercentLabel: document.getElementById('holidayIncapacityPercentLabel'),
+  holidayIncapacityHoursLabel: document.getElementById('holidayIncapacityHoursLabel'),
+  holidayIncapacityRemainingLabel: document.getElementById('holidayIncapacityRemainingLabel'),
+  holidayWeekdayDistribution: document.getElementById('holidayWeekdayDistribution'),
+  holidayWeekdayHourInputs: document.querySelectorAll('.weekday-hours-input'),
   holidayNotesInput: document.getElementById('holidayNotesInput'),
   holidayAttachmentsCameraBtn: document.getElementById('holidayAttachmentsCameraBtn'),
   holidayAttachmentsGalleryBtn: document.getElementById('holidayAttachmentsGalleryBtn'),
@@ -1425,9 +1435,93 @@ function getDisplayName(profile, fallbackEmail = '') {
 }
 
 function getAutoReportMaxHours() {
-  const weeklyHours = Number(state.profile?.weekly_hours || 0);
+  const weeklyHours = getProfileWeeklyHours();
   const profileDailyHours = Number.isFinite(weeklyHours) && weeklyHours > 0 ? weeklyHours / 5 : 0;
   return Math.max(DEFAULT_WORK_HOURS, profileDailyHours);
+}
+
+function getProfileWeeklyHours() {
+  const weeklyHours = Number(state.profile?.weekly_hours || 0);
+  return Number.isFinite(weeklyHours) && weeklyHours > 0 ? weeklyHours : DEFAULT_WORK_HOURS * WORKDAY_LABELS.length;
+}
+
+function getHolidayIncapacityPercent() {
+  const percent = Number(elements.holidayIncapacityPercentInput?.value || 100);
+  return Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 100;
+}
+
+function getHolidayIncapacityHours() {
+  return roundHours((getProfileWeeklyHours() * getHolidayIncapacityPercent()) / 100);
+}
+
+function roundHours(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function formatHours(value) {
+  return `${roundHours(value).toFixed(2)} h`;
+}
+
+function shouldUsePartialAbsenceDistribution() {
+  return PARTIAL_ABSENCE_TYPES.has(elements.holidayTypeInput.value) && getHolidayIncapacityPercent() < 100;
+}
+
+function hasHolidayWeekdayHourMap(holiday) {
+  const hours = holiday?.special_request_hours;
+  if (!hours || typeof hours !== 'object' || Array.isArray(hours)) return false;
+  return WORKDAY_LABELS.some((weekday) => Object.hasOwn(hours, weekday));
+}
+
+function getHolidayWeekdayHours() {
+  const hours = {};
+  elements.holidayWeekdayHourInputs.forEach((input) => {
+    const weekday = input.dataset.weekday;
+    hours[weekday] = roundHours(Number(input.value || 0));
+  });
+  return hours;
+}
+
+function getHolidayDistributedHours() {
+  return roundHours(
+    Object.values(getHolidayWeekdayHours()).reduce((sum, hours) => sum + (Number.isFinite(hours) ? hours : 0), 0)
+  );
+}
+
+function resetHolidayPartialAbsenceFields() {
+  elements.holidayIncapacityPercentInput.value = '100';
+  elements.holidayWeekdayHourInputs.forEach((input) => {
+    input.value = '0';
+  });
+  syncHolidayPartialAbsenceFields();
+}
+
+function syncHolidayPartialAbsenceFields() {
+  const isSupportedType = PARTIAL_ABSENCE_TYPES.has(elements.holidayTypeInput.value);
+  const percent = getHolidayIncapacityPercent();
+  const totalHours = getHolidayIncapacityHours();
+  const isSpecialRequest = isSupportedType && (percent < 100 || hasHolidayWeekdayHourMap(state.editingHoliday));
+  const distributedHours = getHolidayDistributedHours();
+  const remainingHours = roundHours(totalHours - distributedHours);
+
+  elements.partialAbsencePanel.classList.toggle('hidden', !isSupportedType);
+  elements.holidayWeekdayDistribution.classList.toggle('hidden', !isSpecialRequest);
+  elements.holidayIncapacityRemainingLabel.classList.toggle('hidden', !isSpecialRequest);
+  elements.holidayIncapacityPercentInput.disabled = !isSupportedType || Boolean(state.editingHoliday?.id);
+  elements.holidayWeekdayHourInputs.forEach((input) => {
+    input.disabled = !isSpecialRequest || Boolean(state.editingHoliday?.id);
+  });
+
+  if (!isSupportedType) {
+    elements.holidayIncapacityPercentInput.value = '100';
+    elements.holidayWeekdayHourInputs.forEach((input) => {
+      input.value = '0';
+    });
+  }
+
+  elements.holidayIncapacityPercentLabel.textContent = `${getHolidayIncapacityPercent()}%`;
+  elements.holidayIncapacityHoursLabel.textContent = formatHours(getHolidayIncapacityHours());
+  elements.holidayIncapacityRemainingLabel.textContent = `Noch zu verteilen: ${formatHours(remainingHours)}`;
+  elements.holidayIncapacityRemainingLabel.classList.toggle('danger-text', Math.abs(remainingHours) > 0.01);
 }
 
 function syncAutoReportHourConstraints({ setDefaultForAutoType = false } = {}) {
@@ -1464,6 +1558,7 @@ async function loadOptionalProfileWeeklyHours(profileId) {
   if (!state.profile) return;
   state.profile = normalizeProfile({ ...state.profile, weekly_hours: Number(data?.weekly_hours || 0) || 0 });
   syncAutoReportHourConstraints();
+  syncHolidayPartialAbsenceFields();
 }
 
 function areProfileFieldsEqual(left, right) {
@@ -2173,7 +2268,8 @@ function getHolidayPayload(existingAttachments) {
     end_date: elements.holidayEndDateInput.value,
     request_type: elements.holidayTypeInput.value,
     notes: elements.holidayNotesInput.value.trim(),
-    attachments: existingAttachments
+    attachments: existingAttachments,
+    special_request_hours: shouldUsePartialAbsenceDistribution() ? getHolidayWeekdayHours() : {}
   };
 }
 
@@ -2350,6 +2446,16 @@ async function saveHolidayRequest(event) {
   if (endDate < startDate) {
     showToast('Das Enddatum darf nicht vor dem Startdatum liegen.', 'error');
     return;
+  }
+
+  if (shouldUsePartialAbsenceDistribution()) {
+    const totalHours = getHolidayIncapacityHours();
+    const distributedHours = getHolidayDistributedHours();
+    const remainingHours = roundHours(totalHours - distributedHours);
+    if (Math.abs(remainingHours) > 0.01) {
+      showToast(`Bitte die Stunden exakt verteilen. Offen: ${formatHours(remainingHours)}`, 'error');
+      return;
+    }
   }
 
   try {
@@ -2547,6 +2653,14 @@ function openHolidayDrawer(holiday = null) {
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
   elements.holidayTypeInput.value = holiday?.request_type || 'ferien';
   elements.holidayNotesInput.value = holiday?.notes || '';
+  const specialHours = holiday?.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
+  const distributedHours = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
+  const derivedPercent = distributedHours > 0 ? Math.round((distributedHours / getProfileWeeklyHours()) * 20) * 5 : 100;
+  elements.holidayIncapacityPercentInput.value = String(Math.min(100, Math.max(0, derivedPercent)));
+  elements.holidayWeekdayHourInputs.forEach((input) => {
+    input.value = String(Number(specialHours[input.dataset.weekday] || 0));
+  });
+  syncHolidayPartialAbsenceFields();
   elements.holidayStartDateInput.disabled = isExistingRequest;
   elements.holidayEndDateInput.disabled = isExistingRequest;
   elements.holidayTypeInput.disabled = isExistingRequest;
@@ -2567,6 +2681,7 @@ function closeHolidayDrawer() {
   renderAttachmentPreview('holiday');
   elements.holidayStartDateInput.value = getISODate(new Date());
   elements.holidayEndDateInput.value = getISODate(new Date());
+  resetHolidayPartialAbsenceFields();
   elements.holidayStartDateInput.disabled = false;
   elements.holidayEndDateInput.disabled = false;
   elements.holidayTypeInput.disabled = false;
@@ -2720,6 +2835,11 @@ function renderHolidayRequests() {
     const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
     const status = getHolidayApprovalMeta(Number(holiday.approval_status));
     const actionLabel = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
+    const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
+    const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
+    const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
+      ? `<span class="pill warning">Teilweise: ${formatHours(specialHoursTotal)}</span>`
+      : '';
 
     article.innerHTML = `
       <div class="request-item-header">
@@ -2729,6 +2849,7 @@ function renderHolidayRequests() {
       <div class="request-item-meta">
         <p>${holiday.notes || 'Keine zusätzliche Bemerkung.'}</p>
         <span class="pill ${attachmentCount ? 'success' : 'neutral'}">${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}</span>
+        ${specialRequestSummary}
       </div>
       <div class="chip-list"></div>
       <div class="request-item-actions">
@@ -2865,6 +2986,11 @@ function registerEventListeners() {
   });
   elements.entryForm.addEventListener('submit', saveEntry);
   elements.holidayForm.addEventListener('submit', saveHolidayRequest);
+  elements.holidayTypeInput.addEventListener('change', syncHolidayPartialAbsenceFields);
+  elements.holidayIncapacityPercentInput.addEventListener('input', syncHolidayPartialAbsenceFields);
+  elements.holidayWeekdayHourInputs.forEach((input) => {
+    input.addEventListener('input', syncHolidayPartialAbsenceFields);
+  });
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
@@ -2959,6 +3085,7 @@ function registerEventListeners() {
   });
   elements.holidayForm.addEventListener('reset', () => {
     window.setTimeout(() => {
+      resetHolidayPartialAbsenceFields();
       resetAttachmentState('holiday', []);
       renderAttachmentPreview('holiday');
     }, 0);

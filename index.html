@@ -230,6 +230,45 @@
                     </select>
                   </label>
 
+                  <section class="partial-absence-panel hidden" id="partialAbsencePanel" aria-live="polite">
+                    <div class="partial-absence-head">
+                      <label class="field partial-absence-slider" for="holidayIncapacityPercentInput">
+                        <span>Arbeitsunfähigkeit</span>
+                        <input id="holidayIncapacityPercentInput" type="range" min="0" max="100" step="5" value="100" />
+                      </label>
+                      <strong id="holidayIncapacityPercentLabel">100%</strong>
+                    </div>
+                    <div class="partial-absence-summary">
+                      <span>Total arbeitsunfähig: <strong id="holidayIncapacityHoursLabel">40.00 h</strong></span>
+                      <span class="hidden" id="holidayIncapacityRemainingLabel">Noch zu verteilen: 0.00 h</span>
+                    </div>
+                    <div class="weekday-distribution hidden" id="holidayWeekdayDistribution">
+                      <p>Verteile die arbeitsunfähigen Stunden auf die Arbeitstage.</p>
+                      <div class="weekday-hours-grid">
+                        <label class="field">
+                          <span>Montag</span>
+                          <input class="weekday-hours-input" data-weekday="Montag" id="holidayHoursMondayInput" type="number" min="0" step="0.25" inputmode="decimal" value="0" />
+                        </label>
+                        <label class="field">
+                          <span>Dienstag</span>
+                          <input class="weekday-hours-input" data-weekday="Dienstag" id="holidayHoursTuesdayInput" type="number" min="0" step="0.25" inputmode="decimal" value="0" />
+                        </label>
+                        <label class="field">
+                          <span>Mittwoch</span>
+                          <input class="weekday-hours-input" data-weekday="Mittwoch" id="holidayHoursWednesdayInput" type="number" min="0" step="0.25" inputmode="decimal" value="0" />
+                        </label>
+                        <label class="field">
+                          <span>Donnerstag</span>
+                          <input class="weekday-hours-input" data-weekday="Donnerstag" id="holidayHoursThursdayInput" type="number" min="0" step="0.25" inputmode="decimal" value="0" />
+                        </label>
+                        <label class="field">
+                          <span>Freitag</span>
+                          <input class="weekday-hours-input" data-weekday="Freitag" id="holidayHoursFridayInput" type="number" min="0" step="0.25" inputmode="decimal" value="0" />
+                        </label>
+                      </div>
+                    </div>
+                  </section>
+
                   <label class="field">
                     <span>Bemerkung</span>
                     <textarea id="holidayNotesInput" rows="4" placeholder="Optional: Zusatzinfos, Hinweise, Einsatznummer oder Bemerkung"></textarea>
