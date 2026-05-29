@@ -1377,7 +1377,7 @@ function shouldUsePartialAbsenceDistribution() {
 function hasHolidayWeekdayHourMap(holiday) {
   const hours = holiday?.special_request_hours;
   if (!hours || typeof hours !== 'object' || Array.isArray(hours)) return false;
-  return WORKDAY_LABELS.some((weekday) => Object.hasOwn(hours, weekday));
+  return WORKDAY_LABELS.some((weekday) => Object.prototype.hasOwnProperty.call(hours, weekday));
 }
 
 function getHolidayWeekdayHours() {
@@ -1560,7 +1560,8 @@ function openSavedCommissionForm(index = null) {
   elements.savedCommissionFormEyebrow.textContent = item ? 'Kommission bearbeiten' : 'Neue Kommission';
   elements.savedCommissionFormTitle.textContent = item ? 'Kommission aktualisieren' : 'Kommission speichern';
   elements.savedCommissionForm.classList.remove('hidden');
-  elements.savedCommissionNumberInput.focus();
+  elements.savedCommissionForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  window.setTimeout(() => elements.savedCommissionNumberInput.focus({ preventScroll: true }), 0);
   renderSavedCommissions();
 }
 
@@ -3022,6 +3023,23 @@ function triggerFileInput(input) {
   input.click();
 }
 
+
+function addMobileSafeActivationListener(element, handler) {
+  if (!element) return;
+  let lastTouchTime = 0;
+
+  element.addEventListener('touchend', (event) => {
+    lastTouchTime = Date.now();
+    event.preventDefault();
+    handler(event);
+  }, { passive: false });
+
+  element.addEventListener('click', (event) => {
+    if (Date.now() - lastTouchTime < 700) return;
+    handler(event);
+  });
+}
+
 function registerEventListeners() {
   elements.authForm.addEventListener('submit', handleAuthSubmit);
   elements.toggleAuthModeBtn.addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'register' : 'login'));
@@ -3036,7 +3054,7 @@ function registerEventListeners() {
   });
   elements.signOutBtn.addEventListener('click', signOut);
   elements.settingsForm.addEventListener('submit', saveSettings);
-  elements.addSavedCommissionBtn?.addEventListener('click', () => openSavedCommissionForm());
+  addMobileSafeActivationListener(elements.addSavedCommissionBtn, () => openSavedCommissionForm());
   elements.savedCommissionForm?.addEventListener('submit', saveSavedCommission);
   elements.cancelSavedCommissionBtn?.addEventListener('click', closeSavedCommissionForm);
   elements.savedCommissionsList?.addEventListener('click', (event) => {
@@ -3115,7 +3133,8 @@ function registerEventListeners() {
     syncExpenseToggleState();
   });
   elements.commissionInput.addEventListener('change', syncExpenseToggleState);
-  elements.savedCommissionDropdownBtn?.addEventListener('click', () => {
+  addMobileSafeActivationListener(elements.savedCommissionDropdownBtn, (event) => {
+    event.stopPropagation();
     if (elements.savedCommissionMenu?.classList.contains('hidden')) renderSavedCommissionMenu();
     else hideSavedCommissionMenu();
   });
@@ -3124,11 +3143,19 @@ function registerEventListeners() {
     if (!target) return;
     event.preventDefault();
   });
-  elements.savedCommissionMenu?.addEventListener('click', (event) => {
+  let lastSavedCommissionMenuTouchTime = 0;
+  const handleSavedCommissionMenuSelection = (event) => {
+    if (event.type === 'click' && Date.now() - lastSavedCommissionMenuTouchTime < 700) return;
+    if (event.type === 'touchend') lastSavedCommissionMenuTouchTime = Date.now();
+
     const target = event.target.closest('.suggestion-item');
     if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
     applySavedCommission(Number(target.dataset.savedCommissionIndex));
-  });
+  };
+  elements.savedCommissionMenu?.addEventListener('touchend', handleSavedCommissionMenuSelection, { passive: false });
+  elements.savedCommissionMenu?.addEventListener('click', handleSavedCommissionMenuSelection);
   document.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
