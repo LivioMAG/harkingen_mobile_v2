@@ -51,7 +51,7 @@ const PARTIAL_ABSENCE_TYPES = new Set(['unfall', 'krankheit']);
 const NIGHT_SHIFT_NOTE_PREFIX = 'Nachtzeit';
 const DAY_SHIFT_START_MINUTES = 6 * 60;
 const DAY_SHIFT_END_MINUTES = 22 * 60;
-const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, is_admin';
+const PROFILE_COLUMNS = 'id, email, first_name, last_name, full_name, role_label, tel, saved_commissions, is_admin';
 const ENTRY_MODE_SIMPLE = 'simple';
 const ENTRY_MODE_DETAILED = 'detailed';
 const WEEKLY_REPORT_COLUMNS = [
@@ -176,8 +176,8 @@ const state = {
   surchargeRules: DEFAULT_SURCHARGE_RULES,
   projectSuggestionsLoaded: false,
   projectSuggestions: [],
-  dashboardReportDownloadLoading: false
-  ,
+  dashboardReportDownloadLoading: false,
+  savedCommissionEditorOpen: false,
   entryMode: ENTRY_MODE_SIMPLE
 };
 
@@ -238,6 +238,17 @@ const elements = {
   lastNameInput: document.getElementById('lastNameInput'),
   phoneInput: document.getElementById('phoneInput'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+  savedCommissionsCard: document.getElementById('savedCommissionsCard'),
+  savedCommissionsList: document.getElementById('savedCommissionsList'),
+  addSavedCommissionBtn: document.getElementById('addSavedCommissionBtn'),
+  savedCommissionForm: document.getElementById('savedCommissionForm'),
+  savedCommissionIndexInput: document.getElementById('savedCommissionIndexInput'),
+  savedCommissionNumberInput: document.getElementById('savedCommissionNumberInput'),
+  savedCommissionProjectInput: document.getElementById('savedCommissionProjectInput'),
+  savedCommissionFormEyebrow: document.getElementById('savedCommissionFormEyebrow'),
+  savedCommissionFormTitle: document.getElementById('savedCommissionFormTitle'),
+  saveSavedCommissionBtn: document.getElementById('saveSavedCommissionBtn'),
+  cancelSavedCommissionBtn: document.getElementById('cancelSavedCommissionBtn'),
   openPasswordViewBtn: document.getElementById('openPasswordViewBtn'),
   passwordView: document.getElementById('passwordView'),
   backToSettingsBtn: document.getElementById('backToSettingsBtn'),
@@ -255,6 +266,8 @@ const elements = {
   reportTypeInput: document.getElementById('reportTypeInput'),
   projectNameInput: document.getElementById('projectNameInput'),
   commissionInput: document.getElementById('commissionInput'),
+  savedCommissionDropdownBtn: document.getElementById('savedCommissionDropdownBtn'),
+  savedCommissionMenu: document.getElementById('savedCommissionMenu'),
   commissionSuggestionsList: document.getElementById('commissionSuggestionsList'),
   expensesToggleInput: document.getElementById('expensesToggleInput'),
   normalTimeFields: document.getElementById('normalTimeFields'),
@@ -425,6 +438,7 @@ function setCurrentView(view) {
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
   elements.settingsCard?.classList.toggle('hidden', inPassword);
+  elements.savedCommissionsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', !inHolidayAbsences);
   elements.passwordView?.classList.toggle('hidden', !inPassword);
   elements.navMenuItems?.forEach((item) => {
@@ -1082,6 +1096,53 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function normalizeSavedCommissionItem(record) {
+  if (!record || typeof record !== 'object') return null;
+
+  const commissionNumber = pickFirstFilledValue(record, [
+    'commission_number',
+    'commissionNumber',
+    'kommissionsnummer',
+    'Kommissionsnummer',
+    'number'
+  ]);
+  const projectName = pickFirstFilledValue(record, [
+    'project_name',
+    'projectName',
+    'projektname',
+    'Projektname',
+    'name'
+  ]);
+
+  if (!commissionNumber || !projectName) return null;
+  return { commission_number: commissionNumber, project_name: projectName };
+}
+
+function normalizeSavedCommissions(value) {
+  const source = Array.isArray(value) ? value : [];
+  const unique = new Map();
+  source.forEach((item) => {
+    const normalized = normalizeSavedCommissionItem(item);
+    if (!normalized) return;
+    const key = normalized.commission_number.toLowerCase();
+    if (!unique.has(key)) unique.set(key, normalized);
+  });
+  return Array.from(unique.values()).slice(0, 10);
+}
+
+function getSavedCommissions() {
+  return normalizeSavedCommissions(state.profile?.saved_commissions);
+}
+
+function getSavedCommissionSuggestions() {
+  return getSavedCommissions().map((item) => ({
+    commissionNumber: item.commission_number,
+    projectName: item.project_name,
+    allowExpenses: true,
+    saved: true
+  }));
+}
+
 function normalizeProjectSuggestion(record) {
   if (!record || typeof record !== 'object') return null;
 
@@ -1210,6 +1271,7 @@ function closeKeyboardAndSuggestions(inputElement) {
 async function loadProjectSuggestions() {
   if (!state.supabase || !state.session?.user || state.projectSuggestionsLoaded) return;
 
+  const savedSuggestions = getSavedCommissionSuggestions();
   const { data, error } = await state.supabase
     .from('projects')
     .select('*')
@@ -1218,13 +1280,14 @@ async function loadProjectSuggestions() {
   state.projectSuggestionsLoaded = true;
   if (error) {
     console.warn('Projects-Autocomplete konnte nicht geladen werden:', error.message);
-    state.projectSuggestions = [];
+    state.projectSuggestions = savedSuggestions;
     return;
   }
 
-  const suggestions = (data || [])
-    .map(normalizeProjectSuggestion)
-    .filter(Boolean);
+  const suggestions = [
+    ...savedSuggestions,
+    ...(data || []).map(normalizeProjectSuggestion).filter(Boolean)
+  ];
   const uniqueByCommission = new Map();
   suggestions.forEach((item) => {
     if (!uniqueByCommission.has(item.commissionNumber.toLowerCase())) {
@@ -1279,6 +1342,7 @@ function applyReportTypeSelection(reportType, options = {}) {
   elements.reportTypeInput.dataset.previousValue = reportType;
   syncAutoReportHourConstraints({ setDefaultForAutoType: isAutoType && setDefaultAutoHours });
   syncExpenseToggleState();
+  syncSavedCommissionDropdownState();
 }
 
 function validateConfig(config) {
@@ -1568,7 +1632,8 @@ function areProfileFieldsEqual(left, right) {
     (left?.last_name || '') === (right?.last_name || '') &&
     (left?.full_name || '') === (right?.full_name || '') &&
     (left?.role_label || '') === (right?.role_label || '') &&
-    (left?.tel || '') === (right?.tel || '')
+    (left?.tel || '') === (right?.tel || '') &&
+    JSON.stringify(normalizeSavedCommissions(left?.saved_commissions)) === JSON.stringify(normalizeSavedCommissions(right?.saved_commissions))
   );
 }
 
@@ -1586,6 +1651,7 @@ function normalizeProfile(profile) {
     full_name: [firstName, lastName].filter(Boolean).join(' ').trim() || profile.full_name || '',
     role_label: roleLabel,
     tel: profile.tel || '',
+    saved_commissions: normalizeSavedCommissions(profile.saved_commissions),
     is_admin: Boolean(profile.is_admin)
   };
 }
@@ -1595,6 +1661,187 @@ function fillSettingsForm() {
   elements.firstNameInput.value = profile?.first_name || '';
   elements.lastNameInput.value = profile?.last_name || '';
   elements.phoneInput.value = profile?.tel || '';
+  renderSavedCommissions();
+}
+
+function renderSavedCommissions() {
+  if (!elements.savedCommissionsList) return;
+  const commissions = getSavedCommissions();
+  elements.savedCommissionsList.innerHTML = '';
+
+  if (!commissions.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Noch keine Kommissionen gespeichert.';
+    elements.savedCommissionsList.appendChild(empty);
+  } else {
+    const fragment = document.createDocumentFragment();
+    commissions.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'saved-commission-item';
+      row.innerHTML = `
+        <div>
+          <strong>${escapeHtml(item.project_name)}</strong>
+          <span>${escapeHtml(item.commission_number)}</span>
+        </div>
+        <div class="saved-commission-actions">
+          <button class="ghost-btn" type="button" data-edit-saved-commission="${index}">Bearbeiten</button>
+          <button class="ghost-btn" type="button" data-delete-saved-commission="${index}">Entfernen</button>
+        </div>
+      `;
+      fragment.appendChild(row);
+    });
+    elements.savedCommissionsList.appendChild(fragment);
+  }
+
+  if (elements.addSavedCommissionBtn) {
+    elements.addSavedCommissionBtn.disabled = commissions.length >= 10 && !state.savedCommissionEditorOpen;
+    elements.addSavedCommissionBtn.title = commissions.length >= 10 ? 'Maximal 10 Kommissionen möglich' : 'Kommission hinzufügen';
+  }
+  syncSavedCommissionDropdownState();
+}
+
+function openSavedCommissionForm(index = null) {
+  const commissions = getSavedCommissions();
+  if (index === null && commissions.length >= 10) {
+    showToast('Du kannst maximal 10 Kommissionen speichern.', 'error');
+    return;
+  }
+
+  const item = Number.isInteger(index) ? commissions[index] : null;
+  state.savedCommissionEditorOpen = true;
+  elements.savedCommissionIndexInput.value = item ? String(index) : '';
+  elements.savedCommissionNumberInput.value = item?.commission_number || '';
+  elements.savedCommissionProjectInput.value = item?.project_name || '';
+  elements.savedCommissionFormEyebrow.textContent = item ? 'Kommission bearbeiten' : 'Neue Kommission';
+  elements.savedCommissionFormTitle.textContent = item ? 'Kommission aktualisieren' : 'Kommission speichern';
+  elements.savedCommissionForm.classList.remove('hidden');
+  elements.savedCommissionNumberInput.focus();
+  renderSavedCommissions();
+}
+
+function closeSavedCommissionForm() {
+  state.savedCommissionEditorOpen = false;
+  elements.savedCommissionForm?.reset();
+  if (elements.savedCommissionIndexInput) elements.savedCommissionIndexInput.value = '';
+  elements.savedCommissionForm?.classList.add('hidden');
+  renderSavedCommissions();
+}
+
+async function persistSavedCommissions(commissions, successMessage) {
+  await runWithFeedback(
+    {
+      button: elements.saveSavedCommissionBtn,
+      section: elements.savedCommissionsCard,
+      pendingMessage: 'Kommissionen werden gespeichert …',
+      loadingLabel: 'Speichern …'
+    },
+    async () => {
+      const { data, error } = await state.supabase
+        .from('app_profiles')
+        .update({ saved_commissions: normalizeSavedCommissions(commissions) })
+        .eq('id', state.session.user.id)
+        .select(PROFILE_COLUMNS)
+        .single();
+
+      if (error) throw error;
+      state.profile = normalizeProfile(data);
+      state.projectSuggestionsLoaded = false;
+      fillSettingsForm();
+      showToast(successMessage);
+    }
+  );
+}
+
+async function saveSavedCommission(event) {
+  event.preventDefault();
+  if (!state.supabase || !state.session?.user || !state.profile) {
+    showToast('Bitte zuerst anmelden.', 'error');
+    return;
+  }
+
+  const commissionNumber = elements.savedCommissionNumberInput.value.trim();
+  const projectName = elements.savedCommissionProjectInput.value.trim();
+  const editIndexRaw = elements.savedCommissionIndexInput.value;
+  const editIndex = editIndexRaw === '' ? null : Number(editIndexRaw);
+  const commissions = getSavedCommissions();
+
+  if (!commissionNumber || !projectName) {
+    showToast('Kommissionsnummer und Projektname sind erforderlich.', 'error');
+    return;
+  }
+  if (editIndex === null && commissions.length >= 10) {
+    showToast('Du kannst maximal 10 Kommissionen speichern.', 'error');
+    return;
+  }
+
+  const duplicateIndex = commissions.findIndex((item) => item.commission_number.toLowerCase() === commissionNumber.toLowerCase());
+  if (duplicateIndex !== -1 && duplicateIndex !== editIndex) {
+    showToast('Diese Kommissionsnummer ist bereits gespeichert.', 'error');
+    return;
+  }
+
+  const nextCommissions = [...commissions];
+  const nextItem = { commission_number: commissionNumber, project_name: projectName };
+  if (editIndex === null) nextCommissions.push(nextItem);
+  else nextCommissions[editIndex] = nextItem;
+
+  await persistSavedCommissions(nextCommissions, editIndex === null ? 'Kommission gespeichert.' : 'Kommission aktualisiert.');
+  closeSavedCommissionForm();
+}
+
+async function deleteSavedCommission(index) {
+  if (!state.supabase || !state.session?.user || !state.profile) return;
+  const commissions = getSavedCommissions();
+  if (!commissions[index]) return;
+  const nextCommissions = commissions.filter((_, itemIndex) => itemIndex !== index);
+  await persistSavedCommissions(nextCommissions, 'Kommission entfernt.');
+  closeSavedCommissionForm();
+}
+
+function renderSavedCommissionMenu() {
+  if (!elements.savedCommissionMenu) return;
+  const commissions = getSavedCommissions();
+  elements.savedCommissionMenu.innerHTML = '';
+
+  if (!commissions.length || AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
+    elements.savedCommissionMenu.classList.add('hidden');
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  commissions.forEach((item, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'suggestion-item';
+    button.dataset.savedCommissionIndex = String(index);
+    button.setAttribute('role', 'option');
+    button.innerHTML = `<strong>${escapeHtml(item.project_name)}</strong>`;
+    fragment.appendChild(button);
+  });
+  elements.savedCommissionMenu.appendChild(fragment);
+  elements.savedCommissionMenu.classList.remove('hidden');
+}
+
+function hideSavedCommissionMenu() {
+  elements.savedCommissionMenu?.classList.add('hidden');
+}
+
+function applySavedCommission(index) {
+  const item = getSavedCommissions()[index];
+  if (!item) return;
+  elements.commissionInput.value = item.commission_number;
+  elements.projectNameInput.value = item.project_name;
+  hideSavedCommissionMenu();
+  syncExpenseToggleState();
+}
+
+function syncSavedCommissionDropdownState() {
+  if (!elements.savedCommissionDropdownBtn) return;
+  const hasSaved = getSavedCommissions().length > 0;
+  const isAutoType = AUTO_REPORT_TYPES.has(elements.reportTypeInput?.value || '');
+  elements.savedCommissionDropdownBtn.disabled = !hasSaved || isAutoType;
+  elements.savedCommissionDropdownBtn.title = hasSaved ? 'Gespeicherte Kommissionen' : 'Keine gespeicherten Kommissionen';
 }
 
 async function ensureProfile(user, explicitFullName) {
@@ -1622,7 +1869,8 @@ async function ensureProfile(user, explicitFullName) {
           [existingProfile.first_name, existingProfile.last_name].filter(Boolean).join(' ').trim() ||
           fallbackName,
         role_label: ROLE_OPTIONS.includes(existingProfile.role_label) ? existingProfile.role_label : DEFAULT_ROLE_LABEL,
-        tel: existingProfile.tel || ''
+        tel: existingProfile.tel || '',
+        saved_commissions: normalizeSavedCommissions(existingProfile.saved_commissions)
       }
     : {
         id: user.id,
@@ -1631,7 +1879,8 @@ async function ensureProfile(user, explicitFullName) {
         last_name: nameParts.lastName || user.user_metadata?.last_name || '',
         full_name: fallbackName,
         role_label: DEFAULT_ROLE_LABEL,
-        tel: ''
+        tel: '',
+        saved_commissions: []
       };
 
   if (existingProfile && areProfileFieldsEqual(existingProfile, payload)) {
@@ -1865,7 +2114,8 @@ async function saveSettings(event) {
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
         role_label: state.profile.role_label || DEFAULT_ROLE_LABEL,
-        tel: phone
+        tel: phone,
+        saved_commissions: getSavedCommissions()
       };
 
       const { data, error } = await state.supabase
@@ -2603,6 +2853,7 @@ function openDrawer(isoDate, entry = null) {
   const mergedNotes = [entry?.notes, entry?.expense_note].map((value) => String(value || '').trim()).filter(Boolean).join('\n');
   elements.notesInput.value = mergedNotes;
   applyReportTypeSelection(reportType, { setDefaultAutoHours: !entry });
+  syncSavedCommissionDropdownState();
   loadProjectSuggestions().then(() => {
     renderCommissionSuggestions(elements.commissionInput.value);
     syncExpenseToggleState();
@@ -2634,6 +2885,8 @@ function closeDrawer() {
   elements.projectNameInput.value = '';
   elements.commissionInput.value = '';
   renderCommissionSuggestions('');
+  hideSavedCommissionMenu();
+  syncSavedCommissionDropdownState();
   elements.projectNameInput.readOnly = false;
   elements.commissionInput.readOnly = false;
   elements.expensesInput.readOnly = true;
@@ -2899,6 +3152,8 @@ function render() {
     setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
     elements.holidayList.innerHTML = '';
+    elements.savedCommissionsList.innerHTML = '';
+    closeSavedCommissionForm();
   }
 }
 
@@ -2944,6 +3199,20 @@ function registerEventListeners() {
   });
   elements.signOutBtn.addEventListener('click', signOut);
   elements.settingsForm.addEventListener('submit', saveSettings);
+  elements.addSavedCommissionBtn?.addEventListener('click', () => openSavedCommissionForm());
+  elements.savedCommissionForm?.addEventListener('submit', saveSavedCommission);
+  elements.cancelSavedCommissionBtn?.addEventListener('click', closeSavedCommissionForm);
+  elements.savedCommissionsList?.addEventListener('click', (event) => {
+    const editTarget = event.target.closest('[data-edit-saved-commission]');
+    const deleteTarget = event.target.closest('[data-delete-saved-commission]');
+    if (editTarget) {
+      openSavedCommissionForm(Number(editTarget.dataset.editSavedCommission));
+      return;
+    }
+    if (deleteTarget) {
+      deleteSavedCommission(Number(deleteTarget.dataset.deleteSavedCommission));
+    }
+  });
   elements.passwordResetForm.addEventListener('submit', changePassword);
   elements.prevWeekBtn.addEventListener('click', () => handleWeekChange(-1));
   elements.nextWeekBtn.addEventListener('click', () => handleWeekChange(1));
@@ -2994,7 +3263,11 @@ function registerEventListeners() {
   elements.deleteEntryBtn.addEventListener('click', deleteEntry);
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
-  elements.reportTypeInput.addEventListener('change', (event) => applyReportTypeSelection(event.target.value, { setDefaultAutoHours: true }));
+  elements.reportTypeInput.addEventListener('change', (event) => {
+    applyReportTypeSelection(event.target.value, { setDefaultAutoHours: true });
+    hideSavedCommissionMenu();
+    syncSavedCommissionDropdownState();
+  });
   elements.toggleEntryModeBtn.addEventListener('click', () => {
     setEntryMode(state.entryMode === ENTRY_MODE_DETAILED ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED);
     applyReportTypeSelection(elements.reportTypeInput.value, { setDefaultAutoHours: false });
@@ -3018,6 +3291,20 @@ function registerEventListeners() {
     syncExpenseToggleState();
     closeKeyboardAndSuggestions(elements.commissionInput);
   });
+  elements.savedCommissionDropdownBtn?.addEventListener('click', () => {
+    if (elements.savedCommissionMenu?.classList.contains('hidden')) renderSavedCommissionMenu();
+    else hideSavedCommissionMenu();
+  });
+  elements.savedCommissionMenu?.addEventListener('mousedown', (event) => {
+    const target = event.target.closest('.suggestion-item');
+    if (!target) return;
+    event.preventDefault();
+  });
+  elements.savedCommissionMenu?.addEventListener('click', (event) => {
+    const target = event.target.closest('.suggestion-item');
+    if (!target) return;
+    applySavedCommission(Number(target.dataset.savedCommissionIndex));
+  });
   elements.commissionSuggestionsList?.addEventListener('mousedown', (event) => {
     const target = event.target.closest('.suggestion-item');
     if (!target) return;
@@ -3032,7 +3319,9 @@ function registerEventListeners() {
     const target = event.target;
     if (!(target instanceof Node)) return;
     if (elements.commissionInput.contains(target) || elements.commissionSuggestionsList?.contains(target)) return;
+    if (elements.savedCommissionDropdownBtn?.contains(target) || elements.savedCommissionMenu?.contains(target)) return;
     hideCommissionSuggestionsList();
+    hideSavedCommissionMenu();
   });
   elements.expensesToggleInput.addEventListener('change', syncExpenseToggleState);
   elements.attachmentsCameraBtn.addEventListener('click', () => elements.attachmentsCameraInput.click());

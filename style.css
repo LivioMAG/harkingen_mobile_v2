@@ -1634,3 +1634,69 @@ small,
   }
 
 }
+
+.saved-commission-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.saved-commission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+}
+
+.saved-commission-item strong,
+.saved-commission-item span {
+  display: block;
+}
+
+.saved-commission-item span {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.saved-commission-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.saved-commission-actions .ghost-btn {
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.commission-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.commission-dropdown-btn {
+  min-width: 48px;
+  padding: 0 12px;
+  font-size: 1.05rem;
+}
+
+.saved-commission-menu .suggestion-item strong {
+  font-size: 0.98rem;
+}
+
+@media (max-width: 560px) {
+  .saved-commission-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .saved-commission-actions {
+    justify-content: flex-end;
+  }
+}

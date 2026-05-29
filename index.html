@@ -376,6 +376,44 @@
               </form>
             </section>
 
+
+            <section class="glass-card settings-card" id="savedCommissionsCard">
+              <div class="section-head compact">
+                <div>
+                  <p class="section-label">Gespeicherte Kommissionen</p>
+                  <h2>Kommissionen</h2>
+                  <p>Speichere bis zu zehn Kommissionsnummern mit Projektnamen für den schnellen Rapport.</p>
+                </div>
+                <button class="primary-btn small icon-only" id="addSavedCommissionBtn" type="button" aria-label="Kommission hinzufügen">+</button>
+              </div>
+
+              <div id="savedCommissionsList" class="saved-commission-list"></div>
+
+              <form id="savedCommissionForm" class="form-grid inline-form-card hidden">
+                <input id="savedCommissionIndexInput" type="hidden" value="" />
+                <div class="section-head compact inline-drawer-head">
+                  <div>
+                    <p class="section-label" id="savedCommissionFormEyebrow">Neue Kommission</p>
+                    <h3 id="savedCommissionFormTitle">Kommission speichern</h3>
+                  </div>
+                </div>
+                <div class="field-row two-columns">
+                  <label class="field">
+                    <span>Kommissionsnummer</span>
+                    <input id="savedCommissionNumberInput" type="text" required placeholder="z. B. K-2026-041" />
+                  </label>
+                  <label class="field">
+                    <span>Projektname</span>
+                    <input id="savedCommissionProjectInput" type="text" required placeholder="z. B. Neubau Musterstrasse" />
+                  </label>
+                </div>
+                <div class="auth-actions stacked-on-mobile">
+                  <button class="secondary-btn" id="cancelSavedCommissionBtn" type="button">Abbrechen</button>
+                  <button class="primary-btn" id="saveSavedCommissionBtn" type="submit">Speichern</button>
+                </div>
+              </form>
+            </section>
+
             <section class="glass-card settings-card hidden" id="passwordView">
               <div class="section-head compact">
                 <div>
@@ -454,15 +492,19 @@
           <input id="entryIdInput" type="hidden" />
           <input id="entryDateInput" type="hidden" />
 
-          <label class="field">
+          <label class="field" id="commissionField">
             <span>Kommissionsnummer</span>
-            <input
-              id="commissionInput"
-              type="text"
-              inputmode="text"
-              autocomplete="off"
-              placeholder="z. B. K-2026-041"
-            />
+            <div class="commission-input-row">
+              <input
+                id="commissionInput"
+                type="text"
+                inputmode="text"
+                autocomplete="off"
+                placeholder="z. B. K-2026-041"
+              />
+              <button class="secondary-btn commission-dropdown-btn" id="savedCommissionDropdownBtn" type="button" aria-label="Gespeicherte Kommissionen anzeigen">▾</button>
+            </div>
+            <div id="savedCommissionMenu" class="suggestions-list saved-commission-menu hidden" role="listbox" aria-label="Gespeicherte Kommissionen"></div>
             <div id="commissionSuggestionsList" class="suggestions-list hidden" role="listbox" aria-label="Kommissionsnummer Vorschläge"></div>
           </label>
 

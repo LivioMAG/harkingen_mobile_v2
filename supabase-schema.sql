@@ -14,6 +14,7 @@ create table if not exists public.app_profiles (
   full_name text not null default '',
   role_label text not null default 'Monteur',
   tel text not null default '',
+  saved_commissions jsonb not null default '[]'::jsonb,
   is_admin boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -24,6 +25,7 @@ alter table public.app_profiles add column if not exists last_name text not null
 alter table public.app_profiles add column if not exists full_name text not null default '';
 alter table public.app_profiles add column if not exists role_label text not null default 'Monteur';
 alter table public.app_profiles add column if not exists tel text not null default '';
+alter table public.app_profiles add column if not exists saved_commissions jsonb not null default '[]'::jsonb;
 alter table public.app_profiles add column if not exists is_admin boolean not null default false;
 
 update public.app_profiles
@@ -139,6 +141,7 @@ begin
   new.full_name := trim(concat_ws(' ', nullif(new.first_name, ''), nullif(new.last_name, '')));
   new.role_label := coalesce(nullif(trim(new.role_label), ''), 'Monteur');
   new.tel := trim(coalesce(new.tel, ''));
+  new.saved_commissions := coalesce(new.saved_commissions, '[]'::jsonb);
 
   if tg_op = 'UPDATE' then
     new.email := lower(trim(coalesce(new.email, old.email)));
