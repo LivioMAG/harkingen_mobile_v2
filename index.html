@@ -13,13 +13,14 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <meta name="app-build-version" content="2026-05-29-1" />
-    <link rel="manifest" href="manifest.webmanifest?v=2026-05-29-1" />
-    <link rel="stylesheet" href="style.css?v=2026-05-29-1" />
+    <meta name="app-build-version" content="2026-05-30-1" />
+    <link rel="manifest" href="manifest.webmanifest?v=2026-05-30-1" />
+    <link rel="stylesheet" href="style.css?v=2026-05-30-1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script defer src="script.js?v=2026-05-29-1"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script defer src="script.js?v=2026-05-30-1"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -59,7 +60,7 @@
             </label>
 
             <div class="auth-actions stacked-on-mobile">
-              <button class="primary-btn" id="authSubmitBtn" type="submit">Anmelden</button>
+              <button class="primary-btn" id="authSubmitBtn" type="submit"><span class="btn-icon" data-lucide="log-in" aria-hidden="true"></span><span>Anmelden</span></button>
             </div>
           </form>
 
@@ -77,7 +78,7 @@
             </label>
 
             <div class="auth-actions stacked-on-mobile">
-              <button class="primary-btn" id="forgotPasswordSubmitBtn" type="submit">Code senden</button>
+              <button class="primary-btn" id="forgotPasswordSubmitBtn" type="submit"><span class="btn-icon" data-lucide="mail" aria-hidden="true"></span><span>Code senden</span></button>
             </div>
           </form>
 
@@ -99,7 +100,7 @@
             </label>
 
             <div class="auth-actions stacked-on-mobile">
-              <button class="primary-btn" id="verifyOtpSubmitBtn" type="submit">Code bestätigen</button>
+              <button class="primary-btn" id="verifyOtpSubmitBtn" type="submit"><span class="btn-icon" data-lucide="shield-check" aria-hidden="true"></span><span>Code bestätigen</span></button>
             </div>
           </form>
 
@@ -109,11 +110,11 @@
 
           <div class="auth-switch-row" id="authModeSwitchRow">
             <span id="authSwitchText">Noch kein Konto?</span>
-            <button class="link-btn" id="toggleAuthModeBtn" type="button">Jetzt registrieren</button>
+            <button class="link-btn" id="toggleAuthModeBtn" type="button"><span class="btn-icon" data-lucide="user-plus" aria-hidden="true"></span><span>Jetzt registrieren</span></button>
           </div>
           <div class="auth-switch-row" id="forgotPasswordActions">
-            <button class="link-btn" id="openForgotPasswordBtn" type="button">Passwort vergessen?</button>
-            <button class="link-btn hidden" id="cancelForgotPasswordBtn" type="button">Zurück zum Login</button>
+            <button class="link-btn" id="openForgotPasswordBtn" type="button"><span class="btn-icon" data-lucide="key-round" aria-hidden="true"></span><span>Passwort vergessen?</span></button>
+            <button class="link-btn hidden" id="cancelForgotPasswordBtn" type="button"><span class="btn-icon" data-lucide="arrow-left" aria-hidden="true"></span><span>Zurück zum Login</span></button>
           </div>
         </section>
 
@@ -128,36 +129,26 @@
               aria-expanded="false"
               aria-controls="navMenuDrawer"
               title="Navigation öffnen"
-            >
-              ☰
-            </button>
+            ><span class="btn-icon" data-lucide="menu" aria-hidden="true"></span></button>
           </header>
 
           <aside class="nav-menu hidden" id="navMenuDrawer" aria-hidden="true" aria-label="Hauptnavigation">
             <button class="nav-menu-backdrop" id="navMenuBackdrop" type="button" aria-label="Navigation schliessen"></button>
             <nav class="nav-menu-panel">
-              <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung">
-                ⏱️
-              </button>
-              <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Ferienabwesenheiten" title="Ferienabwesenheiten">
-                🏖️
-              </button>
-              <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard">
-                📊
-              </button>
-              <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil">
-                👤
-              </button>
+              <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung"><span class="nav-icon" data-lucide="clock-3" aria-hidden="true"></span></button>
+              <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Ferienabwesenheiten" title="Ferienabwesenheiten"><span class="nav-icon" data-lucide="calendar-off" aria-hidden="true"></span></button>
+              <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard"><span class="nav-icon" data-lucide="chart-column" aria-hidden="true"></span></button>
+              <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil"><span class="nav-icon" data-lucide="user" aria-hidden="true"></span></button>
             </nav>
           </aside>
 
           <section class="hero-week-panel glass-card" id="dashboardWeekPanel">
-            <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche">←</button>
+            <button id="prevWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Vorherige Kalenderwoche"><span class="btn-icon" data-lucide="chevron-left" aria-hidden="true"></span></button>
             <div class="hero-week-copy">
               <p id="currentWeekLabel" class="week-nav-label" aria-live="polite">KW --</p>
               <p id="weekRangeLabel">Kalenderwoche wird geladen…</p>
             </div>
-            <button id="nextWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Nächste Kalenderwoche">→</button>
+            <button id="nextWeekBtn" class="ghost-btn nav-btn" type="button" aria-label="Nächste Kalenderwoche"><span class="btn-icon" data-lucide="chevron-right" aria-hidden="true"></span></button>
           </section>
 
           <section class="summary-card" id="summaryCard">
@@ -190,7 +181,7 @@
               </label>
             </div>
             <div class="drawer-actions">
-              <button class="primary-btn" id="dashboardReportDownloadBtn" type="button">Rapport Download</button>
+              <button class="primary-btn" id="dashboardReportDownloadBtn" type="button"><span class="btn-icon" data-lucide="download" aria-hidden="true"></span><span>Rapport Download</span></button>
             </div>
           </section>
 
@@ -279,10 +270,10 @@
                       <span>Beweise &amp; Anhänge</span>
                       <div class="media-upload-actions">
                         <button class="icon-action-btn media-upload-btn" id="holidayAttachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
-                          <span aria-hidden="true">📷</span>
+                          <span class="btn-icon" data-lucide="camera" aria-hidden="true"></span>
                         </button>
                         <button class="secondary-btn media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button">
-                          Galerie öffnen
+                          <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span><span>Galerie öffnen</span>
                         </button>
                       </div>
                     </div>
@@ -300,9 +291,9 @@
                   </div>
 
                   <div class="drawer-actions">
-                    <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button">Antrag löschen</button>
-                    <button class="secondary-btn" id="resetHolidayBtn" type="reset">Zurücksetzen</button>
-                    <button class="primary-btn" id="saveHolidayBtn" type="submit">Antrag speichern</button>
+                    <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button"><span class="btn-icon" data-lucide="trash-2" aria-hidden="true"></span><span>Antrag löschen</span></button>
+                    <button class="secondary-btn" id="resetHolidayBtn" type="reset"><span class="btn-icon" data-lucide="rotate-ccw" aria-hidden="true"></span><span>Zurücksetzen</span></button>
+                    <button class="primary-btn" id="saveHolidayBtn" type="submit"><span class="btn-icon" data-lucide="send" aria-hidden="true"></span><span>Antrag speichern</span></button>
                   </div>
                 </form>
               </section>
@@ -319,7 +310,7 @@
               </div>
               <div id="holidayList" class="request-list"></div>
               <div class="drawer-actions history-link-actions">
-                <button class="secondary-btn" id="openHolidayHistoryBtn" type="button">Vergangene Abwesenheiten anschauen</button>
+                <button class="secondary-btn" id="openHolidayHistoryBtn" type="button"><span class="btn-icon" data-lucide="history" aria-hidden="true"></span><span>Vergangene Abwesenheiten anschauen</span></button>
               </div>
             </section>
           </section>
@@ -330,9 +321,9 @@
                 <div>
                   <p class="section-label">Archiv</p>
                   <h2>Vergangene Abwesenheiten</h2>
-                  <p>Alle Abwesenheiten mit Filter nach Jahr und Entscheidungsstatus.</p>
+                  <p>Alle entschiedenen Abwesenheiten mit Filter nach Jahr und Entscheidungsstatus.</p>
                 </div>
-                <button class="secondary-btn" id="backToHolidayAbsencesBtn" type="button">Zurück</button>
+                <button class="secondary-btn" id="backToHolidayAbsencesBtn" type="button"><span class="btn-icon" data-lucide="arrow-left" aria-hidden="true"></span><span>Zurück</span></button>
               </div>
 
               <div class="history-filter-panel" aria-label="Abwesenheiten filtern">
@@ -348,7 +339,6 @@
                     <option value="all">Alle Status</option>
                     <option value="approved">Angenommen</option>
                     <option value="rejected">Abgelehnt</option>
-                    <option value="pending">In Bearbeitung</option>
                   </select>
                 </label>
               </div>
@@ -380,18 +370,14 @@
                   type="button"
                   aria-label="Passwort ändern"
                   title="Passwort ändern"
-                >
-                  🔒
-                </button>
+                ><span class="btn-icon" data-lucide="lock-keyhole" aria-hidden="true"></span></button>
                 <button
                   class="ghost-btn icon-only-toolbar-btn profile-icon-action-btn hidden"
                   id="signOutBtn"
                   type="button"
                   aria-label="Abmelden"
                   title="Abmelden"
-                >
-                  🚪
-                </button>
+                ><span class="btn-icon" data-lucide="log-out" aria-hidden="true"></span></button>
               </div>
 
               <form id="settingsForm" class="form-grid settings-form">
@@ -414,7 +400,7 @@
                 </div>
 
                 <div class="auth-actions stacked-on-mobile">
-                  <button class="primary-btn" id="saveSettingsBtn" type="submit">Einstellungen speichern</button>
+                  <button class="primary-btn" id="saveSettingsBtn" type="submit"><span class="btn-icon" data-lucide="save" aria-hidden="true"></span><span>Einstellungen speichern</span></button>
                 </div>
               </form>
             </section>
@@ -427,7 +413,7 @@
                   <h2>Kommissionen</h2>
                   <p>Speichere bis zu zehn Kommissionsnummern mit Projektnamen für den schnellen Rapport.</p>
                 </div>
-                <button class="primary-btn small icon-only" id="addSavedCommissionBtn" type="button" aria-label="Kommission hinzufügen">+</button>
+                <button class="primary-btn small icon-only" id="addSavedCommissionBtn" type="button" aria-label="Kommission hinzufügen"><span class="btn-icon" data-lucide="plus" aria-hidden="true"></span></button>
               </div>
 
               <div id="savedCommissionsList" class="saved-commission-list"></div>
@@ -451,8 +437,8 @@
                   </label>
                 </div>
                 <div class="auth-actions stacked-on-mobile">
-                  <button class="secondary-btn" id="cancelSavedCommissionBtn" type="button">Abbrechen</button>
-                  <button class="primary-btn" id="saveSavedCommissionBtn" type="submit">Speichern</button>
+                  <button class="secondary-btn" id="cancelSavedCommissionBtn" type="button"><span class="btn-icon" data-lucide="x" aria-hidden="true"></span><span>Abbrechen</span></button>
+                  <button class="primary-btn" id="saveSavedCommissionBtn" type="submit"><span class="btn-icon" data-lucide="save" aria-hidden="true"></span><span>Speichern</span></button>
                 </div>
               </form>
             </section>
@@ -464,7 +450,7 @@
                   <h2>Neues Passwort festlegen</h2>
                   <p>Du musst nur eingeloggt sein und dein neues Passwort zweimal eingeben.</p>
                 </div>
-                <button id="backToSettingsBtn" class="ghost-btn" type="button">← Zurück</button>
+                <button id="backToSettingsBtn" class="ghost-btn" type="button"><span class="btn-icon" data-lucide="arrow-left" aria-hidden="true"></span><span>Zurück</span></button>
               </div>
 
               <form id="passwordResetForm" class="form-grid settings-form">
@@ -492,7 +478,7 @@
                 </label>
 
                 <div class="auth-actions stacked-on-mobile">
-                  <button class="primary-btn" id="changePasswordBtn" type="submit">Passwort ändern</button>
+                  <button class="primary-btn" id="changePasswordBtn" type="submit"><span class="btn-icon" data-lucide="lock-keyhole" aria-hidden="true"></span><span>Passwort ändern</span></button>
                 </div>
               </form>
             </section>
@@ -510,7 +496,7 @@
             <p class="section-label">Rapport erfassen</p>
             <div class="drawer-title-row">
               <h2 id="drawerTitle">Neuer Eintrag</h2>
-              <button class="icon-btn drawer-close-icon-btn" id="closeDrawerLinkBtn" type="button" aria-label="Schliessen">×</button>
+              <button class="icon-btn drawer-close-icon-btn" id="closeDrawerLinkBtn" type="button" aria-label="Schliessen"><span class="btn-icon" data-lucide="x" aria-hidden="true"></span></button>
             </div>
             <p id="drawerDateLabel">Datum</p>
           </div>
@@ -545,7 +531,7 @@
                 autocomplete="off"
                 placeholder="z. B. K-2026-041"
               />
-              <button class="secondary-btn commission-dropdown-btn" id="savedCommissionDropdownBtn" type="button" aria-label="Gespeicherte Kommissionen anzeigen">▾</button>
+              <button class="secondary-btn commission-dropdown-btn" id="savedCommissionDropdownBtn" type="button" aria-label="Gespeicherte Kommissionen anzeigen"><span class="btn-icon" data-lucide="chevron-down" aria-hidden="true"></span></button>
             </div>
             <div id="savedCommissionMenu" class="suggestions-list saved-commission-menu hidden" role="listbox" aria-label="Gespeicherte Kommissionen"></div>
           </label>
@@ -562,7 +548,7 @@
             </label>
             <div class="field compact-field align-right-field simple-mode-toggle-field">
               <span class="hidden-label" aria-hidden="true">&nbsp;</span>
-              <button class="secondary-btn" id="toggleEntryModeBtn" type="button">Detailansicht</button>
+              <button class="secondary-btn" id="toggleEntryModeBtn" type="button"><span class="btn-icon" data-lucide="sliders-horizontal" aria-hidden="true"></span><span>Detailansicht</span></button>
             </div>
           </div>
 
@@ -639,10 +625,10 @@
               <span>Belege &amp; Fotos</span>
               <div class="media-upload-actions">
                 <button class="icon-action-btn media-upload-btn" id="attachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
-                  <span aria-hidden="true">📷</span>
+                  <span class="btn-icon" data-lucide="camera" aria-hidden="true"></span>
                 </button>
                 <button class="secondary-btn media-upload-btn" id="attachmentsGalleryBtn" type="button">
-                  Galerie öffnen
+                  <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span><span>Galerie öffnen</span>
                 </button>
               </div>
             </div>
@@ -660,8 +646,8 @@
           </div>
 
           <div class="drawer-actions">
-            <button class="ghost-btn hidden" id="deleteEntryBtn" type="button">Eintrag löschen</button>
-            <button class="primary-btn" id="saveEntryBtn" type="submit">Speichern</button>
+            <button class="ghost-btn hidden" id="deleteEntryBtn" type="button"><span class="btn-icon" data-lucide="trash-2" aria-hidden="true"></span><span>Eintrag löschen</span></button>
+            <button class="primary-btn" id="saveEntryBtn" type="submit"><span class="btn-icon" data-lucide="save" aria-hidden="true"></span><span>Speichern</span></button>
           </div>
         </form>
       </section>
@@ -679,7 +665,7 @@
             <p class="weekday-label"></p>
             <h3 class="day-date"></h3>
           </div>
-          <button class="primary-btn small add-entry-btn icon-only" type="button" aria-label="Eintrag erfassen">+</button>
+          <button class="primary-btn small add-entry-btn icon-only" type="button" aria-label="Eintrag erfassen"><span class="btn-icon" data-lucide="plus" aria-hidden="true"></span></button>
         </div>
         <div class="day-meta"></div>
         <div class="entry-list"></div>
