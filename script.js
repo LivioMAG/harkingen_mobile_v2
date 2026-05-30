@@ -424,6 +424,9 @@ function setPill(element, text, variant) {
   element.textContent = text;
 }
 
+const NAV_MENU_CLOSE_MS = 180;
+let navMenuCloseTimer = null;
+
 function syncBodyScrollLock() {
   const hasOpenDrawer =
     !elements.entryDrawer.classList.contains('hidden') ||
@@ -432,15 +435,27 @@ function syncBodyScrollLock() {
 }
 
 function closeNavMenu() {
-  elements.navMenuDrawer?.classList.add('hidden');
-  elements.navMenuDrawer?.setAttribute('aria-hidden', 'true');
+  const drawer = elements.navMenuDrawer;
+  if (!drawer || drawer.classList.contains('hidden') || drawer.classList.contains('is-closing')) return;
+
+  drawer.classList.add('is-closing');
   elements.navMenuToggleBtn?.setAttribute('aria-expanded', 'false');
-  syncBodyScrollLock();
+  window.clearTimeout(navMenuCloseTimer);
+  navMenuCloseTimer = window.setTimeout(() => {
+    drawer.classList.add('hidden');
+    drawer.classList.remove('is-closing');
+    drawer.setAttribute('aria-hidden', 'true');
+    syncBodyScrollLock();
+  }, NAV_MENU_CLOSE_MS);
 }
 
 function openNavMenu() {
-  elements.navMenuDrawer?.classList.remove('hidden');
-  elements.navMenuDrawer?.setAttribute('aria-hidden', 'false');
+  const drawer = elements.navMenuDrawer;
+  if (!drawer) return;
+
+  window.clearTimeout(navMenuCloseTimer);
+  drawer.classList.remove('hidden', 'is-closing');
+  drawer.setAttribute('aria-hidden', 'false');
   elements.navMenuToggleBtn?.setAttribute('aria-expanded', 'true');
   syncBodyScrollLock();
 }
