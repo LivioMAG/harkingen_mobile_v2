@@ -161,6 +161,8 @@ const state = {
   pendingOtpEmail: '',
   entries: [],
   holidays: [],
+  holidayHistoryYearFilter: 'all',
+  holidayHistoryStatusFilter: 'all',
   selectedDate: null,
   editingEntry: null,
   editingHoliday: null,
@@ -225,10 +227,18 @@ const elements = {
   currentWeekLabel: document.getElementById('currentWeekLabel'),
   openHolidayDrawerBtn: document.getElementById('openHolidayDrawerBtn'),
   holidayAbsencesView: document.getElementById('holidayAbsencesView'),
+  holidayHistoryView: document.getElementById('holidayHistoryView'),
   settingsView: document.getElementById('settingsView'),
   requestsCard: document.getElementById('requestsCard'),
   holidayList: document.getElementById('holidayList'),
   holidayCountPill: document.getElementById('holidayCountPill'),
+  openHolidayHistoryBtn: document.getElementById('openHolidayHistoryBtn'),
+  backToHolidayAbsencesBtn: document.getElementById('backToHolidayAbsencesBtn'),
+  holidayHistoryYearFilter: document.getElementById('holidayHistoryYearFilter'),
+  holidayHistoryStatusFilter: document.getElementById('holidayHistoryStatusFilter'),
+  holidayHistoryFilterSummary: document.getElementById('holidayHistoryFilterSummary'),
+  holidayHistoryCountPill: document.getElementById('holidayHistoryCountPill'),
+  holidayHistoryList: document.getElementById('holidayHistoryList'),
   settingsCard: document.getElementById('settingsCard'),
   adminStatusPill: document.getElementById('adminStatusPill'),
   settingsForm: document.getElementById('settingsForm'),
@@ -421,15 +431,17 @@ function toggleNavMenu() {
 }
 
 function setCurrentView(view) {
-  state.currentView = ['timesheet', 'holidayAbsences', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
+  state.currentView = ['timesheet', 'holidayAbsences', 'holidayHistory', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
   const inSettings = ['settings', 'password'].includes(state.currentView);
   const inTimesheet = state.currentView === 'timesheet';
   const inHolidayAbsences = state.currentView === 'holidayAbsences';
+  const inHolidayHistory = state.currentView === 'holidayHistory';
   const inDashboard = state.currentView === 'dashboard';
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
   elements.holidayAbsencesView?.classList.toggle('hidden', !inHolidayAbsences);
+  elements.holidayHistoryView?.classList.toggle('hidden', !inHolidayHistory);
   elements.dashboardWeekPanel?.classList.toggle('hidden', !inTimesheet);
   elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
@@ -440,7 +452,7 @@ function setCurrentView(view) {
   elements.passwordView?.classList.toggle('hidden', !inPassword);
   elements.navMenuItems?.forEach((item) => {
     const itemView = item.dataset.navView;
-    const isActive = itemView === 'settings' ? inSettings : itemView === state.currentView;
+    const isActive = itemView === 'settings' ? inSettings : itemView === state.currentView || (itemView === 'holidayAbsences' && inHolidayHistory);
     item.classList.toggle('active', isActive);
     item.setAttribute('aria-current', isActive ? 'page' : 'false');
   });
@@ -2095,8 +2107,7 @@ async function loadHolidayRequests() {
     .from('holiday_requests')
     .select(HOLIDAY_REQUEST_COLUMNS)
     .eq('profile_id', currentProfileId)
-    .order('start_date', { ascending: false })
-    .limit(12);
+    .order('start_date', { ascending: false });
 
   if (requestId !== state.latestHolidayRequestId) return;
 
@@ -2905,65 +2916,137 @@ function renderWeek() {
   elements.weekExpensesTotal.textContent = formatCurrency(totalExpenses);
 }
 
+function getHolidayYear(holiday) {
+  const parsed = parseLocalDate(holiday?.start_date);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getFullYear();
+}
+
+function getHolidayHistoryStatusValue(status) {
+  if (status === HOLIDAY_APPROVAL_STATUS.approved) return 'approved';
+  if (status === HOLIDAY_APPROVAL_STATUS.rejected) return 'rejected';
+  return 'pending';
+}
+
+function createHolidayRequestItem(holiday) {
+  const article = document.createElement('article');
+  article.className = 'request-item';
+
+  const start = formatDate(parseLocalDate(holiday.start_date));
+  const end = formatDate(parseLocalDate(holiday.end_date));
+  const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
+  const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
+  const status = getHolidayApprovalMeta(Number(holiday.approval_status));
+  const actionLabel = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
+  const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
+  const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
+  const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
+    ? `<span class="pill warning">Teilweise: ${formatHours(specialHoursTotal)}</span>`
+    : '';
+
+  article.innerHTML = `
+    <div class="request-item-header">
+      <h3>${typeLabel}</h3>
+      <span class="pill neutral">${start} – ${end}</span>
+    </div>
+    <div class="request-item-meta">
+      <p>${holiday.notes || 'Keine zusätzliche Bemerkung.'}</p>
+      <span class="pill ${attachmentCount ? 'success' : 'neutral'}">${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}</span>
+      ${specialRequestSummary}
+    </div>
+    <div class="chip-list"></div>
+    <div class="request-item-actions">
+      <span class="pill ${status.pillClass}">${status.label}</span>
+      <button class="secondary-btn" type="button">${actionLabel}</button>
+    </div>
+  `;
+
+  const chipList = article.querySelector('.chip-list');
+  (holiday.attachments || []).forEach((file) => {
+    const link = document.createElement('a');
+    link.className = 'file-chip';
+    link.href = file.publicUrl;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
+    chipList.appendChild(link);
+  });
+
+  article.querySelector('button').addEventListener('click', () => openHolidayDrawer(holiday));
+  return article;
+}
+
 function renderHolidayRequests() {
-  const holidays = state.holidays || [];
-  elements.holidayCountPill.textContent = `${holidays.length} Antrag${holidays.length === 1 ? '' : 'e'}`;
+  const pendingHolidays = (state.holidays || []).filter(
+    (holiday) => Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending
+  );
+  elements.holidayCountPill.textContent = `${pendingHolidays.length} offene${pendingHolidays.length === 1 ? 'r' : ''} Antrag${pendingHolidays.length === 1 ? '' : 'e'}`;
   elements.holidayList.innerHTML = '';
 
-  if (!holidays.length) {
+  if (!pendingHolidays.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = 'Noch keine Ferien oder Absenzen erfasst.';
+    empty.textContent = 'Aktuell sind keine Abwesenheiten in Bearbeitung.';
     elements.holidayList.appendChild(empty);
     return;
   }
 
+  pendingHolidays.forEach((holiday) => {
+    elements.holidayList.appendChild(createHolidayRequestItem(holiday));
+  });
+}
+
+function syncHolidayHistoryYearOptions() {
+  if (!elements.holidayHistoryYearFilter) return;
+  const selectedYear = state.holidayHistoryYearFilter || 'all';
+  const years = [...new Set((state.holidays || []).map(getHolidayYear).filter((year) => year !== null))]
+    .sort((a, b) => b - a);
+
+  elements.holidayHistoryYearFilter.innerHTML = '<option value="all">Alle Jahre</option>';
+  years.forEach((year) => {
+    const option = document.createElement('option');
+    option.value = String(year);
+    option.textContent = String(year);
+    elements.holidayHistoryYearFilter.appendChild(option);
+  });
+
+  const hasSelectedYear = selectedYear === 'all' || years.includes(Number(selectedYear));
+  state.holidayHistoryYearFilter = hasSelectedYear ? selectedYear : 'all';
+  elements.holidayHistoryYearFilter.value = state.holidayHistoryYearFilter;
+}
+
+function renderHolidayHistory() {
+  syncHolidayHistoryYearOptions();
+
+  const yearFilter = state.holidayHistoryYearFilter || 'all';
+  const statusFilter = state.holidayHistoryStatusFilter || 'all';
+  const holidays = (state.holidays || []).filter((holiday) => {
+    const holidayYear = getHolidayYear(holiday);
+    const holidayStatus = getHolidayHistoryStatusValue(Number(holiday.approval_status));
+    return (yearFilter === 'all' || holidayYear === Number(yearFilter)) && (statusFilter === 'all' || holidayStatus === statusFilter);
+  });
+
+  if (elements.holidayHistoryStatusFilter) elements.holidayHistoryStatusFilter.value = statusFilter;
+  if (elements.holidayHistoryCountPill) {
+    elements.holidayHistoryCountPill.textContent = `${holidays.length} Antrag${holidays.length === 1 ? '' : 'e'}`;
+  }
+  if (elements.holidayHistoryFilterSummary) {
+    const yearLabel = yearFilter === 'all' ? 'Alle Jahre' : yearFilter;
+    const statusOption = elements.holidayHistoryStatusFilter?.selectedOptions?.[0];
+    const statusLabel = statusFilter === 'all' ? 'Alle Status' : (statusOption?.textContent || statusFilter);
+    elements.holidayHistoryFilterSummary.textContent = `${yearLabel} · ${statusLabel}`;
+  }
+
+  elements.holidayHistoryList.innerHTML = '';
+  if (!holidays.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Für diese Filter wurden keine Abwesenheiten gefunden.';
+    elements.holidayHistoryList.appendChild(empty);
+    return;
+  }
+
   holidays.forEach((holiday) => {
-    const article = document.createElement('article');
-    article.className = 'request-item';
-
-    const start = formatDate(parseLocalDate(holiday.start_date));
-    const end = formatDate(parseLocalDate(holiday.end_date));
-    const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
-    const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
-    const status = getHolidayApprovalMeta(Number(holiday.approval_status));
-    const actionLabel = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
-    const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
-    const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
-    const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
-      ? `<span class="pill warning">Teilweise: ${formatHours(specialHoursTotal)}</span>`
-      : '';
-
-    article.innerHTML = `
-      <div class="request-item-header">
-        <h3>${typeLabel}</h3>
-        <span class="pill neutral">${start} – ${end}</span>
-      </div>
-      <div class="request-item-meta">
-        <p>${holiday.notes || 'Keine zusätzliche Bemerkung.'}</p>
-        <span class="pill ${attachmentCount ? 'success' : 'neutral'}">${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}</span>
-        ${specialRequestSummary}
-      </div>
-      <div class="chip-list"></div>
-      <div class="request-item-actions">
-        <span class="pill ${status.pillClass}">${status.label}</span>
-        <button class="secondary-btn" type="button">${actionLabel}</button>
-      </div>
-    `;
-
-    const chipList = article.querySelector('.chip-list');
-    (holiday.attachments || []).forEach((file) => {
-      const link = document.createElement('a');
-      link.className = 'file-chip';
-      link.href = file.publicUrl;
-      link.target = '_blank';
-      link.rel = 'noreferrer';
-      link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
-      chipList.appendChild(link);
-    });
-
-    article.querySelector('button').addEventListener('click', () => openHolidayDrawer(holiday));
-    elements.holidayList.appendChild(article);
+    elements.holidayHistoryList.appendChild(createHolidayRequestItem(holiday));
   });
 }
 
@@ -2979,6 +3062,7 @@ function render() {
     fillSettingsForm();
     renderWeek();
     renderHolidayRequests();
+    renderHolidayHistory();
     setCurrentView(state.currentView);
   } else {
     state.currentView = 'timesheet';
@@ -2990,6 +3074,7 @@ function render() {
     setPill(elements.authStatusPill, state.supabase ? 'Nicht angemeldet' : 'Verbindung fehlt', state.supabase ? 'neutral' : 'danger');
     elements.weekGrid.innerHTML = '';
     elements.holidayList.innerHTML = '';
+    if (elements.holidayHistoryList) elements.holidayHistoryList.innerHTML = '';
     elements.savedCommissionsList.innerHTML = '';
     closeSavedCommissionForm();
   }
@@ -3101,6 +3186,21 @@ function registerEventListeners() {
       setCurrentView(item.dataset.navView);
       closeNavMenu();
     });
+  });
+  elements.openHolidayHistoryBtn?.addEventListener('click', () => {
+    renderHolidayHistory();
+    setCurrentView('holidayHistory');
+  });
+  elements.backToHolidayAbsencesBtn?.addEventListener('click', () => {
+    setCurrentView('holidayAbsences');
+  });
+  elements.holidayHistoryYearFilter?.addEventListener('change', (event) => {
+    state.holidayHistoryYearFilter = event.target.value;
+    renderHolidayHistory();
+  });
+  elements.holidayHistoryStatusFilter?.addEventListener('change', (event) => {
+    state.holidayHistoryStatusFilter = event.target.value;
+    renderHolidayHistory();
   });
   elements.openPasswordViewBtn.addEventListener('click', () => {
     setCurrentView('password');

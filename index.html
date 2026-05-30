@@ -311,13 +311,56 @@
             <section class="glass-card requests-card" id="requestsCard">
               <div class="section-head compact">
                 <div>
-                  <p class="section-label">Abwesenheiten</p>
-                  <h2>Ferien &amp; Absenzen</h2>
-                  <p>Hier siehst du deine erfassten Ferien-, Krankheits- und sonstigen Abwesenheitsanträge.</p>
+                  <p class="section-label">In Bearbeitung</p>
+                  <h2>Offene Abwesenheiten</h2>
+                  <p>Hier siehst du nur noch Abwesenheitsanträge, die aktuell in Bearbeitung sind.</p>
                 </div>
-                <span class="pill neutral" id="holidayCountPill">0 Anträge</span>
+                <span class="pill neutral" id="holidayCountPill">0 offene Anträge</span>
               </div>
               <div id="holidayList" class="request-list"></div>
+              <div class="drawer-actions history-link-actions">
+                <button class="secondary-btn" id="openHolidayHistoryBtn" type="button">Vergangene Abwesenheiten anschauen</button>
+              </div>
+            </section>
+          </section>
+
+          <section class="settings-view hidden" id="holidayHistoryView">
+            <section class="glass-card requests-card">
+              <div class="section-head compact history-page-head">
+                <div>
+                  <p class="section-label">Archiv</p>
+                  <h2>Vergangene Abwesenheiten</h2>
+                  <p>Alle Abwesenheiten mit Filter nach Jahr und Entscheidungsstatus.</p>
+                </div>
+                <button class="secondary-btn" id="backToHolidayAbsencesBtn" type="button">Zurück</button>
+              </div>
+
+              <div class="history-filter-panel" aria-label="Abwesenheiten filtern">
+                <label class="field">
+                  <span>Jahr</span>
+                  <select id="holidayHistoryYearFilter">
+                    <option value="all">Alle Jahre</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Status</span>
+                  <select id="holidayHistoryStatusFilter">
+                    <option value="all">Alle Status</option>
+                    <option value="approved">Angenommen</option>
+                    <option value="rejected">Abgelehnt</option>
+                    <option value="pending">In Bearbeitung</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="section-head compact history-results-head">
+                <div>
+                  <p class="section-label">Gefilterte Abwesenheiten</p>
+                  <p id="holidayHistoryFilterSummary">Alle Jahre · Alle Status</p>
+                </div>
+                <span class="pill neutral" id="holidayHistoryCountPill">0 Anträge</span>
+              </div>
+              <div id="holidayHistoryList" class="request-list"></div>
             </section>
           </section>
 
