@@ -151,6 +151,23 @@ const HOLIDAY_APPROVAL_STATUS = {
 const ROLE_OPTIONS = ['Lehrling', 'Elektrikinstallateur', 'Bauleiter', 'Projektleiter'];
 const DEFAULT_ROLE_LABEL = ROLE_OPTIONS[0];
 
+function icon(name, className = 'btn-icon') {
+  return `<span class="${className}" data-lucide="${name}" aria-hidden="true"></span>`;
+}
+
+function refreshIcons(root = document) {
+  if (!window.lucide?.createIcons) return;
+  window.lucide.createIcons({ attrs: { 'aria-hidden': 'true' }, nameAttr: 'data-lucide', root });
+}
+
+function buttonLabel(iconName, label) {
+  return `${icon(iconName)}<span>${escapeHtml(label)}</span>`;
+}
+
+function statusIcon(iconName, label, pillClass) {
+  return `<span class="status-icon-pill ${pillClass}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${icon(iconName, 'status-icon')}</span>`;
+}
+
 const state = {
   config: null,
   supabase: null,
@@ -367,12 +384,18 @@ function setButtonLoading(button, isLoading, loadingLabel) {
 
   if (!button.dataset.defaultLabel) {
     button.dataset.defaultLabel = button.textContent.trim();
+    button.dataset.defaultHtml = button.innerHTML;
   }
 
   button.disabled = isLoading;
   button.classList.toggle('is-loading', isLoading);
   button.setAttribute('aria-busy', String(isLoading));
-  button.textContent = isLoading ? loadingLabel : button.dataset.defaultLabel;
+  if (isLoading) {
+    button.textContent = loadingLabel;
+  } else {
+    button.innerHTML = button.dataset.defaultHtml || button.dataset.defaultLabel;
+    refreshIcons(button);
+  }
 }
 
 function setSectionBusy(section, isBusy) {
@@ -1541,8 +1564,8 @@ function renderSavedCommissions() {
           <span>${escapeHtml(item.commission_number)}</span>
         </div>
         <div class="saved-commission-actions">
-          <button class="ghost-btn" type="button" data-edit-saved-commission="${index}">Bearbeiten</button>
-          <button class="ghost-btn" type="button" data-delete-saved-commission="${index}">Entfernen</button>
+          <button class="ghost-btn" type="button" data-edit-saved-commission="${index}">${icon('pencil')}<span>Bearbeiten</span></button>
+          <button class="ghost-btn" type="button" data-delete-saved-commission="${index}">${icon('trash-2')}<span>Entfernen</span></button>
         </div>
       `;
       fragment.appendChild(row);
@@ -1554,6 +1577,7 @@ function renderSavedCommissions() {
     elements.addSavedCommissionBtn.disabled = commissions.length >= 10 && !state.savedCommissionEditorOpen;
     elements.addSavedCommissionBtn.title = commissions.length >= 10 ? 'Maximal 10 Kommissionen möglich' : 'Kommission hinzufügen';
   }
+  refreshIcons(elements.savedCommissionsList);
   syncSavedCommissionDropdownState();
 }
 
@@ -2410,7 +2434,8 @@ function setEntryMode(mode) {
   elements.startTimeInput.required = isDetailed;
   elements.endTimeInput.required = isDetailed;
   elements.simpleDurationInput.required = !isDetailed;
-  elements.toggleEntryModeBtn.textContent = isDetailed ? 'Einfache Ansicht' : 'Detaillierte Ansicht';
+  elements.toggleEntryModeBtn.innerHTML = buttonLabel(isDetailed ? 'minimize-2' : 'sliders-horizontal', isDetailed ? 'Einfache Ansicht' : 'Detaillierte Ansicht');
+  refreshIcons(elements.toggleEntryModeBtn);
 }
 
 function isSimpleEntryByTimes(entry) {
@@ -2419,14 +2444,14 @@ function isSimpleEntryByTimes(entry) {
 
 function getHolidayApprovalMeta(approvalStatus) {
   if (approvalStatus === HOLIDAY_APPROVAL_STATUS.rejected) {
-    return { label: 'Abgelehnt', pillClass: 'danger' };
+    return { label: 'Abgelehnt', pillClass: 'danger', icon: 'x-circle' };
   }
 
   if (approvalStatus === HOLIDAY_APPROVAL_STATUS.approved) {
-    return { label: 'Angenommen', pillClass: 'success' };
+    return { label: 'Angenommen', pillClass: 'success', icon: 'check-circle-2' };
   }
 
-  return { label: 'In Bearbeitung', pillClass: 'warning' };
+  return { label: 'In Bearbeitung', pillClass: 'warning', icon: 'clock-3' };
 }
 
 async function saveEntry(event) {
@@ -2643,14 +2668,18 @@ async function deleteEntry() {
 
 async function deleteHolidayRequest() {
   if (!state.editingHoliday?.id) return;
-  if (!window.confirm('Diesen Abwesenheitsantrag wirklich löschen?')) return;
+  const isPendingRequest = Number(state.editingHoliday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending;
+  const confirmMessage = isPendingRequest
+    ? 'Diesen Abwesenheitsantrag wirklich zurückziehen?'
+    : 'Diesen Abwesenheitsantrag wirklich löschen?';
+  if (!window.confirm(confirmMessage)) return;
 
   await runWithFeedback(
     {
       button: elements.deleteHolidayBtn,
       section: elements.holidayDrawer.querySelector('.drawer-panel'),
-      pendingMessage: 'Antrag wird gelöscht …',
-      loadingLabel: 'Löschen …'
+      pendingMessage: isPendingRequest ? 'Antrag wird zurückgezogen …' : 'Antrag wird gelöscht …',
+      loadingLabel: isPendingRequest ? 'Zurückziehen …' : 'Löschen …'
     },
     async () => {
       const { error } = await state.supabase
@@ -2663,7 +2692,7 @@ async function deleteHolidayRequest() {
         return;
       }
 
-      showToast('Abwesenheitsantrag gelöscht.');
+      showToast(isPendingRequest ? 'Abwesenheitsantrag zurückgezogen.' : 'Abwesenheitsantrag gelöscht.');
       closeHolidayDrawer();
       await loadHolidayRequests();
       renderHolidayRequests();
@@ -2752,6 +2781,7 @@ function openHolidayDrawer(holiday = null) {
   state.editingHoliday = holiday;
   const isExistingRequest = Boolean(holiday?.id);
   const actionLabel = holiday?.approval_status === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
+  const actionIcon = holiday?.approval_status === HOLIDAY_APPROVAL_STATUS.pending ? 'undo-2' : 'trash-2';
   elements.holidayIdInput.value = holiday?.id || '';
   elements.holidayStartDateInput.value = holiday?.start_date || getISODate(new Date());
   elements.holidayEndDateInput.value = holiday?.end_date || getISODate(new Date());
@@ -2772,7 +2802,8 @@ function openHolidayDrawer(holiday = null) {
   elements.holidayAttachmentsCameraBtn.disabled = isExistingRequest;
   elements.holidayAttachmentsGalleryBtn.disabled = isExistingRequest;
   elements.saveHolidayBtn.classList.toggle('hidden', isExistingRequest);
-  elements.deleteHolidayBtn.textContent = `Antrag ${actionLabel}`;
+  elements.deleteHolidayBtn.innerHTML = buttonLabel(actionIcon, `Antrag ${actionLabel}`);
+  refreshIcons(elements.deleteHolidayBtn);
   resetAttachmentState('holiday', holiday?.attachments || []);
   elements.deleteHolidayBtn.classList.toggle('hidden', !isExistingRequest);
   renderAttachmentPreview('holiday');
@@ -2793,7 +2824,8 @@ function closeHolidayDrawer() {
   elements.holidayAttachmentsCameraBtn.disabled = false;
   elements.holidayAttachmentsGalleryBtn.disabled = false;
   elements.saveHolidayBtn.classList.remove('hidden');
-  elements.deleteHolidayBtn.textContent = 'Antrag löschen';
+  elements.deleteHolidayBtn.innerHTML = buttonLabel('trash-2', 'Antrag löschen');
+  refreshIcons(elements.deleteHolidayBtn);
 }
 
 function renderAttachmentPreview(kind) {
@@ -2826,7 +2858,7 @@ function renderAttachmentPreview(kind) {
       image.alt = file.name;
       preview.appendChild(image);
     } else {
-      preview.innerHTML = '<span aria-hidden="true">📄</span>';
+      preview.innerHTML = icon('file-text', 'attachment-file-icon');
     }
 
     const body = document.createElement('div');
@@ -2840,7 +2872,7 @@ function renderAttachmentPreview(kind) {
     const allowAttachmentRemoval = !(kind === 'holiday' && state.editingHoliday?.id);
     removeBtn.type = 'button';
     removeBtn.className = 'ghost-btn attachment-remove-btn';
-    removeBtn.textContent = 'Entfernen';
+    removeBtn.innerHTML = buttonLabel('trash-2', 'Entfernen');
     removeBtn.disabled = !allowAttachmentRemoval;
     if (allowAttachmentRemoval) {
       removeBtn.addEventListener('click', () => removeAttachment(kind, isPending ? index - existingFiles.length : index, isPending));
@@ -2849,6 +2881,8 @@ function renderAttachmentPreview(kind) {
     item.append(preview, body, removeBtn);
     config.list.appendChild(item);
   });
+
+  refreshIcons(config.list);
 }
 
 function renderWeek() {
@@ -2927,51 +2961,47 @@ function getHolidayHistoryStatusValue(status) {
   return 'pending';
 }
 
-function createHolidayRequestItem(holiday) {
+function createHolidayRequestItem(holiday, options = {}) {
+  const { showAction = false } = options;
   const article = document.createElement('article');
-  article.className = 'request-item';
+  article.className = 'request-item absence-request-item';
 
   const start = formatDate(parseLocalDate(holiday.start_date));
   const end = formatDate(parseLocalDate(holiday.end_date));
   const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
-  const attachmentCount = Array.isArray(holiday.attachments) ? holiday.attachments.length : 0;
   const status = getHolidayApprovalMeta(Number(holiday.approval_status));
-  const actionLabel = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending ? 'Zurückziehen' : 'Löschen';
+  const isPending = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending;
   const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
   const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
   const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
-    ? `<span class="pill warning">Teilweise: ${formatHours(specialHoursTotal)}</span>`
+    ? `<span class="pill warning">${icon('activity', 'pill-icon')}<span>Teilweise: ${formatHours(specialHoursTotal)}</span></span>`
+    : '';
+  const statusMarkup = statusIcon(status.icon, status.label, status.pillClass);
+  const actionMarkup = showAction && isPending
+    ? `<button class="secondary-btn request-withdraw-btn" type="button">${icon('undo-2')}<span>Zurückziehen</span></button>`
     : '';
 
   article.innerHTML = `
-    <div class="request-item-header">
-      <h3>${typeLabel}</h3>
-      <span class="pill neutral">${start} – ${end}</span>
+    <div class="absence-request-main">
+      <div class="absence-request-icon" aria-hidden="true">${icon('calendar-off', 'request-type-icon')}</div>
+      <div class="absence-request-copy">
+        <div class="request-item-header">
+          <h3>${escapeHtml(typeLabel)}</h3>
+          <span class="pill neutral">${icon('calendar-days', 'pill-icon')}<span>${start} – ${end}</span></span>
+        </div>
+        ${specialRequestSummary ? `<div class="request-item-meta">${specialRequestSummary}</div>` : ''}
+      </div>
+      <div class="absence-request-status">${statusMarkup}</div>
     </div>
-    <div class="request-item-meta">
-      <p>${holiday.notes || 'Keine zusätzliche Bemerkung.'}</p>
-      <span class="pill ${attachmentCount ? 'success' : 'neutral'}">${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}</span>
-      ${specialRequestSummary}
-    </div>
-    <div class="chip-list"></div>
-    <div class="request-item-actions">
-      <span class="pill ${status.pillClass}">${status.label}</span>
-      <button class="secondary-btn" type="button">${actionLabel}</button>
-    </div>
+    ${actionMarkup ? `<div class="request-item-actions">${actionMarkup}</div>` : ''}
   `;
 
-  const chipList = article.querySelector('.chip-list');
-  (holiday.attachments || []).forEach((file) => {
-    const link = document.createElement('a');
-    link.className = 'file-chip';
-    link.href = file.publicUrl;
-    link.target = '_blank';
-    link.rel = 'noreferrer';
-    link.innerHTML = `<span>📎</span><span>${file.name}</span>`;
-    chipList.appendChild(link);
+  const actionButton = article.querySelector('.request-withdraw-btn');
+  actionButton?.addEventListener('click', () => {
+    state.editingHoliday = holiday;
+    deleteHolidayRequest();
   });
-
-  article.querySelector('button').addEventListener('click', () => openHolidayDrawer(holiday));
+  refreshIcons(article);
   return article;
 }
 
@@ -2991,7 +3021,7 @@ function renderHolidayRequests() {
   }
 
   pendingHolidays.forEach((holiday) => {
-    elements.holidayList.appendChild(createHolidayRequestItem(holiday));
+    elements.holidayList.appendChild(createHolidayRequestItem(holiday, { showAction: true }));
   });
 }
 
@@ -3018,10 +3048,13 @@ function renderHolidayHistory() {
   syncHolidayHistoryYearOptions();
 
   const yearFilter = state.holidayHistoryYearFilter || 'all';
-  const statusFilter = state.holidayHistoryStatusFilter || 'all';
+  const statusFilter = state.holidayHistoryStatusFilter === 'pending' ? 'all' : (state.holidayHistoryStatusFilter || 'all');
+  state.holidayHistoryStatusFilter = statusFilter;
   const holidays = (state.holidays || []).filter((holiday) => {
+    const statusNumber = Number(holiday.approval_status);
+    if (statusNumber === HOLIDAY_APPROVAL_STATUS.pending) return false;
     const holidayYear = getHolidayYear(holiday);
-    const holidayStatus = getHolidayHistoryStatusValue(Number(holiday.approval_status));
+    const holidayStatus = getHolidayHistoryStatusValue(statusNumber);
     return (yearFilter === 'all' || holidayYear === Number(yearFilter)) && (statusFilter === 'all' || holidayStatus === statusFilter);
   });
 
@@ -3078,6 +3111,8 @@ function render() {
     elements.savedCommissionsList.innerHTML = '';
     closeSavedCommissionForm();
   }
+
+  refreshIcons();
 }
 
 async function handleWeekChange(offsetDelta) {
@@ -3176,7 +3211,8 @@ function registerEventListeners() {
     } finally {
       state.dashboardReportDownloadLoading = false;
       elements.dashboardReportDownloadBtn.disabled = false;
-      elements.dashboardReportDownloadBtn.textContent = 'Rapport Download';
+      elements.dashboardReportDownloadBtn.innerHTML = buttonLabel('download', 'Rapport Download');
+      refreshIcons(elements.dashboardReportDownloadBtn);
     }
   });
   elements.navMenuToggleBtn?.addEventListener('click', toggleNavMenu);
@@ -3367,6 +3403,7 @@ const nowIsoWeek = getIsoWeekYearAndNumber(new Date());
 if (elements.dashboardReportYearInput) elements.dashboardReportYearInput.value = String(nowIsoWeek.isoYear);
 if (elements.dashboardReportWeekInput) elements.dashboardReportWeekInput.value = String(nowIsoWeek.isoWeek);
 openHolidayDrawer();
+refreshIcons();
 syncAutoReportHourConstraints();
 syncBodyScrollLock();
 registerAppServiceWorker().catch(() => null);

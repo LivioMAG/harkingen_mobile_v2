@@ -1792,3 +1792,156 @@ small,
     width: 100%;
   }
 }
+
+.btn-icon,
+.nav-icon,
+.pill-icon,
+.status-icon,
+.request-type-icon,
+.attachment-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.btn-icon svg,
+.nav-icon svg,
+.pill-icon svg,
+.status-icon svg,
+.request-type-icon svg,
+.attachment-file-icon svg {
+  width: 1em;
+  height: 1em;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.primary-btn,
+.secondary-btn,
+.ghost-btn,
+.icon-btn,
+.icon-action-btn,
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.icon-btn,
+.icon-action-btn,
+.icon-only,
+.nav-btn,
+.menu-toggle-btn,
+.nav-menu-item,
+.commission-dropdown-btn,
+.drawer-close-icon-btn {
+  gap: 0;
+}
+
+.nav-icon,
+.menu-toggle-btn .btn-icon,
+.nav-btn .btn-icon,
+.icon-only .btn-icon,
+.icon-action-btn .btn-icon,
+.drawer-close-icon-btn .btn-icon,
+.commission-dropdown-btn .btn-icon,
+.profile-icon-action-btn .btn-icon {
+  font-size: 1.28rem;
+}
+
+.absence-request-item {
+  display: grid;
+  gap: 12px;
+}
+
+.absence-request-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.absence-request-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(215, 25, 32, 0.08);
+  color: var(--accent);
+}
+
+.request-type-icon {
+  font-size: 1.35rem;
+}
+
+.absence-request-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.absence-request-status {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.status-icon-pill {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #ffffff;
+}
+
+.status-icon-pill.success {
+  border-color: rgba(31, 122, 59, 0.24);
+  background: rgba(31, 122, 59, 0.09);
+  color: var(--success);
+}
+
+.status-icon-pill.warning {
+  border-color: rgba(181, 106, 0, 0.25);
+  background: rgba(181, 106, 0, 0.1);
+  color: var(--warning);
+}
+
+.status-icon-pill.danger {
+  border-color: rgba(163, 13, 18, 0.22);
+  background: rgba(163, 13, 18, 0.08);
+  color: var(--danger);
+}
+
+.status-icon {
+  font-size: 1.25rem;
+}
+
+.request-withdraw-btn {
+  width: 100%;
+}
+
+.attachment-file-icon {
+  font-size: 1.5rem;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .absence-request-main {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .absence-request-status {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
