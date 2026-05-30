@@ -135,10 +135,10 @@
           <aside class="nav-menu hidden" id="navMenuDrawer" aria-hidden="true" aria-label="Hauptnavigation">
             <button class="nav-menu-backdrop" id="navMenuBackdrop" type="button" aria-label="Navigation schliessen"></button>
             <nav class="nav-menu-panel">
-              <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung"><span class="nav-icon" data-lucide="clock-3" aria-hidden="true"></span></button>
-              <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Ferienabwesenheiten" title="Ferienabwesenheiten"><span class="nav-icon" data-lucide="calendar-off" aria-hidden="true"></span></button>
-              <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard"><span class="nav-icon" data-lucide="chart-column" aria-hidden="true"></span></button>
-              <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil"><span class="nav-icon" data-lucide="user" aria-hidden="true"></span></button>
+              <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung"><span class="nav-icon" data-lucide="clock-3" aria-hidden="true"></span><span>Zeiterfassung</span></button>
+              <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Abwesenheiten" title="Abwesenheiten"><span class="nav-icon" data-lucide="calendar-off" aria-hidden="true"></span><span>Abwesenheiten</span></button>
+              <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard"><span class="nav-icon" data-lucide="chart-column" aria-hidden="true"></span><span>Dashboard</span></button>
+              <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil"><span class="nav-icon" data-lucide="user" aria-hidden="true"></span><span>Profil</span></button>
             </nav>
           </aside>
 
@@ -272,8 +272,8 @@
                         <button class="icon-action-btn media-upload-btn" id="holidayAttachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
                           <span class="btn-icon" data-lucide="camera" aria-hidden="true"></span>
                         </button>
-                        <button class="secondary-btn media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button">
-                          <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span><span>Galerie öffnen</span>
+                        <button class="secondary-btn icon-only media-upload-btn" id="holidayAttachmentsGalleryBtn" type="button" aria-label="Galerie öffnen" title="Galerie öffnen">
+                          <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span>
                         </button>
                       </div>
                     </div>
@@ -292,8 +292,8 @@
 
                   <div class="drawer-actions">
                     <button class="ghost-btn hidden" id="deleteHolidayBtn" type="button"><span class="btn-icon" data-lucide="trash-2" aria-hidden="true"></span><span>Antrag löschen</span></button>
-                    <button class="secondary-btn" id="resetHolidayBtn" type="reset"><span class="btn-icon" data-lucide="rotate-ccw" aria-hidden="true"></span><span>Zurücksetzen</span></button>
-                    <button class="primary-btn" id="saveHolidayBtn" type="submit"><span class="btn-icon" data-lucide="send" aria-hidden="true"></span><span>Antrag speichern</span></button>
+                    <button class="secondary-btn icon-only" id="resetHolidayBtn" type="reset" aria-label="Zurücksetzen" title="Zurücksetzen"><span class="btn-icon" data-lucide="rotate-ccw" aria-hidden="true"></span></button>
+                    <button class="primary-btn icon-only" id="saveHolidayBtn" type="submit" aria-label="Antrag speichern" title="Antrag speichern"><span class="btn-icon" data-lucide="send" aria-hidden="true"></span></button>
                   </div>
                 </form>
               </section>
@@ -310,7 +310,7 @@
               </div>
               <div id="holidayList" class="request-list"></div>
               <div class="drawer-actions history-link-actions">
-                <button class="secondary-btn" id="openHolidayHistoryBtn" type="button"><span class="btn-icon" data-lucide="history" aria-hidden="true"></span><span>Vergangene Abwesenheiten anschauen</span></button>
+                <button class="secondary-btn" id="openHolidayHistoryBtn" type="button"><span>Vergangene Abwesenheiten</span></button>
               </div>
             </section>
           </section>
@@ -548,7 +548,7 @@
             </label>
             <div class="field compact-field align-right-field simple-mode-toggle-field">
               <span class="hidden-label" aria-hidden="true">&nbsp;</span>
-              <button class="secondary-btn" id="toggleEntryModeBtn" type="button"><span class="btn-icon" data-lucide="sliders-horizontal" aria-hidden="true"></span><span>Detailansicht</span></button>
+              <button class="secondary-btn" id="toggleEntryModeBtn" type="button"><span>Detailansicht</span></button>
             </div>
           </div>
 
@@ -627,8 +627,8 @@
                 <button class="icon-action-btn media-upload-btn" id="attachmentsCameraBtn" type="button" aria-label="Foto mit Kamera aufnehmen">
                   <span class="btn-icon" data-lucide="camera" aria-hidden="true"></span>
                 </button>
-                <button class="secondary-btn media-upload-btn" id="attachmentsGalleryBtn" type="button">
-                  <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span><span>Galerie öffnen</span>
+                <button class="secondary-btn icon-only media-upload-btn" id="attachmentsGalleryBtn" type="button" aria-label="Galerie öffnen" title="Galerie öffnen">
+                  <span class="btn-icon" data-lucide="image-plus" aria-hidden="true"></span>
                 </button>
               </div>
             </div>
@@ -647,7 +647,7 @@
 
           <div class="drawer-actions">
             <button class="ghost-btn hidden" id="deleteEntryBtn" type="button"><span class="btn-icon" data-lucide="trash-2" aria-hidden="true"></span><span>Eintrag löschen</span></button>
-            <button class="primary-btn" id="saveEntryBtn" type="submit"><span class="btn-icon" data-lucide="save" aria-hidden="true"></span><span>Speichern</span></button>
+            <button class="primary-btn icon-only" id="saveEntryBtn" type="submit" aria-label="Speichern" title="Speichern"><span class="btn-icon" data-lucide="save" aria-hidden="true"></span></button>
           </div>
         </form>
       </section>

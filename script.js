@@ -2434,8 +2434,7 @@ function setEntryMode(mode) {
   elements.startTimeInput.required = isDetailed;
   elements.endTimeInput.required = isDetailed;
   elements.simpleDurationInput.required = !isDetailed;
-  elements.toggleEntryModeBtn.innerHTML = buttonLabel(isDetailed ? 'minimize-2' : 'sliders-horizontal', isDetailed ? 'Einfache Ansicht' : 'Detaillierte Ansicht');
-  refreshIcons(elements.toggleEntryModeBtn);
+  elements.toggleEntryModeBtn.textContent = isDetailed ? 'Einfache Ansicht' : 'Detailansicht';
 }
 
 function isSimpleEntryByTimes(entry) {
@@ -2974,7 +2973,7 @@ function createHolidayRequestItem(holiday, options = {}) {
   const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
   const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
   const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
-    ? `<span class="pill warning">${icon('activity', 'pill-icon')}<span>Teilweise: ${formatHours(specialHoursTotal)}</span></span>`
+    ? `<span class="pill warning">${icon('activity', 'pill-icon')}<span>${formatHours(specialHoursTotal)}</span></span>`
     : '';
   const statusMarkup = statusIcon(status.icon, status.label, status.pillClass);
   const actionMarkup = showAction && isPending
