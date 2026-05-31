@@ -2375,8 +2375,6 @@ function getEntryPayload() {
   const breakMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0)) : 0;
   if (isAutoType) {
     normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
-  } else if (!isDetailedEntryMode) {
-    normalizeQuarterHourInput(elements.simpleDurationInput);
   }
   const simpleDurationMinutes = parseDurationMinutes(elements.simpleDurationInput.value);
   const autoDurationMinutes = parseQuarterHourValue(elements.workHoursInput.value);
@@ -2443,6 +2441,12 @@ function parseQuarterHourValue(value) {
   return Math.round(hours * 60);
 }
 
+function parseSimpleDurationValue(value) {
+  const raw = sanitizeQuarterHourInputValue(value);
+  if (!/^\d+\.(25|5|50|75)$/.test(raw)) return NaN;
+  return parseQuarterHourValue(raw);
+}
+
 function setQuarterHourInputValidity(input, { maxHours = null } = {}) {
   const raw = sanitizeQuarterHourInputValue(input.value);
   if (!raw) {
@@ -2499,7 +2503,7 @@ function normalizeQuarterHourInput(input, { maxHours = null } = {}) {
 }
 
 function parseDurationMinutes(value) {
-  return parseQuarterHourValue(value);
+  return parseSimpleDurationValue(value);
 }
 
 function formatDurationForInput(minutes) {
@@ -2560,8 +2564,13 @@ async function saveEntry(event) {
     return;
   }
 
-  if (!isAutoType && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0)) {
-    showToast('Bitte gültige Arbeitszeit in 0.25er-Schritten eingeben.', 'error');
+  if (!isAutoType && state.entryMode !== ENTRY_MODE_DETAILED && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0)) {
+    showToast('Bitte Arbeitszeit als Dezimalzahl mit .25, .5 oder .75 eingeben (z. B. 6.25, 7.5 oder 4.75).', 'error');
+    return;
+  }
+
+  if (!isAutoType && state.entryMode === ENTRY_MODE_DETAILED && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0)) {
+    showToast('Bitte gültige Arbeitszeit eingeben.', 'error');
     return;
   }
   if (!isAutoType && payload.total_work_minutes > 24 * 60) {
@@ -3394,10 +3403,7 @@ function registerEventListeners() {
   elements.startTimeInput.addEventListener('change', handleTimeInputChange);
   elements.endTimeInput.addEventListener('change', handleTimeInputChange);
   elements.simpleDurationInput.addEventListener('input', () => {
-    setQuarterHourInputValidity(elements.simpleDurationInput);
-  });
-  elements.simpleDurationInput.addEventListener('change', () => {
-    normalizeQuarterHourInput(elements.simpleDurationInput);
+    elements.simpleDurationInput.setCustomValidity('');
   });
   elements.workHoursInput.addEventListener('input', () => {
     setQuarterHourInputValidity(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
