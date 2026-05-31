@@ -2006,15 +2006,8 @@ small,
   gap: 12px;
 }
 
-.absence-request-main {
-  display: grid;
-  gap: 10px;
-}
-
-.absence-request-copy {
+.absence-request-type {
   min-width: 0;
-  display: grid;
-  gap: 10px;
 }
 
 .absence-request-detail-row {
