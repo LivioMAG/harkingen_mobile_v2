@@ -1494,8 +1494,8 @@ function syncAutoReportHourConstraints({ setDefaultForAutoType = false } = {}) {
   if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
     if (setDefaultForAutoType) {
       elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(maxHours) ?? DEFAULT_WORK_HOURS);
-    } else if (!normalizeQuarterHourInput(elements.workHoursInput, { maxHours })) {
-      elements.workHoursInput.value = '0.0';
+    } else {
+      normalizeQuarterHourInput(elements.workHoursInput, { maxHours });
     }
   }
 }
@@ -2426,8 +2426,12 @@ function getHolidayPayload(existingAttachments) {
   };
 }
 
+function sanitizeQuarterHourInputValue(value) {
+  return String(value ?? '').trim().replace(',', '.');
+}
+
 function parseQuarterHourValue(value) {
-  const raw = String(value || '').trim().replace(',', '.');
+  const raw = sanitizeQuarterHourInputValue(value);
   if (!raw || raw.includes(':')) return NaN;
 
   const hours = Number(raw);
@@ -2437,6 +2441,29 @@ function parseQuarterHourValue(value) {
   if (Math.abs(quarterHours - Math.round(quarterHours)) > 0.000001) return NaN;
 
   return Math.round(hours * 60);
+}
+
+function setQuarterHourInputValidity(input, { maxHours = null } = {}) {
+  const raw = sanitizeQuarterHourInputValue(input.value);
+  if (!raw) {
+    input.setCustomValidity('');
+    return false;
+  }
+
+  const minutes = parseQuarterHourValue(raw);
+  if (!Number.isFinite(minutes)) {
+    input.setCustomValidity('Bitte ganze Stunden oder Viertelstunden eingeben (z. B. 8.0, 8.25, 8.5 oder 8.75).');
+    return false;
+  }
+
+  const cappedMaxHours = getMaxAllowedQuarterHours(maxHours);
+  if (cappedMaxHours !== null && minutes / 60 > cappedMaxHours) {
+    input.setCustomValidity(`Bitte maximal ${formatQuarterHoursForInput(cappedMaxHours)} Stunden eingeben.`);
+    return false;
+  }
+
+  input.setCustomValidity('');
+  return true;
 }
 
 function formatQuarterHoursForInput(hours) {
@@ -2458,12 +2485,16 @@ function getMaxAllowedQuarterHours(maxHours) {
 
 function normalizeQuarterHourInput(input, { maxHours = null } = {}) {
   const minutes = parseQuarterHourValue(input.value);
-  if (!Number.isFinite(minutes)) return false;
+  if (!Number.isFinite(minutes)) {
+    setQuarterHourInputValidity(input, { maxHours });
+    return false;
+  }
 
   const parsedHours = minutes / 60;
   const cappedMaxHours = getMaxAllowedQuarterHours(maxHours);
   const cappedHours = cappedMaxHours === null ? parsedHours : Math.min(parsedHours, cappedMaxHours);
   input.value = formatQuarterHoursForInput(cappedHours);
+  setQuarterHourInputValidity(input, { maxHours });
   return true;
 }
 
@@ -3362,15 +3393,17 @@ function registerEventListeners() {
   elements.endTimeInput.addEventListener('input', (event) => enforceQuarterHourInput(event.target));
   elements.startTimeInput.addEventListener('change', handleTimeInputChange);
   elements.endTimeInput.addEventListener('change', handleTimeInputChange);
+  elements.simpleDurationInput.addEventListener('input', () => {
+    setQuarterHourInputValidity(elements.simpleDurationInput);
+  });
   elements.simpleDurationInput.addEventListener('change', () => {
-    if (!normalizeQuarterHourInput(elements.simpleDurationInput)) {
-      elements.simpleDurationInput.value = '';
-    }
+    normalizeQuarterHourInput(elements.simpleDurationInput);
+  });
+  elements.workHoursInput.addEventListener('input', () => {
+    setQuarterHourInputValidity(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
   });
   elements.workHoursInput.addEventListener('change', () => {
-    if (!normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() })) {
-      elements.workHoursInput.value = '0.0';
-    }
+    normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
   });
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
