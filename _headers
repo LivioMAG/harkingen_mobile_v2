@@ -12,3 +12,9 @@
 
 /script.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/supabase-config.json
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/surcharge-rules.json
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
