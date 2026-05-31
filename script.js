@@ -2987,20 +2987,16 @@ function createHolidayRequestItem(holiday, options = {}) {
   const isPending = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending;
   const statusMarkup = statusIcon(status.icon, status.label, status.pillClass);
   const actionMarkup = showAction && isPending
-    ? `<button class="secondary-btn request-withdraw-btn" type="button">${icon('undo-2')}<span>Zurückziehen</span></button>`
+    ? '<button class="secondary-btn request-withdraw-btn" type="button">Zurückziehen</button>'
     : '';
 
   article.innerHTML = `
-    <div class="absence-request-main">
-      <div class="absence-request-copy">
-        <h3>${escapeHtml(typeLabel)}</h3>
-        <div class="absence-request-detail-row">
-          <div class="absence-request-status">${statusMarkup}</div>
-          <span class="absence-request-date">${start} – ${end}</span>
-        </div>
-      </div>
+    <h3 class="absence-request-type">${escapeHtml(typeLabel)}</h3>
+    <div class="absence-request-detail-row">
+      <div class="absence-request-status">${statusMarkup}</div>
+      <span class="absence-request-date">${start} – ${end}</span>
     </div>
-    ${actionMarkup ? `<div class="request-item-actions">${actionMarkup}</div>` : ''}
+    ${actionMarkup}
   `;
 
   const actionButton = article.querySelector('.request-withdraw-btn');
