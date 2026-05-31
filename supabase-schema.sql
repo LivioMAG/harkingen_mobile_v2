@@ -121,46 +121,6 @@ create index if not exists weekly_reports_profile_year_kw_idx
 create index if not exists holiday_requests_profile_date_idx
   on public.holiday_requests (profile_id, start_date, end_date);
 
-create table if not exists public.weekly_report_import_batches (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid not null references public.app_profiles (id) on delete cascade,
-  source_file_name text not null default '',
-  employee_name text not null default '',
-  calendar_week integer,
-  year integer,
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'cancelled')),
-  warnings jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-
-create table if not exists public.weekly_report_import_entries (
-  id uuid primary key default gen_random_uuid(),
-  import_batch_id uuid not null references public.weekly_report_import_batches (id) on delete cascade,
-  profile_id uuid not null references public.app_profiles (id) on delete cascade,
-  commission_number text not null,
-  project_name text not null default '',
-  work_date date not null,
-  weekday text not null,
-  hours numeric(8,2) not null check (hours > 0),
-  employee_name text not null default '',
-  calendar_week integer,
-  year integer,
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'rejected')),
-  warnings jsonb not null default '[]'::jsonb,
-  weekly_report_id uuid references public.weekly_reports (id) on delete set null,
-  source_row integer,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-
-create index if not exists weekly_report_import_batches_profile_idx
-  on public.weekly_report_import_batches (profile_id, created_at desc);
-
-create index if not exists weekly_report_import_entries_batch_idx
-  on public.weekly_report_import_entries (import_batch_id, status);
-
-
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -238,21 +198,9 @@ create trigger set_holiday_requests_updated_at
 before update on public.holiday_requests
 for each row execute procedure public.set_updated_at();
 
-drop trigger if exists set_weekly_report_import_batches_updated_at on public.weekly_report_import_batches;
-create trigger set_weekly_report_import_batches_updated_at
-before update on public.weekly_report_import_batches
-for each row execute procedure public.set_updated_at();
-
-drop trigger if exists set_weekly_report_import_entries_updated_at on public.weekly_report_import_entries;
-create trigger set_weekly_report_import_entries_updated_at
-before update on public.weekly_report_import_entries
-for each row execute procedure public.set_updated_at();
-
 alter table public.app_profiles enable row level security;
 alter table public.weekly_reports enable row level security;
 alter table public.holiday_requests enable row level security;
-alter table public.weekly_report_import_batches enable row level security;
-alter table public.weekly_report_import_entries enable row level security;
 
 -- Profile: Benutzer sieht und bearbeitet nur sein eigenes Profil.
 -- Admin-Status gibt hier bewusst KEINEN Vollzugriff, damit Profile separat geschützt bleiben.
@@ -304,46 +252,6 @@ create policy "reports_delete_own_or_admin"
   on public.weekly_reports
   for delete
   using (auth.uid() = profile_id or public.is_admin());
-
-
--- Import-Batches: Benutzer verwalten ihre eigenen Import-Previews; Admins sehen alle.
-drop policy if exists "import_batches_select_own_or_admin" on public.weekly_report_import_batches;
-create policy "import_batches_select_own_or_admin"
-  on public.weekly_report_import_batches
-  for select
-  using (auth.uid() = profile_id or public.is_admin());
-
-drop policy if exists "import_batches_insert_own_or_admin" on public.weekly_report_import_batches;
-create policy "import_batches_insert_own_or_admin"
-  on public.weekly_report_import_batches
-  for insert
-  with check (auth.uid() = profile_id or public.is_admin());
-
-drop policy if exists "import_batches_update_own_or_admin" on public.weekly_report_import_batches;
-create policy "import_batches_update_own_or_admin"
-  on public.weekly_report_import_batches
-  for update
-  using (auth.uid() = profile_id or public.is_admin())
-  with check (auth.uid() = profile_id or public.is_admin());
-
-drop policy if exists "import_entries_select_own_or_admin" on public.weekly_report_import_entries;
-create policy "import_entries_select_own_or_admin"
-  on public.weekly_report_import_entries
-  for select
-  using (auth.uid() = profile_id or public.is_admin());
-
-drop policy if exists "import_entries_insert_own_or_admin" on public.weekly_report_import_entries;
-create policy "import_entries_insert_own_or_admin"
-  on public.weekly_report_import_entries
-  for insert
-  with check (auth.uid() = profile_id or public.is_admin());
-
-drop policy if exists "import_entries_update_own_or_admin" on public.weekly_report_import_entries;
-create policy "import_entries_update_own_or_admin"
-  on public.weekly_report_import_entries
-  for update
-  using (auth.uid() = profile_id or public.is_admin())
-  with check (auth.uid() = profile_id or public.is_admin());
 
 -- Abwesenheiten: Benutzer sehen ihre eigenen Anträge; Admins sehen und bearbeiten alle.
 drop policy if exists "holiday_select_own" on public.holiday_requests;
