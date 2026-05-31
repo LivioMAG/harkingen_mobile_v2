@@ -1409,11 +1409,15 @@ function getHolidayIncapacityPercent() {
 }
 
 function getHolidayIncapacityHours() {
-  return roundHours((getProfileWeeklyHours() * getHolidayIncapacityPercent()) / 100);
+  return roundQuarterHours((getProfileWeeklyHours() * getHolidayIncapacityPercent()) / 100);
 }
 
 function roundHours(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function roundQuarterHours(value) {
+  return Math.round((Number(value) || 0) * 4) / 4;
 }
 
 function formatHours(value) {
@@ -1434,7 +1438,7 @@ function getHolidayWeekdayHours() {
   const hours = {};
   elements.holidayWeekdayHourInputs.forEach((input) => {
     const weekday = input.dataset.weekday;
-    hours[weekday] = roundHours(Number(input.value || 0));
+    hours[weekday] = roundQuarterHours(Number(input.value || 0));
   });
   return hours;
 }
@@ -1459,7 +1463,7 @@ function syncHolidayPartialAbsenceFields() {
   const totalHours = getHolidayIncapacityHours();
   const isSpecialRequest = isSupportedType && (percent < 100 || hasHolidayWeekdayHourMap(state.editingHoliday));
   const distributedHours = getHolidayDistributedHours();
-  const remainingHours = roundHours(totalHours - distributedHours);
+  const remainingHours = roundQuarterHours(totalHours - distributedHours);
 
   elements.partialAbsencePanel.classList.toggle('hidden', !isSupportedType);
   elements.holidayWeekdayDistribution.classList.toggle('hidden', !isSpecialRequest);
@@ -2595,7 +2599,7 @@ async function saveHolidayRequest(event) {
   if (shouldUsePartialAbsenceDistribution()) {
     const totalHours = getHolidayIncapacityHours();
     const distributedHours = getHolidayDistributedHours();
-    const remainingHours = roundHours(totalHours - distributedHours);
+    const remainingHours = roundQuarterHours(totalHours - distributedHours);
     if (Math.abs(remainingHours) > 0.01) {
       showToast(`Bitte die Stunden exakt verteilen. Offen: ${formatHours(remainingHours)}`, 'error');
       return;
