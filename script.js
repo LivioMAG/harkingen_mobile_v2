@@ -2985,11 +2985,6 @@ function createHolidayRequestItem(holiday, options = {}) {
   const typeLabel = HOLIDAY_TYPE_LABELS[holiday.request_type] || holiday.request_type;
   const status = getHolidayApprovalMeta(Number(holiday.approval_status));
   const isPending = Number(holiday.approval_status) === HOLIDAY_APPROVAL_STATUS.pending;
-  const specialHours = holiday.special_request_hours && typeof holiday.special_request_hours === 'object' ? holiday.special_request_hours : {};
-  const specialHoursTotal = WORKDAY_LABELS.reduce((sum, weekday) => sum + (Number(specialHours[weekday]) || 0), 0);
-  const specialRequestSummary = hasHolidayWeekdayHourMap(holiday)
-    ? `<span class="pill warning">${icon('activity', 'pill-icon')}<span>${formatHours(specialHoursTotal)}</span></span>`
-    : '';
   const statusMarkup = statusIcon(status.icon, status.label, status.pillClass);
   const actionMarkup = showAction && isPending
     ? `<button class="secondary-btn request-withdraw-btn" type="button">${icon('undo-2')}<span>Zurückziehen</span></button>`
@@ -2997,15 +2992,13 @@ function createHolidayRequestItem(holiday, options = {}) {
 
   article.innerHTML = `
     <div class="absence-request-main">
-      <div class="absence-request-icon" aria-hidden="true">${icon('calendar-off', 'request-type-icon')}</div>
       <div class="absence-request-copy">
-        <div class="request-item-header">
-          <h3>${escapeHtml(typeLabel)}</h3>
-          <span class="pill neutral">${icon('calendar-days', 'pill-icon')}<span>${start} – ${end}</span></span>
+        <h3>${escapeHtml(typeLabel)}</h3>
+        <div class="absence-request-detail-row">
+          <div class="absence-request-status">${statusMarkup}</div>
+          <span class="absence-request-date">${start} – ${end}</span>
         </div>
-        ${specialRequestSummary ? `<div class="request-item-meta">${specialRequestSummary}</div>` : ''}
       </div>
-      <div class="absence-request-status">${statusMarkup}</div>
     </div>
     ${actionMarkup ? `<div class="request-item-actions">${actionMarkup}</div>` : ''}
   `;
