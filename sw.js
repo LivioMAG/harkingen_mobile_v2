@@ -1,12 +1,12 @@
-const CACHE_VERSION = 'v2026-05-30-1';
+const CACHE_VERSION = 'v2026-05-31-2';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 const APP_SHELL_ASSETS = [
   './',
   './index.html',
-  './style.css?v=2026-05-30-1',
-  './script.js?v=2026-05-30-1',
-  './manifest.webmanifest?v=2026-05-30-1'
+  './style.css?v=2026-05-31-2',
+  './script.js?v=2026-05-31-2',
+  './manifest.webmanifest?v=2026-05-31-2'
 ];
 
 self.addEventListener('install', (event) => {

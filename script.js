@@ -2957,6 +2957,7 @@ function renderWeek() {
     }
 
     elements.weekGrid.appendChild(card);
+    refreshIcons(card);
   });
 
   if (elements.weekEntryCount) elements.weekEntryCount.textContent = String(totalEntries);
