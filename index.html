@@ -7,20 +7,59 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Rapport Mobile</title>
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <meta name="app-build-version" content="2026-05-31-2" />
-    <link rel="manifest" href="manifest.webmanifest?v=2026-05-31-2" />
-    <link rel="stylesheet" href="style.css?v=2026-05-31-2" />
+    <meta name="app-build-version" content="2026-05-31-4" />
+    <script>
+      (() => {
+        const appBuildVersion = '2026-05-31-4';
+        const resetKey = `rapport-cache-reset-${appBuildVersion}`;
+        const currentUrl = new URL(window.location.href);
+        const alreadyReset =
+          sessionStorage.getItem(resetKey) === 'done' || currentUrl.searchParams.get('appBuild') === appBuildVersion;
+
+        if (alreadyReset) return;
+
+        const clearBrowserCaches = async () => {
+          let clearedSomething = false;
+
+          if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+            clearedSomething = clearedSomething || cacheNames.length > 0;
+          }
+
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister()));
+            clearedSomething = clearedSomething || registrations.length > 0;
+          }
+
+          sessionStorage.setItem(resetKey, 'done');
+
+          if (clearedSomething) {
+            currentUrl.searchParams.set('appBuild', appBuildVersion);
+            window.location.replace(currentUrl.toString());
+          }
+        };
+
+        clearBrowserCaches().catch(() => sessionStorage.setItem(resetKey, 'done'));
+      })();
+    </script>
+    <link rel="manifest" href="manifest.webmanifest?v=2026-05-31-4" />
+    <link rel="stylesheet" href="style.css?v=2026-05-31-4" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script defer src="script.js?v=2026-05-31-2"></script>
+    <script defer src="script.js?v=2026-05-31-4"></script>
   </head>
   <body>
     <div class="app-shell">

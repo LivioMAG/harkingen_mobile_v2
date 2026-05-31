@@ -11,6 +11,7 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 - `supabase-config.example.json` – Vorlage für die Konfiguration.
 - `supabase-schema.sql` – SQL für Tabellen, RLS-Policies und Storage-Bucket.
 - `surcharge-rules.json` – Zuschlagsregeln (Zeitfenster + Multiplikator) für die Berechnung der angepassten Arbeitszeit.
+- `.htaccess` – Hostinger/Apache-Regeln, damit App-Dateien ohne Browser-/Proxy-Cache ausgeliefert werden.
 
 ## Supabase einrichten
 
@@ -53,12 +54,12 @@ Dann `http://localhost:4173` öffnen.
 - Ferien- und Absenzanträge mit Typwahl (Ferien, Militär, Zivildienst, Unfall, Krankheit) inklusive Anhängen.
 - Bearbeiten und Löschen von vorhandenen Rapporten und Abwesenheitsanträgen.
 
-## PWA-Update-Strategie
+## Hostinger-Update- und Cache-Strategie
 
-- Service Worker: `sw.js` mit versionierten Caches (`static-*`, `runtime-*`).
-- Bei neuer Version wird per `skipWaiting()` + `clients.claim()` sofort übernommen.
-- App registriert den SW mit `updateViaCache: 'none'` und prüft jede Minute auf Updates.
-- Bei neuem SW zeigt die App kurz „Neue Version verfügbar – App wird aktualisiert.“ und lädt danach automatisch neu.
-- `index.html`, `manifest.webmanifest` und `sw.js` sollten mit `Cache-Control: no-cache` ausgeliefert werden.
-- Versionierte Assets (hier über `?v=...`) dürfen lange gecacht werden (`immutable`).
-- Beispiel-Header für Netlify (`_headers`) und Vercel (`vercel.json`) sind enthalten.
+- Die App registriert keinen neuen Service Worker mehr. Das ist für Hostinger die robusteste Variante, weil dadurch keine alte PWA-Cache-Schicht mehr zwischen Benutzer und Server liegt.
+- `index.html` enthält einen frühen Cache-Reset: Beim ersten Öffnen einer neuen Build-Version werden Cache Storage und vorhandene Service-Worker-Registrierungen gelöscht. Falls etwas entfernt wurde, lädt die Seite einmal mit `?appBuild=...` neu.
+- `sw.js` bleibt als Kill-Switch vorhanden: Falls ein Browser noch versucht, den alten Service Worker zu aktualisieren, löscht diese Datei ebenfalls alle Cache-Storage-Einträge, unregistert sich selbst und navigiert offene App-Fenster auf die aktuelle Build-URL.
+- `index.html`, `manifest.webmanifest`, `sw.js`, `script.js`, `style.css`, `supabase-config.json` und `surcharge-rules.json` sollen mit `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` ausgeliefert werden.
+- Für Hostinger/Apache ist die `.htaccess` enthalten; sie muss zusammen mit den App-Dateien hochgeladen werden.
+- Wichtig: Bereits geöffnete Tabs oder installierte PWA-Fenster müssen die App mindestens einmal neu öffnen/laden, damit der Cache-Reset-Code ausgeführt werden kann. Wenn jemand danach immer noch die alte Version sieht, hilft als manuelle Notlösung die URL mit `?appBuild=2026-05-31-4` zu öffnen oder die Websitedaten im Browser zu löschen.
+- Beispiel-Header für Netlify (`_headers`) und Vercel (`vercel.json`) sind ebenfalls enthalten.
