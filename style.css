@@ -2008,35 +2008,29 @@ small,
 
 .absence-request-main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-}
-
-.absence-request-icon {
-  width: 44px;
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  background: rgba(215, 25, 32, 0.08);
-  color: var(--accent);
-}
-
-.request-type-icon {
-  font-size: 1.35rem;
+  gap: 10px;
 }
 
 .absence-request-copy {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+}
+
+.absence-request-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
 }
 
 .absence-request-status {
   display: inline-flex;
-  justify-content: flex-end;
+}
+
+.absence-request-date {
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .status-icon-pill {
@@ -2082,12 +2076,7 @@ small,
 }
 
 @media (max-width: 560px) {
-  .absence-request-main {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .absence-request-status {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
+  .absence-request-detail-row {
+    align-items: flex-start;
   }
 }
