@@ -19,8 +19,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="weekly-report-import.js?v=2026-05-31-3"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="script.js?v=2026-05-31-3"></script>
   </head>
@@ -166,12 +164,11 @@
 
           <section class="week-grid" id="weekGrid"></section>
           <section class="glass-card hidden" id="dashboardView">
-            <div class="section-head compact dashboard-head-row">
+            <div class="section-head compact">
               <div>
                 <h2>Dashboard</h2>
-                <p>Wochenrapport als PDF herunterladen oder bestehende Wochenrapport-Dateien importieren.</p>
+                <p>Wochenrapport als PDF für die gewünschte Kalenderwoche herunterladen.</p>
               </div>
-              <button class="primary-btn icon-only" id="openWeeklyImportBtn" type="button" aria-label="Wochenrapport importieren" title="Wochenrapport importieren"><span class="btn-icon" data-lucide="plus" aria-hidden="true"></span></button>
             </div>
             <div class="field-row two-columns">
               <label class="field">
@@ -186,50 +183,6 @@
             <div class="drawer-actions">
               <button class="primary-btn" id="dashboardReportDownloadBtn" type="button"><span class="btn-icon" data-lucide="download" aria-hidden="true"></span><span>Rapport Download</span></button>
             </div>
-            <section class="import-panel hidden" id="weeklyImportPanel" aria-live="polite">
-              <div class="inline-head import-panel-head">
-                <div>
-                  <p class="section-label">Wochenrapport importieren</p>
-                  <h3>Upload &amp; Preview</h3>
-                  <p class="muted">Unterstützt XLSX-Dateien. Es werden ausschliesslich Zeiten aus den Spalten Mo–Sa importiert.</p>
-                </div>
-                <button class="ghost-btn icon-only" id="cancelWeeklyImportBtn" type="button" aria-label="Import abbrechen" title="Import abbrechen"><span class="btn-icon" data-lucide="x" aria-hidden="true"></span></button>
-              </div>
-              <div class="field-row import-upload-row">
-                <label class="field">
-                  <span>Wochenrapport-Datei</span>
-                  <input id="weeklyImportFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-                </label>
-                <button class="secondary-btn" id="startWeeklyImportBtn" type="button"><span class="btn-icon" data-lucide="upload" aria-hidden="true"></span><span>Upload starten</span></button>
-              </div>
-              <div class="import-meta hidden" id="weeklyImportMeta"></div>
-              <div class="import-warning-list hidden" id="weeklyImportWarnings"></div>
-              <div class="import-preview hidden" id="weeklyImportPreview">
-                <div class="inline-head">
-                  <div>
-                    <strong id="weeklyImportPreviewTitle">Import-Preview</strong>
-                    <p class="muted" id="weeklyImportPreviewSubtitle"></p>
-                  </div>
-                  <button class="primary-btn" id="confirmAllWeeklyImportBtn" type="button"><span class="btn-icon" data-lucide="check-check" aria-hidden="true"></span><span>Alle gültigen bestätigen</span></button>
-                </div>
-                <div class="import-table-wrap">
-                  <table class="import-table">
-                    <thead>
-                      <tr>
-                        <th>Datum</th>
-                        <th>Tag</th>
-                        <th>Kom. Nr.</th>
-                        <th>Projekt/Beschreibung</th>
-                        <th>Stunden</th>
-                        <th>Status</th>
-                        <th>Aktion</th>
-                      </tr>
-                    </thead>
-                    <tbody id="weeklyImportPreviewBody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
           </section>
 
           <section class="settings-view hidden" id="holidayAbsencesView">
