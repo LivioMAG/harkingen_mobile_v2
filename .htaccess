@@ -1,0 +1,19 @@
+# Hostinger/Apache cache policy: always validate app files and never reuse old builds.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js|script\.js|style\.css|manifest\.webmanifest|supabase-config\.json|surcharge-rules\.json)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/css "access plus 0 seconds"
+  ExpiresByType application/javascript "access plus 0 seconds"
+  ExpiresByType application/json "access plus 0 seconds"
+  ExpiresByType application/manifest+json "access plus 0 seconds"
+</IfModule>
+
+FileETag None

@@ -11,6 +11,7 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 - `supabase-config.example.json` – Vorlage für die Konfiguration.
 - `supabase-schema.sql` – SQL für Tabellen, RLS-Policies und Storage-Bucket.
 - `surcharge-rules.json` – Zuschlagsregeln (Zeitfenster + Multiplikator) für die Berechnung der angepassten Arbeitszeit.
+- `.htaccess` – Hostinger/Apache-Regeln, damit App-Dateien ohne Browser-/Proxy-Cache ausgeliefert werden.
 
 ## Supabase einrichten
 
@@ -55,10 +56,11 @@ Dann `http://localhost:4173` öffnen.
 
 ## PWA-Update-Strategie
 
-- Service Worker: `sw.js` mit versionierten Caches (`static-*`, `runtime-*`).
+- Service Worker: `sw.js` ist auf Network-only gestellt, löscht bei Installation/Aktivierung alle Cache-Storage-Einträge und hängt bei eigenen Dateien zusätzlich einen `__fresh`-Parameter an.
+- Die App fordert den aktiven Service Worker beim Start zusätzlich per `CLEAR_CACHES` zum Leeren alter Cache-Einträge auf.
 - Bei neuer Version wird per `skipWaiting()` + `clients.claim()` sofort übernommen.
 - App registriert den SW mit `updateViaCache: 'none'` und prüft jede Minute auf Updates.
 - Bei neuem SW zeigt die App kurz „Neue Version verfügbar – App wird aktualisiert.“ und lädt danach automatisch neu.
-- `index.html`, `manifest.webmanifest` und `sw.js` sollten mit `Cache-Control: no-cache` ausgeliefert werden.
-- Versionierte Assets (hier über `?v=...`) dürfen lange gecacht werden (`immutable`).
-- Beispiel-Header für Netlify (`_headers`) und Vercel (`vercel.json`) sind enthalten.
+- `index.html`, `manifest.webmanifest`, `sw.js`, `script.js`, `style.css`, `supabase-config.json` und `surcharge-rules.json` sollen mit `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` ausgeliefert werden.
+- Für Hostinger/Apache ist die `.htaccess` enthalten; sie muss zusammen mit den App-Dateien hochgeladen werden.
+- Beispiel-Header für Netlify (`_headers`) und Vercel (`vercel.json`) sind ebenfalls enthalten.
