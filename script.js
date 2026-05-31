@@ -1395,7 +1395,7 @@ function getDisplayName(profile, fallbackEmail = '') {
 function getAutoReportMaxHours() {
   const weeklyHours = getProfileWeeklyHours();
   const profileDailyHours = Number.isFinite(weeklyHours) && weeklyHours > 0 ? weeklyHours / 5 : 0;
-  return Math.max(DEFAULT_WORK_HOURS, profileDailyHours);
+  return profileDailyHours || DEFAULT_WORK_HOURS;
 }
 
 function getProfileWeeklyHours() {
@@ -1493,9 +1493,9 @@ function syncAutoReportHourConstraints({ setDefaultForAutoType = false } = {}) {
 
   if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
     if (setDefaultForAutoType) {
-      elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(maxHours) ?? DEFAULT_WORK_HOURS);
+      elements.workHoursInput.value = formatDecimalHoursForInput(getMaxAllowedDecimalHours(maxHours) ?? DEFAULT_WORK_HOURS);
     } else {
-      normalizeQuarterHourInput(elements.workHoursInput, { maxHours });
+      normalizeDecimalHourInput(elements.workHoursInput, { maxHours });
     }
   }
 }
@@ -2374,10 +2374,10 @@ function getEntryPayload() {
   const lunchMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.lunchMinutesInput.value || 0)) : 0;
   const breakMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0)) : 0;
   if (isAutoType) {
-    normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
+    normalizeDecimalHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
   }
   const simpleDurationMinutes = parseDurationMinutes(elements.simpleDurationInput.value);
-  const autoDurationMinutes = parseQuarterHourValue(elements.workHoursInput.value);
+  const autoDurationMinutes = parseDecimalHourValue(elements.workHoursInput.value);
   const totalMinutes = isAutoType
     ? autoDurationMinutes
     : isDetailedEntryMode
@@ -2447,6 +2447,16 @@ function parseSimpleDurationValue(value) {
   return parseQuarterHourValue(raw);
 }
 
+function parseDecimalHourValue(value) {
+  const raw = sanitizeQuarterHourInputValue(value);
+  if (!raw || raw.includes(':') || !/^(?:\d+|\d*[.]\d{1,2})$/.test(raw)) return NaN;
+
+  const hours = Number(raw);
+  if (!Number.isFinite(hours) || hours < 0) return NaN;
+
+  return Math.round(hours * 60);
+}
+
 function setQuarterHourInputValidity(input, { maxHours = null } = {}) {
   const raw = sanitizeQuarterHourInputValue(input.value);
   if (!raw) {
@@ -2481,6 +2491,13 @@ function formatQuarterHoursForInput(hours) {
   return `${wholeHours}.${String(fraction).padStart(2, '0')}`;
 }
 
+function formatDecimalHoursForInput(hours) {
+  const safeHours = Math.max(0, Number(hours) || 0);
+  const roundedHours = Math.round(safeHours * 100) / 100;
+  if (Number.isInteger(roundedHours)) return `${roundedHours}.0`;
+  return String(roundedHours).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '.0');
+}
+
 function getMaxAllowedQuarterHours(maxHours) {
   const hours = Number(maxHours);
   if (!Number.isFinite(hours) || hours < 0) return null;
@@ -2499,6 +2516,51 @@ function normalizeQuarterHourInput(input, { maxHours = null } = {}) {
   const cappedHours = cappedMaxHours === null ? parsedHours : Math.min(parsedHours, cappedMaxHours);
   input.value = formatQuarterHoursForInput(cappedHours);
   setQuarterHourInputValidity(input, { maxHours });
+  return true;
+}
+
+function setDecimalHourInputValidity(input, { maxHours = null } = {}) {
+  const raw = sanitizeQuarterHourInputValue(input.value);
+  if (!raw) {
+    input.setCustomValidity('');
+    return false;
+  }
+
+  const minutes = parseDecimalHourValue(raw);
+  if (!Number.isFinite(minutes)) {
+    input.setCustomValidity('Bitte Stunden als Dezimalzahl eingeben (z. B. 8.4, 7.5 oder 6.2).');
+    return false;
+  }
+
+  const cappedMaxHours = getMaxAllowedDecimalHours(maxHours);
+  const cappedMaxMinutes = cappedMaxHours === null ? null : Math.round(cappedMaxHours * 60);
+  if (cappedMaxMinutes !== null && minutes > cappedMaxMinutes) {
+    input.setCustomValidity(`Bitte maximal ${formatDecimalHoursForInput(cappedMaxHours)} Stunden eingeben.`);
+    return false;
+  }
+
+  input.setCustomValidity('');
+  return true;
+}
+
+function getMaxAllowedDecimalHours(maxHours) {
+  const hours = Number(maxHours);
+  if (!Number.isFinite(hours) || hours < 0) return null;
+  return Math.round(hours * 100) / 100;
+}
+
+function normalizeDecimalHourInput(input, { maxHours = null } = {}) {
+  const minutes = parseDecimalHourValue(input.value);
+  if (!Number.isFinite(minutes)) {
+    setDecimalHourInputValidity(input, { maxHours });
+    return false;
+  }
+
+  const parsedHours = minutes / 60;
+  const cappedMaxHours = getMaxAllowedDecimalHours(maxHours);
+  const cappedHours = cappedMaxHours === null ? parsedHours : Math.min(parsedHours, cappedMaxHours);
+  input.value = formatDecimalHoursForInput(cappedHours);
+  setDecimalHourInputValidity(input, { maxHours });
   return true;
 }
 
@@ -2560,7 +2622,7 @@ async function saveEntry(event) {
 
   const maxAutoMinutes = Math.round(getAutoReportMaxHours() * 60);
   if (isAutoType && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0 || payload.total_work_minutes > maxAutoMinutes)) {
-    showToast(`Zeit muss zwischen 0 und ${getAutoReportMaxHours()} Stunden liegen und in 0.25er-Schritten erfasst werden.`, 'error');
+    showToast(`Zeit muss zwischen 0 und ${formatDecimalHoursForInput(getAutoReportMaxHours())} Stunden liegen. Dezimalwerte wie .1 bis .9 sind erlaubt.`, 'error');
     return;
   }
 
@@ -2816,7 +2878,7 @@ function openDrawer(isoDate, entry = null) {
   enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = formatQuarterHoursForInput(Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60)));
+  elements.workHoursInput.value = formatDecimalHoursForInput(Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60)));
   const entryMode = entry ? (isSimpleEntryByTimes(entry) ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED) : ENTRY_MODE_SIMPLE;
   elements.simpleDurationInput.value = formatDurationForInput(entry?.total_work_minutes ?? (DEFAULT_WORK_HOURS * 60));
   setEntryMode(entry ? entryMode : ENTRY_MODE_SIMPLE);
@@ -2849,7 +2911,7 @@ function closeDrawer() {
   enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
   setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
+  elements.workHoursInput.value = formatDecimalHoursForInput(getMaxAllowedDecimalHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
   elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
   setEntryMode(ENTRY_MODE_SIMPLE);
   elements.toggleEntryModeBtn.classList.remove('hidden');
@@ -3406,14 +3468,14 @@ function registerEventListeners() {
     elements.simpleDurationInput.setCustomValidity('');
   });
   elements.workHoursInput.addEventListener('input', () => {
-    setQuarterHourInputValidity(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
+    setDecimalHourInputValidity(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
   });
   elements.workHoursInput.addEventListener('change', () => {
-    normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
+    normalizeDecimalHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
   });
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
-      elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
+      elements.workHoursInput.value = formatDecimalHoursForInput(getMaxAllowedDecimalHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
       elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
