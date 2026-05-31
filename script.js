@@ -3381,6 +3381,10 @@ async function registerAppServiceWorker() {
   const appVersion = encodeURIComponent(getAppBuildVersion());
   let hasReloadedForUpdate = false;
 
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHES' });
+  }
+
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hasReloadedForUpdate) return;
     hasReloadedForUpdate = true;
@@ -3388,6 +3392,7 @@ async function registerAppServiceWorker() {
   });
 
   const registration = await navigator.serviceWorker.register(`./sw.js?v=${appVersion}`, { updateViaCache: 'none' });
+  if (registration.active) registration.active.postMessage({ type: 'CLEAR_CACHES' });
 
   const promptAndActivate = (worker) => {
     if (!worker) return;
