@@ -1489,14 +1489,13 @@ function syncHolidayPartialAbsenceFields() {
 function syncAutoReportHourConstraints({ setDefaultForAutoType = false } = {}) {
   const maxHours = getAutoReportMaxHours();
   elements.workHoursInput.max = String(maxHours);
+  elements.workHoursInput.dataset.maxHours = String(maxHours);
 
   if (AUTO_REPORT_TYPES.has(elements.reportTypeInput.value)) {
     if (setDefaultForAutoType) {
-      elements.workHoursInput.value = String(maxHours);
-    } else {
-      const current = Number(elements.workHoursInput.value || 0);
-      if (current > maxHours) elements.workHoursInput.value = String(maxHours);
-      if (current < 0) elements.workHoursInput.value = '0';
+      elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(maxHours) ?? DEFAULT_WORK_HOURS);
+    } else if (!normalizeQuarterHourInput(elements.workHoursInput, { maxHours })) {
+      elements.workHoursInput.value = '0.0';
     }
   }
 }
@@ -2374,9 +2373,15 @@ function getEntryPayload() {
   const endTime = isDetailed ? (isAutoType ? DEFAULT_END_TIME : elements.endTimeInput.value) : '00:00';
   const lunchMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.lunchMinutesInput.value || 0)) : 0;
   const breakMinutes = isDetailed ? (isAutoType ? 0 : Number(elements.breakMinutesInput.value || 0)) : 0;
+  if (isAutoType) {
+    normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() });
+  } else if (!isDetailedEntryMode) {
+    normalizeQuarterHourInput(elements.simpleDurationInput);
+  }
   const simpleDurationMinutes = parseDurationMinutes(elements.simpleDurationInput.value);
+  const autoDurationMinutes = parseQuarterHourValue(elements.workHoursInput.value);
   const totalMinutes = isAutoType
-    ? Math.round(Number(elements.workHoursInput.value || 0) * 60)
+    ? autoDurationMinutes
     : isDetailedEntryMode
       ? minutesBetween(startTime, endTime, lunchMinutes, breakMinutes)
       : simpleDurationMinutes;
@@ -2421,27 +2426,54 @@ function getHolidayPayload(existingAttachments) {
   };
 }
 
-function parseDurationMinutes(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return NaN;
-  if (raw.includes(':')) {
-    const [h, m] = raw.split(':');
-    const hours = Number(h);
-    const minutes = Number(m);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes) || minutes < 0 || minutes >= 60) return NaN;
-    return Math.round(hours * 60 + minutes);
-  }
-  const normalized = raw.replace(',', '.');
-  const hours = Number(normalized);
-  if (!Number.isFinite(hours)) return NaN;
+function parseQuarterHourValue(value) {
+  const raw = String(value || '').trim().replace(',', '.');
+  if (!raw || raw.includes(':')) return NaN;
+
+  const hours = Number(raw);
+  if (!Number.isFinite(hours) || hours < 0) return NaN;
+
+  const quarterHours = hours * 4;
+  if (Math.abs(quarterHours - Math.round(quarterHours)) > 0.000001) return NaN;
+
   return Math.round(hours * 60);
+}
+
+function formatQuarterHoursForInput(hours) {
+  const safeHours = Math.max(0, Number(hours) || 0);
+  const roundedQuarterHours = Math.round(safeHours * 4) / 4;
+  const wholeHours = Math.floor(roundedQuarterHours);
+  const fraction = Math.round((roundedQuarterHours - wholeHours) * 100);
+
+  if (fraction === 0) return `${wholeHours}.0`;
+  if (fraction === 50) return `${wholeHours}.5`;
+  return `${wholeHours}.${String(fraction).padStart(2, '0')}`;
+}
+
+function getMaxAllowedQuarterHours(maxHours) {
+  const hours = Number(maxHours);
+  if (!Number.isFinite(hours) || hours < 0) return null;
+  return Math.floor(hours * 4) / 4;
+}
+
+function normalizeQuarterHourInput(input, { maxHours = null } = {}) {
+  const minutes = parseQuarterHourValue(input.value);
+  if (!Number.isFinite(minutes)) return false;
+
+  const parsedHours = minutes / 60;
+  const cappedMaxHours = getMaxAllowedQuarterHours(maxHours);
+  const cappedHours = cappedMaxHours === null ? parsedHours : Math.min(parsedHours, cappedMaxHours);
+  input.value = formatQuarterHoursForInput(cappedHours);
+  return true;
+}
+
+function parseDurationMinutes(value) {
+  return parseQuarterHourValue(value);
 }
 
 function formatDurationForInput(minutes) {
   const total = Math.max(0, Number(minutes) || 0);
-  const hours = Math.floor(total / 60);
-  const mins = total % 60;
-  return `${hours}:${String(mins).padStart(2, '0')}`;
+  return formatQuarterHoursForInput(total / 60);
 }
 
 function setEntryMode(mode) {
@@ -2492,13 +2524,13 @@ async function saveEntry(event) {
   }
 
   const maxAutoMinutes = Math.round(getAutoReportMaxHours() * 60);
-  if (isAutoType && (payload.total_work_minutes <= 0 || payload.total_work_minutes > maxAutoMinutes)) {
-    showToast(`Zeit muss zwischen 0 und ${getAutoReportMaxHours()} Stunden liegen.`, 'error');
+  if (isAutoType && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0 || payload.total_work_minutes > maxAutoMinutes)) {
+    showToast(`Zeit muss zwischen 0 und ${getAutoReportMaxHours()} Stunden liegen und in 0.25er-Schritten erfasst werden.`, 'error');
     return;
   }
 
-  if (!isAutoType && payload.total_work_minutes <= 0) {
-    showToast('Bitte gültige Arbeitszeit eingeben.', 'error');
+  if (!isAutoType && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0)) {
+    showToast('Bitte gültige Arbeitszeit in 0.25er-Schritten eingeben.', 'error');
     return;
   }
   if (!isAutoType && payload.total_work_minutes > 24 * 60) {
@@ -2744,7 +2776,7 @@ function openDrawer(isoDate, entry = null) {
   enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60));
+  elements.workHoursInput.value = formatQuarterHoursForInput(Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60)));
   const entryMode = entry ? (isSimpleEntryByTimes(entry) ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED) : ENTRY_MODE_SIMPLE;
   elements.simpleDurationInput.value = formatDurationForInput(entry?.total_work_minutes ?? (DEFAULT_WORK_HOURS * 60));
   setEntryMode(entry ? entryMode : ENTRY_MODE_SIMPLE);
@@ -2777,7 +2809,7 @@ function closeDrawer() {
   enforceQuarterHourInput(elements.endTimeInput);
   setSelectOrInputValue(elements.lunchMinutesInput, getAutomaticLunchMinutes(DEFAULT_START_TIME, DEFAULT_END_TIME));
   setSelectOrInputValue(elements.breakMinutesInput, DEFAULT_BREAK_MINUTES);
-  elements.workHoursInput.value = getAutoReportMaxHours();
+  elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
   elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
   setEntryMode(ENTRY_MODE_SIMPLE);
   elements.toggleEntryModeBtn.classList.remove('hidden');
@@ -3330,15 +3362,19 @@ function registerEventListeners() {
   elements.endTimeInput.addEventListener('input', (event) => enforceQuarterHourInput(event.target));
   elements.startTimeInput.addEventListener('change', handleTimeInputChange);
   elements.endTimeInput.addEventListener('change', handleTimeInputChange);
-  elements.workHoursInput.addEventListener('input', () => {
-    const value = Number(elements.workHoursInput.value || 0);
-    const maxHours = getAutoReportMaxHours();
-    if (value > maxHours) elements.workHoursInput.value = String(maxHours);
-    if (value < 0) elements.workHoursInput.value = '0';
+  elements.simpleDurationInput.addEventListener('change', () => {
+    if (!normalizeQuarterHourInput(elements.simpleDurationInput)) {
+      elements.simpleDurationInput.value = '';
+    }
+  });
+  elements.workHoursInput.addEventListener('change', () => {
+    if (!normalizeQuarterHourInput(elements.workHoursInput, { maxHours: getAutoReportMaxHours() })) {
+      elements.workHoursInput.value = '0.0';
+    }
   });
   elements.entryForm.addEventListener('reset', () => {
     window.setTimeout(() => {
-      elements.workHoursInput.value = getAutoReportMaxHours();
+      elements.workHoursInput.value = formatQuarterHoursForInput(getMaxAllowedQuarterHours(getAutoReportMaxHours()) ?? DEFAULT_WORK_HOURS);
       elements.simpleDurationInput.value = formatDurationForInput(DEFAULT_WORK_HOURS * 60);
       elements.startTimeInput.value = DEFAULT_START_TIME;
       elements.endTimeInput.value = DEFAULT_END_TIME;
