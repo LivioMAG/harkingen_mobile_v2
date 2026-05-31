@@ -1713,6 +1713,32 @@ body {
   box-shadow: 0 10px 24px rgba(215, 25, 32, 0.16);
 }
 
+.day-add-entry-btn {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0;
+  border: 1px solid rgba(17, 17, 17, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f4f5 100%);
+  color: var(--text);
+  box-shadow: 0 12px 26px rgba(17, 17, 17, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.day-add-entry-btn:hover,
+.day-add-entry-btn:focus-visible {
+  background: #111111;
+  border-color: #111111;
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(17, 17, 17, 0.22);
+}
+
+.day-add-entry-btn .btn-icon {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
 .entry-list {
   gap: 12px;
 }
