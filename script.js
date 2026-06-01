@@ -2443,7 +2443,7 @@ function parseQuarterHourValue(value) {
 
 function parseSimpleDurationValue(value) {
   const raw = sanitizeQuarterHourInputValue(value);
-  if (!/^\d+\.(25|5|50|75)$/.test(raw)) return NaN;
+  if (!/^(?:\d+|\d+\.(?:0|00|25|5|50|75))$/.test(raw)) return NaN;
   return parseQuarterHourValue(raw);
 }
 
@@ -2627,7 +2627,7 @@ async function saveEntry(event) {
   }
 
   if (!isAutoType && state.entryMode !== ENTRY_MODE_DETAILED && (!Number.isFinite(payload.total_work_minutes) || payload.total_work_minutes <= 0)) {
-    showToast('Bitte Arbeitszeit als Dezimalzahl mit .25, .5 oder .75 eingeben (z. B. 6.25, 7.5 oder 4.75).', 'error');
+    showToast('Bitte Arbeitszeit als ganze Zahl oder Viertelstunde eingeben (z. B. 2, 6.25, 7.5 oder 4.75).', 'error');
     return;
   }
 
