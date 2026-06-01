@@ -19,7 +19,9 @@ Aktuelle App-Version: `2026-06-01-1`
 
 Für Hostinger keine neuen Dateien erzeugen: Beim Upload die bestehenden App-Dateien aus dem Repo nach `public_html` hochladen und vorhandene Dateien überschreiben. Wichtig sind `index.html`, `sw.js`, `script.js`, `style.css`, `manifest.webmanifest`, `supabase-config.json`, `surcharge-rules.json` und `.htaccess`.
 
-Nach dem Upload Browser hart neu laden (`Ctrl/Cmd + Shift + R`) und installierte PWA/App einmal vollständig schließen und wieder öffnen.
+Damit keine alten Seiten geladen werden, muss `.htaccess` wirklich in `public_html` liegen und auf Hostinger als Punktdatei sichtbar/hochgeladen sein. Die Datei setzt `no-store`-Header; zusätzlich tragen `index.html` und `sw.js` die aktuelle Versionsnummer, damit Browser, PWA und Service Worker die neue Version erzwingen.
+
+Nach dem Upload Browser hart neu laden (`Ctrl/Cmd + Shift + R`) und installierte PWA/App einmal vollständig schließen und wieder öffnen. Wenn trotzdem noch eine alte Ansicht erscheint, in Hostinger zusätzlich alle Server-/LiteSpeed-/CDN-Caches leeren und danach die App erneut öffnen.
 
 ## Supabase einrichten
 
