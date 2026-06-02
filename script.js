@@ -236,7 +236,7 @@ const elements = {
   dashboardView: document.getElementById('dashboardView'),
   chatbotView: document.getElementById('chatbotView'),
   chatbotFrame: document.getElementById('chatbotFrame'),
-  chatbotDirectLink: document.getElementById('chatbotDirectLink'),
+  chatbotError: document.getElementById('chatbotError'),
   dashboardReportYearInput: document.getElementById('dashboardReportYearInput'),
   dashboardReportWeekInput: document.getElementById('dashboardReportWeekInput'),
   dashboardReportDownloadBtn: document.getElementById('dashboardReportDownloadBtn'),
@@ -1300,6 +1300,10 @@ function setAuthMode(mode) {
 }
 
 
+function setChatbotError(isVisible) {
+  elements.chatbotError?.classList.toggle('hidden', !isVisible);
+}
+
 async function loadChatbotConfig() {
   try {
     const response = await fetch(CHATBOT_CONFIG_PATH, { cache: 'no-store' });
@@ -1309,25 +1313,25 @@ async function loadChatbotConfig() {
       throw new Error('Chatbot-URL fehlt.');
     }
     state.chatbotConfig = { chatUrl: config.chatUrl.trim() };
-    if (elements.chatbotDirectLink) elements.chatbotDirectLink.href = state.chatbotConfig.chatUrl;
+    setChatbotError(false);
   } catch (error) {
     console.error(error);
     state.chatbotConfig = null;
-    if (elements.chatbotDirectLink) elements.chatbotDirectLink.removeAttribute('href');
+    setChatbotError(true);
   }
 }
 
 function loadChatbotFrame() {
   const chatUrl = state.chatbotConfig?.chatUrl;
   if (!chatUrl || !elements.chatbotFrame) {
-    showToast('Chatbot-Konfiguration konnte nicht geladen werden.', 'error');
+    setChatbotError(true);
     return;
   }
 
+  setChatbotError(false);
   if (elements.chatbotFrame.src !== chatUrl) {
     elements.chatbotFrame.src = chatUrl;
   }
-  if (elements.chatbotDirectLink) elements.chatbotDirectLink.href = chatUrl;
 }
 
 async function loadConfig() {
@@ -3541,6 +3545,7 @@ function registerEventListeners() {
   elements.entryDrawer.addEventListener('click', (event) => {
     if (event.target.dataset.closeDrawer === 'true') closeDrawer();
   });
+  elements.chatbotFrame?.addEventListener('error', () => setChatbotError(true));
 }
 
 
