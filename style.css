@@ -620,22 +620,19 @@ textarea {
 }
 .chatbot-view {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .chatbot-frame-wrap {
-  min-height: min(680px, calc(100vh - 230px));
+  min-height: min(760px, calc(100dvh - 128px));
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 22px;
   background: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 34px rgba(15, 23, 42, 0.08);
 }
 
 .chatbot-frame {
   display: block;
   width: 100%;
-  min-height: min(680px, calc(100vh - 230px));
+  min-height: min(760px, calc(100dvh - 128px));
   border: 0;
   background: #fff;
 }
