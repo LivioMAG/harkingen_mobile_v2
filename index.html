@@ -16,14 +16,14 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <meta name="app-build-version" content="2026-06-01-1" />
-    <link rel="manifest" href="manifest.webmanifest?v=2026-06-01-1" />
-    <link rel="stylesheet" href="style.css?v=2026-06-01-1" />
+    <meta name="app-build-version" content="2026-06-02-1" />
+    <link rel="manifest" href="manifest.webmanifest?v=2026-06-02-1" />
+    <link rel="stylesheet" href="style.css?v=2026-06-02-1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script defer src="script.js?v=2026-06-01-1"></script>
+    <script defer src="script.js?v=2026-06-02-1"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -141,6 +141,7 @@
               <button class="nav-menu-item active" data-nav-view="timesheet" type="button" aria-label="Zeiterfassung" title="Zeiterfassung"><span class="nav-icon" data-lucide="clock-3" aria-hidden="true"></span><span>Zeiterfassung</span></button>
               <button class="nav-menu-item" data-nav-view="holidayAbsences" type="button" aria-label="Abwesenheiten" title="Abwesenheiten"><span class="nav-icon" data-lucide="calendar-off" aria-hidden="true"></span><span>Abwesenheiten</span></button>
               <button class="nav-menu-item" data-nav-view="dashboard" type="button" aria-label="Dashboard" title="Dashboard"><span class="nav-icon" data-lucide="chart-column" aria-hidden="true"></span><span>Dashboard</span></button>
+              <button class="nav-menu-item" data-nav-view="chatbot" type="button" aria-label="Chatbot" title="Chatbot"><span class="nav-icon" data-lucide="bot" aria-hidden="true"></span><span>Chatbot</span></button>
               <button class="nav-menu-item" data-nav-view="settings" type="button" aria-label="Profil" title="Profil"><span class="nav-icon" data-lucide="user" aria-hidden="true"></span><span>Profil</span></button>
             </nav>
           </aside>
@@ -186,6 +187,32 @@
             <div class="drawer-actions">
               <button class="primary-btn" id="dashboardReportDownloadBtn" type="button"><span class="btn-icon" data-lucide="download" aria-hidden="true"></span><span>Rapport Download</span></button>
             </div>
+          </section>
+
+
+
+          <section class="glass-card chatbot-view hidden" id="chatbotView">
+            <div class="section-head compact">
+              <div>
+                <p class="section-label">Chatbot</p>
+                <h2>Chatbot</h2>
+                <p>Der eingebettete Chat wird beim Öffnen dieser Seite automatisch geladen.</p>
+              </div>
+            </div>
+            <div class="chatbot-frame-wrap" id="chatbotFrameWrap">
+              <iframe
+                id="chatbotFrame"
+                class="chatbot-frame"
+                title="Chatbot"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                allow="clipboard-write; microphone"
+              ></iframe>
+            </div>
+            <p class="chatbot-fallback">
+              Falls der Chat nicht angezeigt wird, öffne ihn direkt über
+              <a id="chatbotDirectLink" href="#" target="_blank" rel="noopener noreferrer">diesen Link</a>.
+            </p>
           </section>
 
           <section class="settings-view hidden" id="holidayAbsencesView">
