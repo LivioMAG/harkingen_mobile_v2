@@ -1,5 +1,6 @@
 const CONFIG_PATH = './supabase-config.json';
 const SURCHARGE_RULES_PATH = './surcharge-rules.json';
+const CHATBOT_CONFIG_PATH = './chatbot-config.json';
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
@@ -170,6 +171,7 @@ function statusIcon(iconName, label, pillClass) {
 
 const state = {
   config: null,
+  chatbotConfig: null,
   supabase: null,
   session: null,
   profile: null,
@@ -232,6 +234,9 @@ const elements = {
   weekRangeLabel: document.getElementById('weekRangeLabel'),
   weekGrid: document.getElementById('weekGrid'),
   dashboardView: document.getElementById('dashboardView'),
+  chatbotView: document.getElementById('chatbotView'),
+  chatbotFrame: document.getElementById('chatbotFrame'),
+  chatbotDirectLink: document.getElementById('chatbotDirectLink'),
   dashboardReportYearInput: document.getElementById('dashboardReportYearInput'),
   dashboardReportWeekInput: document.getElementById('dashboardReportWeekInput'),
   dashboardReportDownloadBtn: document.getElementById('dashboardReportDownloadBtn'),
@@ -469,12 +474,13 @@ function toggleNavMenu() {
 }
 
 function setCurrentView(view) {
-  state.currentView = ['timesheet', 'holidayAbsences', 'holidayHistory', 'dashboard', 'settings', 'password'].includes(view) ? view : 'timesheet';
+  state.currentView = ['timesheet', 'holidayAbsences', 'holidayHistory', 'dashboard', 'chatbot', 'settings', 'password'].includes(view) ? view : 'timesheet';
   const inSettings = ['settings', 'password'].includes(state.currentView);
   const inTimesheet = state.currentView === 'timesheet';
   const inHolidayAbsences = state.currentView === 'holidayAbsences';
   const inHolidayHistory = state.currentView === 'holidayHistory';
   const inDashboard = state.currentView === 'dashboard';
+  const inChatbot = state.currentView === 'chatbot';
   const inPassword = state.currentView === 'password';
 
   elements.settingsView?.classList.toggle('hidden', !inSettings);
@@ -484,6 +490,8 @@ function setCurrentView(view) {
   elements.weekGrid?.classList.toggle('hidden', !inTimesheet);
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
+  elements.chatbotView?.classList.toggle('hidden', !inChatbot);
+  if (inChatbot) loadChatbotFrame();
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.savedCommissionsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', !inHolidayAbsences);
@@ -1289,6 +1297,37 @@ function setAuthMode(mode) {
   elements.toggleAuthModeBtn.textContent = isRegister ? 'Zum Login' : 'Jetzt registrieren';
   elements.fullNameField.classList.toggle('hidden', !isRegister);
   elements.passwordInput.setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+}
+
+
+async function loadChatbotConfig() {
+  try {
+    const response = await fetch(CHATBOT_CONFIG_PATH, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Chatbot-Konfigurationsdatei nicht gefunden.');
+    const config = await response.json();
+    if (typeof config.chatUrl !== 'string' || !config.chatUrl.trim()) {
+      throw new Error('Chatbot-URL fehlt.');
+    }
+    state.chatbotConfig = { chatUrl: config.chatUrl.trim() };
+    if (elements.chatbotDirectLink) elements.chatbotDirectLink.href = state.chatbotConfig.chatUrl;
+  } catch (error) {
+    console.error(error);
+    state.chatbotConfig = null;
+    if (elements.chatbotDirectLink) elements.chatbotDirectLink.removeAttribute('href');
+  }
+}
+
+function loadChatbotFrame() {
+  const chatUrl = state.chatbotConfig?.chatUrl;
+  if (!chatUrl || !elements.chatbotFrame) {
+    showToast('Chatbot-Konfiguration konnte nicht geladen werden.', 'error');
+    return;
+  }
+
+  if (elements.chatbotFrame.src !== chatUrl) {
+    elements.chatbotFrame.src = chatUrl;
+  }
+  if (elements.chatbotDirectLink) elements.chatbotDirectLink.href = chatUrl;
 }
 
 async function loadConfig() {
@@ -3557,6 +3596,9 @@ refreshIcons();
 syncAutoReportHourConstraints();
 syncBodyScrollLock();
 registerAppServiceWorker().catch(() => null);
+loadChatbotConfig().then(() => {
+  if (state.currentView === 'chatbot') loadChatbotFrame();
+});
 loadConfig();
 function roundTimeToQuarterHour(timeValue) {
   if (!timeValue || !timeValue.includes(':')) return timeValue;
