@@ -1021,6 +1021,28 @@ function getWeekdayLabel(isoDate) {
   return WEEKDAY_LABELS[(date.getDay() + 6) % 7] || '';
 }
 
+function isWeekendIsoDate(isoDate) {
+  if (!isoDate) return false;
+  const day = parseLocalDate(isoDate).getDay();
+  return day === 0 || day === 6;
+}
+
+function isWeekendEntryDate() {
+  return isWeekendIsoDate(elements.entryDateInput?.value || '');
+}
+
+function syncWeekendReportTypeAvailability() {
+  const isWeekend = isWeekendEntryDate();
+  Array.from(elements.reportTypeInput.options).forEach((option) => {
+    option.disabled = isWeekend && option.value !== '';
+  });
+
+  if (isWeekend && elements.reportTypeInput.value !== '') {
+    elements.reportTypeInput.value = '';
+    elements.reportTypeInput.dataset.previousValue = '';
+  }
+}
+
 function formatTimeWithoutSeconds(timeValue) {
   const value = String(timeValue || '').trim();
   if (!value) return '';
@@ -1124,6 +1146,8 @@ function getReportTypeFromText(value = '') {
 }
 
 function syncReportTypeFromProjectOrCommission() {
+  if (isWeekendEntryDate()) return;
+
   const reportType =
     getReportTypeFromText(elements.projectNameInput.value) ||
     getReportTypeFromText(elements.commissionInput.value);
@@ -1210,8 +1234,14 @@ function syncExpenseToggleState() {
 
 function applyReportTypeSelection(reportType, options = {}) {
   const { setDefaultAutoHours = true } = options;
-  const reportLabel = REPORT_TYPE_LABELS[reportType] || '';
-  const isAutoType = AUTO_REPORT_TYPES.has(reportType);
+  syncWeekendReportTypeAvailability();
+  const resolvedReportType = isWeekendEntryDate() ? '' : reportType;
+  if (elements.reportTypeInput.value !== resolvedReportType) {
+    elements.reportTypeInput.value = resolvedReportType;
+  }
+
+  const reportLabel = REPORT_TYPE_LABELS[resolvedReportType] || '';
+  const isAutoType = AUTO_REPORT_TYPES.has(resolvedReportType);
   const commissionField = elements.commissionInput.closest('.field');
   const projectNameField = elements.projectNameInput.closest('.field');
 
@@ -1223,10 +1253,11 @@ function applyReportTypeSelection(reportType, options = {}) {
     elements.commissionInput.value = '';
   }
 
-  if (reportType === 'uk') {
+  if (resolvedReportType === 'uk') {
     elements.expensesInput.value = 18;
   }
-  const isDetailedEntryMode = state.entryMode === ENTRY_MODE_DETAILED;
+  const isWeekend = isWeekendEntryDate();
+  const isDetailedEntryMode = isWeekend || state.entryMode === ENTRY_MODE_DETAILED;
   elements.normalTimeFields.classList.toggle('hidden', isAutoType || !isDetailedEntryMode);
   elements.simpleTimeFields.classList.toggle('hidden', isAutoType || isDetailedEntryMode);
   elements.normalCostFields?.classList.toggle('hidden', isAutoType);
@@ -1241,7 +1272,7 @@ function applyReportTypeSelection(reportType, options = {}) {
   elements.expensesInput.readOnly = true;
   commissionField?.classList.toggle('hidden', isAutoType);
   projectNameField?.classList.toggle('hidden', isAutoType);
-  elements.reportTypeInput.dataset.previousValue = reportType;
+  elements.reportTypeInput.dataset.previousValue = resolvedReportType;
   syncAutoReportHourConstraints({ setDefaultForAutoType: isAutoType && setDefaultAutoHours });
   syncExpenseToggleState();
   syncSavedCommissionDropdownState();
@@ -2617,7 +2648,8 @@ function formatDurationForInput(minutes) {
 }
 
 function setEntryMode(mode) {
-  const resolvedMode = mode === ENTRY_MODE_DETAILED ? ENTRY_MODE_DETAILED : ENTRY_MODE_SIMPLE;
+  const forceDetailed = isWeekendEntryDate();
+  const resolvedMode = forceDetailed || mode === ENTRY_MODE_DETAILED ? ENTRY_MODE_DETAILED : ENTRY_MODE_SIMPLE;
   state.entryMode = resolvedMode;
   const isDetailed = resolvedMode === ENTRY_MODE_DETAILED;
   elements.simpleTimeFields.classList.toggle('hidden', isDetailed);
@@ -2899,10 +2931,11 @@ function openDrawer(isoDate, entry = null) {
   state.selectedDate = isoDate;
   state.editingEntry = entry;
   const date = parseLocalDate(isoDate);
-  const reportType =
+  const detectedReportType =
     REPORT_TYPE_BY_ABSENCE_TYPE[Number(entry?.abz_typ) || 0] ||
     getReportTypeFromCommission(entry?.project_name || '') ||
     getReportTypeFromCommission(entry?.commission_number || '');
+  const reportType = isWeekendIsoDate(isoDate) ? '' : detectedReportType;
 
   elements.entryDrawer.classList.remove('hidden');
   elements.entryDrawer.setAttribute('aria-hidden', 'false');
@@ -2911,6 +2944,7 @@ function openDrawer(isoDate, entry = null) {
   elements.drawerTitle.textContent = entry ? 'Rapport bearbeiten' : 'Neuer Eintrag';
   elements.entryIdInput.value = entry?.id || '';
   elements.entryDateInput.value = isoDate;
+  syncWeekendReportTypeAvailability();
   elements.reportTypeInput.value = reportType;
   elements.reportTypeInput.dataset.previousValue = reportType;
   elements.projectNameInput.value = entry?.project_name || '';
@@ -2922,10 +2956,11 @@ function openDrawer(isoDate, entry = null) {
   setSelectOrInputValue(elements.lunchMinutesInput, entry?.lunch_break_minutes ?? getAutomaticLunchMinutes(elements.startTimeInput.value, elements.endTimeInput.value));
   setSelectOrInputValue(elements.breakMinutesInput, entry?.additional_break_minutes ?? DEFAULT_BREAK_MINUTES);
   elements.workHoursInput.value = formatDecimalHoursForInput(Math.min(getAutoReportMaxHours(), Math.max(0, Number(entry?.total_work_minutes || (DEFAULT_WORK_HOURS * 60)) / 60)));
-  const entryMode = entry ? (isSimpleEntryByTimes(entry) ? ENTRY_MODE_SIMPLE : ENTRY_MODE_DETAILED) : ENTRY_MODE_SIMPLE;
+  const isWeekend = isWeekendIsoDate(isoDate);
+  const entryMode = isWeekend || (entry && !isSimpleEntryByTimes(entry)) ? ENTRY_MODE_DETAILED : ENTRY_MODE_SIMPLE;
   elements.simpleDurationInput.value = formatDurationForInput(entry?.total_work_minutes ?? (DEFAULT_WORK_HOURS * 60));
-  setEntryMode(entry ? entryMode : ENTRY_MODE_SIMPLE);
-  elements.toggleEntryModeBtn.classList.toggle('hidden', Boolean(entry));
+  setEntryMode(entryMode);
+  elements.toggleEntryModeBtn.classList.toggle('hidden', Boolean(entry) || isWeekend);
   elements.expensesInput.value = entry?.expenses_amount ?? 0;
   elements.expensesToggleInput.checked = Number(entry?.expenses_amount || 0) > 0;
   elements.otherCostsInput.value = entry?.other_costs_amount ?? 0;
@@ -2946,8 +2981,10 @@ function closeDrawer() {
   elements.entryDrawer.setAttribute('aria-hidden', 'true');
   syncBodyScrollLock();
   elements.entryForm.reset();
+  elements.entryDateInput.value = '';
   elements.reportTypeInput.value = '';
   elements.reportTypeInput.dataset.previousValue = '';
+  syncWeekendReportTypeAvailability();
   elements.startTimeInput.value = DEFAULT_START_TIME;
   elements.endTimeInput.value = DEFAULT_END_TIME;
   enforceQuarterHourInput(elements.startTimeInput);
@@ -3440,6 +3477,7 @@ function registerEventListeners() {
   elements.deleteHolidayBtn.addEventListener('click', deleteHolidayRequest);
   elements.closeDrawerLinkBtn.addEventListener('click', closeDrawer);
   elements.reportTypeInput.addEventListener('change', (event) => {
+    syncWeekendReportTypeAvailability();
     applyReportTypeSelection(event.target.value, { setDefaultAutoHours: true });
     hideSavedCommissionMenu();
     syncSavedCommissionDropdownState();
