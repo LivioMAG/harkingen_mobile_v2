@@ -1,6 +1,7 @@
 const CONFIG_PATH = './supabase-config.json';
 const SURCHARGE_RULES_PATH = './surcharge-rules.json';
 const CHATBOT_CONFIG_PATH = './chatbot-config.json';
+const N8N_CHAT_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
@@ -172,6 +173,7 @@ function statusIcon(iconName, label, pillClass) {
 const state = {
   config: null,
   chatbotConfig: null,
+  chatbotInitKey: '',
   supabase: null,
   session: null,
   profile: null,
@@ -235,7 +237,7 @@ const elements = {
   weekGrid: document.getElementById('weekGrid'),
   dashboardView: document.getElementById('dashboardView'),
   chatbotView: document.getElementById('chatbotView'),
-  chatbotFrame: document.getElementById('chatbotFrame'),
+  chatbotContainer: document.getElementById('n8nChat'),
   chatbotError: document.getElementById('chatbotError'),
   dashboardReportYearInput: document.getElementById('dashboardReportYearInput'),
   dashboardReportWeekInput: document.getElementById('dashboardReportWeekInput'),
@@ -491,7 +493,7 @@ function setCurrentView(view) {
   elements.summaryCard?.classList.toggle('hidden', !inTimesheet);
   elements.dashboardView?.classList.toggle('hidden', !inDashboard);
   elements.chatbotView?.classList.toggle('hidden', !inChatbot);
-  if (inChatbot) loadChatbotFrame();
+  if (inChatbot) initializeChatbot();
   elements.settingsCard?.classList.toggle('hidden', inPassword);
   elements.savedCommissionsCard?.classList.toggle('hidden', inPassword);
   elements.requestsCard?.classList.toggle('hidden', !inHolidayAbsences);
@@ -1340,10 +1342,11 @@ async function loadChatbotConfig() {
     const response = await fetch(CHATBOT_CONFIG_PATH, { cache: 'no-store' });
     if (!response.ok) throw new Error('Chatbot-Konfigurationsdatei nicht gefunden.');
     const config = await response.json();
-    if (typeof config.chatUrl !== 'string' || !config.chatUrl.trim()) {
+    const webhookUrl = typeof config.webhookUrl === 'string' ? config.webhookUrl : config.chatUrl;
+    if (typeof webhookUrl !== 'string' || !webhookUrl.trim()) {
       throw new Error('Chatbot-URL fehlt.');
     }
-    state.chatbotConfig = { chatUrl: config.chatUrl.trim() };
+    state.chatbotConfig = { webhookUrl: webhookUrl.trim() };
     setChatbotError(false);
   } catch (error) {
     console.error(error);
@@ -1372,30 +1375,35 @@ function getChatbotUserMetadata() {
   };
 }
 
-function buildChatbotUrlWithMetadata(chatUrl) {
-  const url = new URL(chatUrl, window.location.href);
-  const metadata = getChatbotUserMetadata();
-
-  Object.entries(metadata).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    url.searchParams.set(key, String(value));
-  });
-
-  return url.toString();
-}
-
-function loadChatbotFrame() {
-  const chatUrl = state.chatbotConfig?.chatUrl;
-  if (!chatUrl || !elements.chatbotFrame) {
+async function initializeChatbot() {
+  const webhookUrl = state.chatbotConfig?.webhookUrl;
+  if (!webhookUrl || !elements.chatbotContainer) {
     setChatbotError(true);
     return;
   }
 
-  const chatbotUrl = buildChatbotUrlWithMetadata(chatUrl);
+  const metadata = getChatbotUserMetadata();
+  const initKey = JSON.stringify({ webhookUrl, metadata });
+  if (state.chatbotInitKey === initKey) {
+    setChatbotError(false);
+    return;
+  }
 
-  setChatbotError(false);
-  if (elements.chatbotFrame.src !== chatbotUrl) {
-    elements.chatbotFrame.src = chatbotUrl;
+  try {
+    elements.chatbotContainer.replaceChildren();
+    const { createChat } = await import(N8N_CHAT_MODULE_URL);
+    createChat({
+      webhookUrl,
+      target: '#n8nChat',
+      mode: 'fullscreen',
+      metadata
+    });
+    state.chatbotInitKey = initKey;
+    setChatbotError(false);
+  } catch (error) {
+    console.error(error);
+    state.chatbotInitKey = '';
+    setChatbotError(true);
   }
 }
 
@@ -1442,6 +1450,8 @@ async function syncSessionState(session) {
     state.profile = null;
     state.entries = [];
     state.holidays = [];
+    state.chatbotInitKey = '';
+    elements.chatbotContainer?.replaceChildren();
     render();
     return;
   }
@@ -1458,6 +1468,7 @@ async function syncSessionState(session) {
   }
 
   render();
+  if (state.currentView === 'chatbot') initializeChatbot();
 }
 
 function wireAuthListener() {
@@ -3617,7 +3628,6 @@ function registerEventListeners() {
   elements.entryDrawer.addEventListener('click', (event) => {
     if (event.target.dataset.closeDrawer === 'true') closeDrawer();
   });
-  elements.chatbotFrame?.addEventListener('error', () => setChatbotError(true));
 }
 
 
@@ -3674,7 +3684,7 @@ syncAutoReportHourConstraints();
 syncBodyScrollLock();
 registerAppServiceWorker().catch(() => null);
 loadChatbotConfig().then(() => {
-  if (state.currentView === 'chatbot') loadChatbotFrame();
+  if (state.currentView === 'chatbot') initializeChatbot();
 });
 loadConfig();
 function roundTimeToQuarterHour(timeValue) {
