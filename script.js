@@ -2,6 +2,27 @@ const CONFIG_PATH = './supabase-config.json';
 const SURCHARGE_RULES_PATH = './surcharge-rules.json';
 const CHATBOT_CONFIG_PATH = './chatbot-config.json';
 const N8N_CHAT_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+const CHATBOT_INITIAL_MESSAGES = [
+  'Hallo! 👋\nIch bin Ben, dein digitaler Assistent der Maréchaux Sursee.\n\nWie kann ich dir heute helfen?'
+];
+const CHATBOT_INPUT_PLACEHOLDER = 'Was beschäftigt dich';
+const CHATBOT_LANGUAGE = 'de';
+const CHATBOT_I18N = {
+  de: {
+    title: '',
+    subtitle: '',
+    footer: '',
+    getStarted: 'Neue Unterhaltung',
+    inputPlaceholder: CHATBOT_INPUT_PLACEHOLDER
+  },
+  en: {
+    title: '',
+    subtitle: '',
+    footer: '',
+    getStarted: 'Neue Unterhaltung',
+    inputPlaceholder: CHATBOT_INPUT_PLACEHOLDER
+  }
+};
 const STORAGE_BUCKET = 'weekly-attachments';
 const DEFAULT_START_TIME = '07:00';
 const DEFAULT_END_TIME = '16:30';
@@ -1396,6 +1417,10 @@ async function initializeChatbot() {
       webhookUrl,
       target: '#n8nChat',
       mode: 'fullscreen',
+      showWelcomeScreen: false,
+      initialMessages: CHATBOT_INITIAL_MESSAGES,
+      defaultLanguage: CHATBOT_LANGUAGE,
+      i18n: CHATBOT_I18N,
       metadata
     });
     state.chatbotInitKey = initKey;
