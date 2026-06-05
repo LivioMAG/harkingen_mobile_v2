@@ -15,7 +15,7 @@ Mobile Web-App für Wochenrapporte von Monteuren mit Supabase Auth, Datenhaltung
 
 ## Neue Version für Hostinger hochladen
 
-Aktuelle App-Version: `2026-06-01-1`
+Aktuelle App-Version: `2026-06-05-1`
 
 Für Hostinger keine neuen Dateien erzeugen: Beim Upload die bestehenden App-Dateien aus dem Repo nach `public_html` hochladen und vorhandene Dateien überschreiben. Wichtig sind `index.html`, `sw.js`, `script.js`, `style.css`, `manifest.webmanifest`, `supabase-config.json`, `surcharge-rules.json` und `.htaccess`.
 

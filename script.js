@@ -1352,6 +1352,38 @@ async function loadChatbotConfig() {
   }
 }
 
+function getChatbotUserMetadata() {
+  const user = state.session?.user;
+  if (!user) return {};
+
+  const profile = state.profile || {};
+  const displayName = getDisplayName(profile, user.email || '');
+
+  return {
+    app_user_id: user.id || '',
+    app_profile_id: profile.id || user.id || '',
+    app_user_email: profile.email || user.email || '',
+    app_user_name: displayName || '',
+    app_user_first_name: profile.first_name || user.user_metadata?.first_name || '',
+    app_user_last_name: profile.last_name || user.user_metadata?.last_name || '',
+    app_user_role: profile.role_label || '',
+    app_chat_session_key: user.id ? `rapport-mobile-chatbot-${user.id}` : '',
+    app_build_version: getAppBuildVersion()
+  };
+}
+
+function buildChatbotUrlWithMetadata(chatUrl) {
+  const url = new URL(chatUrl, window.location.href);
+  const metadata = getChatbotUserMetadata();
+
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    url.searchParams.set(key, String(value));
+  });
+
+  return url.toString();
+}
+
 function loadChatbotFrame() {
   const chatUrl = state.chatbotConfig?.chatUrl;
   if (!chatUrl || !elements.chatbotFrame) {
@@ -1359,9 +1391,11 @@ function loadChatbotFrame() {
     return;
   }
 
+  const chatbotUrl = buildChatbotUrlWithMetadata(chatUrl);
+
   setChatbotError(false);
-  if (elements.chatbotFrame.src !== chatUrl) {
-    elements.chatbotFrame.src = chatUrl;
+  if (elements.chatbotFrame.src !== chatbotUrl) {
+    elements.chatbotFrame.src = chatbotUrl;
   }
 }
 
