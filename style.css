@@ -629,12 +629,17 @@ textarea {
   background: #fff;
 }
 
-.chatbot-frame {
-  display: block;
+.n8n-chat-container {
   width: 100%;
+  height: min(760px, calc(100dvh - 128px));
   min-height: min(760px, calc(100dvh - 128px));
-  border: 0;
-  background: #fff;
+  --chat--color-primary: var(--accent);
+  --chat--color-primary-shade-50: #c9161e;
+  --chat--color-primary-shade-100: #b5121a;
+  --chat--color-secondary: var(--accent);
+  --chat--window--width: 100%;
+  --chat--window--height: 100%;
+  --chat--border-radius: 0;
 }
 
 .chatbot-error {
