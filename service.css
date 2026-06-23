@@ -6,14 +6,15 @@
   --text: #111111;
   --muted: #5f5f5f;
   --accent: #d71920;
+  --accent-soft: rgba(215, 25, 32, 0.08);
+  --success: #087f5b;
+  --danger: #c92a2a;
   --shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
   --radius-xl: 26px;
   --radius-md: 16px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -26,15 +27,15 @@ body {
 }
 
 .service-shell {
-  width: min(100%, 820px);
+  width: min(100%, 1180px);
   margin: 0 auto;
   padding: 18px 14px 110px;
   display: grid;
   gap: 14px;
 }
 
-.back-link {
-  width: fit-content;
+.back-link,
+.week-btn {
   min-height: 46px;
   padding: 0 14px;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -51,28 +52,38 @@ body {
   backdrop-filter: blur(16px);
 }
 
-.back-link svg {
-  width: 18px;
-  height: 18px;
+.back-link { width: fit-content; }
+
+button.week-btn { cursor: pointer; }
+
+.back-link svg,
+.week-btn svg { width: 18px; height: 18px; }
+
+.week-btn-secondary {
+  background: var(--text);
+  color: #fff;
 }
 
 .service-card {
-  min-height: 280px;
-  padding: 28px;
+  padding: clamp(18px, 3vw, 28px);
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background: var(--card);
   box-shadow: var(--shadow);
   display: grid;
-  place-items: center;
-  align-content: center;
-  text-align: center;
+  gap: 22px;
+}
+
+.service-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .service-icon {
+  flex: 0 0 auto;
   width: 54px;
   height: 54px;
-  margin-bottom: 16px;
   color: var(--accent);
 }
 
@@ -87,6 +98,118 @@ body {
 
 h1 {
   margin: 0;
-  font-size: clamp(2.2rem, 7vw, 4rem);
+  font-size: clamp(2rem, 5vw, 3.5rem);
   letter-spacing: -0.06em;
+}
+
+.service-description {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.matrix-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fafafa;
+}
+
+.week-summary {
+  flex: 1 1 260px;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.week-summary small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.week-summary small[data-type='success'] { color: var(--success); }
+.week-summary small[data-type='danger'] { color: var(--danger); }
+
+.matrix-wrap {
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.report-matrix {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.report-matrix th,
+.report-matrix td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.report-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #111;
+  color: #fff;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-matrix tbody th {
+  max-width: 260px;
+  font-weight: 800;
+}
+
+.commission-cell {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.hours-cell,
+.total-cell {
+  min-width: 76px;
+  text-align: center;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.hours-cell.has-hours {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 12px;
+}
+
+.total-cell {
+  color: var(--success);
+}
+
+.report-matrix tbody tr:last-child th,
+.report-matrix tbody tr:last-child td { border-bottom: 0; }
+
+.empty-state {
+  margin: 0;
+  padding: 22px;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .service-heading { align-items: flex-start; }
+  .matrix-toolbar { display: grid; grid-template-columns: 1fr 1fr; }
+  .week-summary { grid-column: 1 / -1; order: -1; }
+  .week-btn-secondary { grid-column: 1 / -1; }
 }

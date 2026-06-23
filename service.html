@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="service.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="service.js"></script>
   </head>
@@ -22,9 +23,51 @@
       </a>
 
       <section class="service-card" aria-labelledby="serviceTitle">
-        <span class="service-icon" data-lucide="user-round" aria-hidden="true"></span>
-        <p class="section-label">Service</p>
-        <h1 id="serviceTitle">Service</h1>
+        <div class="service-heading">
+          <span class="service-icon" data-lucide="table-2" aria-hidden="true"></span>
+          <div>
+            <p class="section-label">Service</p>
+            <h1 id="serviceTitle">Rapport-Matrix</h1>
+            <p class="service-description">Übersicht der normalen Rapporte pro Projekt, Kommissionsnummer und Wochentag.</p>
+          </div>
+        </div>
+
+        <div class="matrix-toolbar" aria-label="Wochenauswahl">
+          <button class="week-btn" id="prevWeekBtn" type="button">
+            <span data-lucide="chevron-left" aria-hidden="true"></span>
+            <span>Vorherige</span>
+          </button>
+          <div class="week-summary">
+            <span id="weekLabel">KW wird geladen …</span>
+            <small id="serviceStatus" data-type="neutral">Rapporte werden geladen …</small>
+          </div>
+          <button class="week-btn" id="nextWeekBtn" type="button">
+            <span>Nächste</span>
+            <span data-lucide="chevron-right" aria-hidden="true"></span>
+          </button>
+          <button class="week-btn week-btn-secondary" id="currentWeekBtn" type="button">Aktuelle Woche</button>
+        </div>
+
+        <div class="matrix-wrap" role="region" aria-label="Rapport-Matrix" tabindex="0">
+          <table class="report-matrix">
+            <thead>
+              <tr>
+                <th scope="col">Projektname</th>
+                <th scope="col">Kommissionsnummer</th>
+                <th scope="col">MO</th>
+                <th scope="col">DI</th>
+                <th scope="col">MI</th>
+                <th scope="col">DO</th>
+                <th scope="col">FR</th>
+                <th scope="col">SA</th>
+                <th scope="col">SO</th>
+                <th scope="col">Total</th>
+              </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+          </table>
+          <p class="empty-state" id="reportEmpty" hidden>Für diese Woche sind keine normalen Rapporte vorhanden.</p>
+        </div>
       </section>
     </main>
   </body>
