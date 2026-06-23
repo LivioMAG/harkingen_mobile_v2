@@ -288,3 +288,137 @@ h1 {
   outline: 2px solid rgba(215, 25, 32, 0.28);
   outline-offset: 2px;
 }
+
+.matrix-dialog {
+  width: min(94vw, 680px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  color: var(--text);
+}
+
+.matrix-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.matrix-dialog-card {
+  padding: clamp(18px, 4vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: #fff;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 18px;
+}
+
+.matrix-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.matrix-dialog-head h2,
+.matrix-weekday-editor h3 {
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.matrix-dialog-close {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.matrix-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.matrix-dialog-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.matrix-dialog-field input,
+.matrix-dialog-field select,
+.matrix-day-hours-input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  padding: 0 12px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.matrix-dialog-field input:focus,
+.matrix-dialog-field select:focus,
+.matrix-day-hours-input:focus {
+  outline: 2px solid rgba(215, 25, 32, 0.24);
+  border-color: rgba(215, 25, 32, 0.42);
+}
+
+.matrix-weekday-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.matrix-weekday-editor p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.matrix-weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(78px, 1fr));
+  gap: 10px;
+}
+
+.matrix-day-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.matrix-dialog-error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(201, 42, 42, 0.09);
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.matrix-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .matrix-dialog-grid,
+  .matrix-weekday-grid { grid-template-columns: 1fr; }
+  .matrix-dialog-actions { display: grid; }
+  .matrix-dialog-actions .week-btn,
+  .matrix-dialog-actions .add-row-btn { width: 100%; }
+}
