@@ -141,7 +141,11 @@ async function loadConfig() {
 }
 
 async function loadReports() {
-  if (!state.supabase || !state.session?.user) return;
+  if (!state.supabase || !state.session?.user) {
+    renderMatrix([]);
+    setStatus('Bitte zuerst anmelden.', 'danger');
+    return;
+  }
   setStatus('Rapporte werden geladen …');
   const days = getWeekDays();
   const { data, error } = await state.supabase
@@ -164,6 +168,9 @@ async function initServicePage() {
   refreshServiceIcons();
   try {
     const config = await loadConfig();
+    if (!window.supabase?.createClient) {
+      throw new Error('Supabase-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.');
+    }
     state.supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
@@ -183,19 +190,33 @@ async function initServicePage() {
   }
 }
 
+async function reloadReportsSafely() {
+  try {
+    await loadReports();
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || 'Rapporte konnten nicht geladen werden.', 'danger');
+    renderMatrix([]);
+  }
+}
+
 elements.prevWeekBtn?.addEventListener('click', async () => {
   state.weekOffset -= 1;
-  await loadReports();
+  await reloadReportsSafely();
 });
 
 elements.currentWeekBtn?.addEventListener('click', async () => {
   state.weekOffset = 0;
-  await loadReports();
+  await reloadReportsSafely();
 });
 
 elements.nextWeekBtn?.addEventListener('click', async () => {
   state.weekOffset += 1;
-  await loadReports();
+  await reloadReportsSafely();
 });
 
-document.addEventListener('DOMContentLoaded', initServicePage);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initServicePage, { once: true });
+} else {
+  initServicePage();
+}
