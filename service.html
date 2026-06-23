@@ -110,5 +110,48 @@
         </section>
       </section>
     </main>
+
+    <dialog class="matrix-dialog" id="matrixEntryDialog" aria-labelledby="matrixDialogTitle">
+      <form class="matrix-dialog-card" id="matrixEntryForm" method="dialog">
+        <div class="matrix-dialog-head">
+          <div>
+            <p class="section-label" id="matrixDialogEyebrow">Rapport erfassen</p>
+            <h2 id="matrixDialogTitle">Eintrag hinzufügen</h2>
+          </div>
+          <button class="matrix-dialog-close" id="matrixDialogCancelIcon" type="button" aria-label="Popup schliessen">×</button>
+        </div>
+
+        <label class="matrix-dialog-field" id="matrixAbsenceTypeField" for="matrixAbsenceTypeInput" hidden>
+          <span>Absenztyp</span>
+          <select id="matrixAbsenceTypeInput"></select>
+        </label>
+
+        <div class="matrix-dialog-grid" id="matrixReportFields">
+          <label class="matrix-dialog-field" for="matrixCommissionInput">
+            <span>Kommissionsnummer</span>
+            <input id="matrixCommissionInput" type="text" autocomplete="off" placeholder="z. B. 12345" />
+          </label>
+          <label class="matrix-dialog-field" for="matrixProjectInput">
+            <span>Projektname</span>
+            <input id="matrixProjectInput" type="text" autocomplete="off" placeholder="z. B. Neubau Musterstrasse" />
+          </label>
+        </div>
+
+        <div class="matrix-weekday-editor" aria-labelledby="matrixWeekdayTitle">
+          <div>
+            <h3 id="matrixWeekdayTitle">Wochentage</h3>
+            <p>Stunden pro Tag erfassen. Leer oder 0 wird nicht gespeichert.</p>
+          </div>
+          <div class="matrix-weekday-grid" id="matrixWeekdayInputs"></div>
+        </div>
+
+        <p class="matrix-dialog-error" id="matrixDialogError" role="alert" hidden></p>
+
+        <div class="matrix-dialog-actions">
+          <button class="week-btn" id="matrixDialogCancelBtn" type="button">Abbrechen</button>
+          <button class="add-row-btn" type="submit">Speichern</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

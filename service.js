@@ -9,6 +9,7 @@ const REPORT_TYPE_LABELS = {
   7: 'Berufsschule'
 };
 const ABSENCE_TYPE_ORDER = [1, 2, 3, 4, 5, 6, 7];
+const DAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
 const WEEKLY_REPORT_COLUMNS = [
   'id',
@@ -49,7 +50,20 @@ const elements = {
   addReportRowBtn: document.getElementById('addReportRowBtn'),
   absenceTableBody: document.getElementById('absenceTableBody'),
   absenceEmpty: document.getElementById('absenceEmpty'),
-  addAbsenceRowBtn: document.getElementById('addAbsenceRowBtn')
+  addAbsenceRowBtn: document.getElementById('addAbsenceRowBtn'),
+  matrixEntryDialog: document.getElementById('matrixEntryDialog'),
+  matrixEntryForm: document.getElementById('matrixEntryForm'),
+  matrixDialogEyebrow: document.getElementById('matrixDialogEyebrow'),
+  matrixDialogTitle: document.getElementById('matrixDialogTitle'),
+  matrixDialogCancelIcon: document.getElementById('matrixDialogCancelIcon'),
+  matrixDialogCancelBtn: document.getElementById('matrixDialogCancelBtn'),
+  matrixAbsenceTypeField: document.getElementById('matrixAbsenceTypeField'),
+  matrixAbsenceTypeInput: document.getElementById('matrixAbsenceTypeInput'),
+  matrixReportFields: document.getElementById('matrixReportFields'),
+  matrixCommissionInput: document.getElementById('matrixCommissionInput'),
+  matrixProjectInput: document.getElementById('matrixProjectInput'),
+  matrixWeekdayInputs: document.getElementById('matrixWeekdayInputs'),
+  matrixDialogError: document.getElementById('matrixDialogError')
 };
 
 function refreshServiceIcons() {
@@ -219,6 +233,106 @@ function renderMatrices(reports) {
 }
 
 
+
+function ensureMatrixDialogOptions() {
+  if (!elements.matrixAbsenceTypeInput || elements.matrixAbsenceTypeInput.options.length) return;
+  elements.matrixAbsenceTypeInput.innerHTML = ABSENCE_TYPE_ORDER
+    .map((type) => `<option value="${type}">${escapeHtml(REPORT_TYPE_LABELS[type])}</option>`)
+    .join('');
+}
+
+function renderMatrixDayInputs(values = []) {
+  if (!elements.matrixWeekdayInputs) return;
+  elements.matrixWeekdayInputs.innerHTML = DAY_LABELS.map((label, index) => `
+    <label class="matrix-day-field" for="matrixDayInput${index}">
+      <span>${escapeHtml(label)}</span>
+      <input class="matrix-day-hours-input" id="matrixDayInput${index}" data-day-index="${index}" type="text" inputmode="decimal" placeholder="0" value="${escapeHtml(values[index] || '')}" />
+    </label>
+  `).join('');
+}
+
+function setMatrixDialogError(message = '') {
+  if (!elements.matrixDialogError) return;
+  elements.matrixDialogError.textContent = message;
+  elements.matrixDialogError.hidden = !message;
+}
+
+function getMatrixDialogResult(kind) {
+  const isAbsence = kind === 'absence';
+  const absenceType = isAbsence ? Number(elements.matrixAbsenceTypeInput?.value || 0) : 0;
+  const projectName = isAbsence ? REPORT_TYPE_LABELS[absenceType] : elements.matrixProjectInput.value.trim();
+  const commissionNumber = isAbsence ? REPORT_TYPE_LABELS[absenceType] : elements.matrixCommissionInput.value.trim();
+
+  if (isAbsence && !REPORT_TYPE_LABELS[absenceType]) throw new Error('Bitte einen gültigen Absenztyp wählen.');
+  if (!isAbsence && (!projectName || !commissionNumber)) throw new Error('Bitte Kommissionsnummer und Projektname erfassen.');
+
+  const dayMinutes = Array.from(elements.matrixWeekdayInputs.querySelectorAll('.matrix-day-hours-input')).map((input) => {
+    const minutes = parseHoursInput(input.value || '0');
+    if (minutes === null) throw new Error('Bitte nur gültige Stunden zwischen 0 und 24 erfassen.');
+    return minutes;
+  });
+  return { absenceType, projectName, commissionNumber, dayMinutes };
+}
+
+function openMatrixEntryDialog(kind, options = {}) {
+  const dialog = elements.matrixEntryDialog;
+  if (!dialog || !elements.matrixEntryForm) return Promise.resolve(null);
+  const isAbsence = kind === 'absence';
+  ensureMatrixDialogOptions();
+  setMatrixDialogError('');
+  elements.matrixEntryForm.reset();
+  elements.matrixDialogEyebrow.textContent = isAbsence ? 'Absenz erfassen' : 'Rapport erfassen';
+  elements.matrixDialogTitle.textContent = options.title || (isAbsence ? 'Absenz hinzufügen' : 'Rapport hinzufügen');
+  elements.matrixAbsenceTypeField.hidden = !isAbsence;
+  elements.matrixReportFields.hidden = isAbsence;
+  elements.matrixCommissionInput.required = !isAbsence;
+  elements.matrixProjectInput.required = !isAbsence;
+  if (isAbsence) elements.matrixAbsenceTypeInput.value = String(options.absenceType || ABSENCE_TYPE_ORDER[0]);
+  elements.matrixCommissionInput.value = options.commissionNumber || '';
+  elements.matrixProjectInput.value = options.projectName || '';
+  renderMatrixDayInputs(options.dayValues || []);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      elements.matrixEntryForm.removeEventListener('submit', onSubmit);
+      elements.matrixDialogCancelBtn?.removeEventListener('click', onCancel);
+      elements.matrixDialogCancelIcon?.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.removeEventListener('close', onClose);
+    };
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+    const onCancel = (event) => {
+      event?.preventDefault?.();
+      dialog.close('cancel');
+      finish(null);
+    };
+    const onClose = () => finish(null);
+    const onSubmit = (event) => {
+      event.preventDefault();
+      try {
+        const result = getMatrixDialogResult(kind);
+        dialog.close('save');
+        finish(result);
+      } catch (error) {
+        setMatrixDialogError(error.message || 'Bitte Eingaben prüfen.');
+      }
+    };
+    elements.matrixEntryForm.addEventListener('submit', onSubmit);
+    elements.matrixDialogCancelBtn?.addEventListener('click', onCancel);
+    elements.matrixDialogCancelIcon?.addEventListener('click', onCancel);
+    dialog.addEventListener('cancel', onCancel);
+    dialog.addEventListener('close', onClose);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  });
+}
+
 function buildMatrixPayload({ workDate, minutes, projectName = '', commissionNumber = '', absenceType = 0 }) {
   const parsedDate = parseLocalDate(workDate);
   return {
@@ -254,60 +368,65 @@ async function saveMatrixReport(payload, existingEntry = null) {
 }
 
 async function editMatrixCell(kind, row, dayIndex) {
-  const days = getWeekDays();
-  const existingEntry = row.entriesByDay[dayIndex][0] || null;
   const currentHours = row.days[dayIndex] ? String(row.days[dayIndex] / 60).replace('.', ',') : '';
-  const value = window.prompt('Stunden erfassen (Spesen und Mittagsspesen sind in der Matrix immer aus):', currentHours);
-  if (value === null) return;
-  const minutes = parseHoursInput(value);
-  if (minutes === null || minutes <= 0) {
-    window.alert('Bitte Stunden zwischen 0,25 und 24 erfassen.');
+  const dialogResult = await openMatrixEntryDialog(kind, {
+    title: `${DAY_LABELS[dayIndex]} bearbeiten`,
+    absenceType: row.type,
+    projectName: kind === 'report' ? row.projectName : '',
+    commissionNumber: kind === 'report' ? row.commissionNumber : '',
+    dayValues: Array.from({ length: 7 }, (_, index) => (index === dayIndex ? currentHours : ''))
+  });
+  if (!dialogResult) return;
+
+  const days = getWeekDays();
+  const payloads = dialogResult.dayMinutes
+    .map((minutes, index) => minutes > 0 ? {
+      payload: buildMatrixPayload({
+        workDate: formatLocalDate(days[index]),
+        minutes,
+        projectName: dialogResult.projectName,
+        commissionNumber: dialogResult.commissionNumber,
+        absenceType: dialogResult.absenceType
+      }),
+      existingEntry: row.entriesByDay[index][0] || null
+    } : null)
+    .filter(Boolean);
+
+  if (!payloads.length) {
+    setStatus('Keine Stunden erfasst.', 'neutral');
     return;
   }
-  const payload = buildMatrixPayload({
-    workDate: formatLocalDate(days[dayIndex]),
-    minutes,
-    projectName: kind === 'report' ? row.projectName : row.label,
-    commissionNumber: kind === 'report' ? row.commissionNumber : row.label,
-    absenceType: kind === 'absence' ? row.type : 0
-  });
-  await saveMatrixReport(payload, existingEntry);
+
+  setStatus('Rapporte werden gespeichert …');
+  for (const { payload, existingEntry } of payloads) {
+    const query = existingEntry?.id
+      ? state.supabase.from('weekly_reports').update(payload).eq('id', existingEntry.id).eq('profile_id', state.session.user.id)
+      : state.supabase.from('weekly_reports').insert(payload);
+    const { error } = await query;
+    if (error) throw error;
+  }
+  await loadReports();
 }
 
 async function addMatrixRows(kind) {
-  const isAbsence = kind === 'absence';
-  const projectName = isAbsence
-    ? window.prompt(`Absenztyp (${ABSENCE_TYPE_ORDER.map((type) => `${type}=${REPORT_TYPE_LABELS[type]}`).join(', ')}):`, '1')
-    : window.prompt('Projektname:');
-  if (projectName === null) return;
-  const absenceType = isAbsence ? Number(projectName) : 0;
-  if (isAbsence && !REPORT_TYPE_LABELS[absenceType]) {
-    window.alert('Bitte einen gültigen Absenztyp wählen.');
-    return;
-  }
-  const commissionNumber = isAbsence ? REPORT_TYPE_LABELS[absenceType] : window.prompt('Kommissionsnummer:');
-  if (commissionNumber === null) return;
-  if (!isAbsence && (!projectName.trim() || !commissionNumber.trim())) {
-    window.alert('Bitte Projektname und Kommissionsnummer erfassen.');
-    return;
-  }
-  const label = isAbsence ? REPORT_TYPE_LABELS[absenceType] : projectName.trim();
+  const dialogResult = await openMatrixEntryDialog(kind);
+  if (!dialogResult) return;
+
   const days = getWeekDays();
-  const dayLabels = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-  const payloads = [];
-  for (let index = 0; index < days.length; index += 1) {
-    const value = window.prompt(`${dayLabels[index]} Stunden (leer = 0):`, '');
-    if (value === null) return;
-    const minutes = parseHoursInput(value || '0');
-    if (minutes === null) {
-      window.alert('Bitte nur gültige Stunden erfassen.');
-      return;
-    }
-    if (minutes > 0) {
-      payloads.push(buildMatrixPayload({ workDate: formatLocalDate(days[index]), minutes, projectName: label, commissionNumber: commissionNumber.trim(), absenceType }));
-    }
+  const payloads = dialogResult.dayMinutes
+    .map((minutes, index) => minutes > 0 ? buildMatrixPayload({
+      workDate: formatLocalDate(days[index]),
+      minutes,
+      projectName: dialogResult.projectName,
+      commissionNumber: dialogResult.commissionNumber,
+      absenceType: dialogResult.absenceType
+    }) : null)
+    .filter(Boolean);
+
+  if (!payloads.length) {
+    setStatus('Keine Stunden erfasst.', 'neutral');
+    return;
   }
-  if (!payloads.length) return;
   setStatus('Rapporte werden gespeichert …');
   const { error } = await state.supabase.from('weekly_reports').insert(payloads);
   if (error) throw error;
