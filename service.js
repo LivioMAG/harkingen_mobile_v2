@@ -1,4 +1,15 @@
 const CONFIG_PATH = './supabase-config.json';
+const REPORT_TYPE_LABELS = {
+  1: 'Ferien',
+  2: 'Krankheit',
+  3: 'Militär',
+  4: 'Unfall',
+  5: 'Feiertag',
+  6: 'ÜK',
+  7: 'Berufsschule'
+};
+const ABSENCE_TYPE_ORDER = [1, 2, 3, 4, 5, 6, 7];
+
 const WEEKLY_REPORT_COLUMNS = [
   'id',
   'profile_id',
@@ -23,7 +34,9 @@ const elements = {
   currentWeekBtn: document.getElementById('currentWeekBtn'),
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   reportTableBody: document.getElementById('reportTableBody'),
-  reportEmpty: document.getElementById('reportEmpty')
+  reportEmpty: document.getElementById('reportEmpty'),
+  absenceTableBody: document.getElementById('absenceTableBody'),
+  absenceEmpty: document.getElementById('absenceEmpty')
 };
 
 function refreshServiceIcons() {
@@ -90,7 +103,7 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
-function buildMatrixRows(reports) {
+function buildReportMatrixRows(reports) {
   const grouped = new Map();
   (reports || []).forEach((entry) => {
     if (Number(entry?.abz_typ || 0) !== 0) return;
@@ -119,10 +132,35 @@ function buildMatrixRows(reports) {
   );
 }
 
-function renderMatrix(reports) {
-  const days = getWeekDays();
-  elements.weekLabel.textContent = formatWeekLabel(days);
-  const rows = buildMatrixRows(reports);
+function buildAbsenceMatrixRows(reports) {
+  const grouped = new Map();
+  ABSENCE_TYPE_ORDER.forEach((type) => {
+    grouped.set(type, {
+      type,
+      label: REPORT_TYPE_LABELS[type],
+      days: Array(7).fill(0),
+      total: 0
+    });
+  });
+
+  (reports || []).forEach((entry) => {
+    const type = Number(entry?.abz_typ || 0);
+    if (!REPORT_TYPE_LABELS[type]) return;
+    const workDate = parseLocalDate(entry.work_date);
+    const dayIndex = (workDate.getDay() + 6) % 7;
+    if (dayIndex < 0 || dayIndex > 6) return;
+
+    const row = grouped.get(type);
+    const minutes = Number(entry.total_work_minutes || 0);
+    row.days[dayIndex] += minutes;
+    row.total += minutes;
+  });
+
+  return Array.from(grouped.values()).filter((row) => row.total > 0);
+}
+
+function renderReportMatrix(reports) {
+  const rows = buildReportMatrixRows(reports);
   elements.reportEmpty.hidden = rows.length > 0;
   elements.reportTableBody.innerHTML = rows.map((row) => `
     <tr>
@@ -134,6 +172,25 @@ function renderMatrix(reports) {
   `).join('');
 }
 
+function renderAbsenceMatrix(reports) {
+  const rows = buildAbsenceMatrixRows(reports);
+  elements.absenceEmpty.hidden = rows.length > 0;
+  elements.absenceTableBody.innerHTML = rows.map((row) => `
+    <tr>
+      <th scope="row">${escapeHtml(row.label)}</th>
+      ${row.days.map((minutes) => `<td class="hours-cell ${minutes ? 'has-hours' : ''}">${escapeHtml(formatHours(minutes))}</td>`).join('')}
+      <td class="total-cell">${escapeHtml(formatHours(row.total))}</td>
+    </tr>
+  `).join('');
+}
+
+function renderMatrices(reports) {
+  const days = getWeekDays();
+  elements.weekLabel.textContent = formatWeekLabel(days);
+  renderReportMatrix(reports);
+  renderAbsenceMatrix(reports);
+}
+
 async function loadConfig() {
   const response = await fetch(CONFIG_PATH, { cache: 'no-store' });
   if (!response.ok) throw new Error('Supabase-Konfiguration konnte nicht geladen werden.');
@@ -142,11 +199,11 @@ async function loadConfig() {
 
 async function loadReports() {
   if (!state.supabase || !state.session?.user) {
-    renderMatrix([]);
+    renderMatrices([]);
     setStatus('Bitte zuerst anmelden.', 'danger');
     return;
   }
-  setStatus('Rapporte werden geladen …');
+  setStatus('Rapporte und Absenzen werden geladen …');
   const days = getWeekDays();
   const { data, error } = await state.supabase
     .from('weekly_reports')
@@ -154,14 +211,13 @@ async function loadReports() {
     .eq('profile_id', state.session.user.id)
     .gte('work_date', formatLocalDate(days[0]))
     .lte('work_date', formatLocalDate(days[6]))
-    .eq('abz_typ', 0)
     .order('project_name', { ascending: true })
     .order('commission_number', { ascending: true })
     .order('work_date', { ascending: true });
 
   if (error) throw error;
-  renderMatrix(data || []);
-  setStatus('Normale Rapporte (Absenztyp 0)', 'success');
+  renderMatrices(data || []);
+  setStatus('Rapporte und Absenzen geladen', 'success');
 }
 
 async function initServicePage() {
@@ -179,14 +235,14 @@ async function initServicePage() {
     state.session = data?.session || null;
     if (!state.session?.user) {
       setStatus('Bitte zuerst anmelden.', 'danger');
-      renderMatrix([]);
+      renderMatrices([]);
       return;
     }
     await loadReports();
   } catch (error) {
     console.error(error);
     setStatus(error.message || 'Rapporte konnten nicht geladen werden.', 'danger');
-    renderMatrix([]);
+    renderMatrices([]);
   }
 }
 
@@ -196,7 +252,7 @@ async function reloadReportsSafely() {
   } catch (error) {
     console.error(error);
     setStatus(error.message || 'Rapporte konnten nicht geladen werden.', 'danger');
-    renderMatrix([]);
+    renderMatrices([]);
   }
 }
 

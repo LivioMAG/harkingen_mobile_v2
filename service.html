@@ -32,7 +32,7 @@
           <div>
             <p class="section-label">Service</p>
             <h1 id="serviceTitle">Rapport-Matrix</h1>
-            <p class="service-description">Übersicht der normalen Rapporte pro Projekt, Kommissionsnummer und Wochentag.</p>
+            <p class="service-description">Übersicht der normalen Rapporte und weiteren Absenzen pro Wochentag.</p>
           </div>
         </div>
 
@@ -52,8 +52,14 @@
           <button class="week-btn week-btn-secondary" id="currentWeekBtn" type="button">Aktuelle Woche</button>
         </div>
 
-        <div class="matrix-wrap" role="region" aria-label="Rapport-Matrix" tabindex="0">
-          <table class="report-matrix">
+        <section class="matrix-section" aria-labelledby="normalReportsTitle">
+          <div class="matrix-section-heading">
+            <h2 id="normalReportsTitle">Normale Rapporte</h2>
+            <p>Projektzeiten pro Projekt, Kommissionsnummer und Wochentag.</p>
+          </div>
+
+          <div class="matrix-wrap" role="region" aria-label="Rapport-Matrix" tabindex="0">
+            <table class="report-matrix">
             <thead>
               <tr>
                 <th scope="col">Projektname</th>
@@ -69,9 +75,37 @@
               </tr>
             </thead>
             <tbody id="reportTableBody"></tbody>
-          </table>
-          <p class="empty-state" id="reportEmpty" hidden>Für diese Woche sind keine normalen Rapporte vorhanden.</p>
-        </div>
+            </table>
+            <p class="empty-state" id="reportEmpty" hidden>Für diese Woche sind keine normalen Rapporte vorhanden.</p>
+          </div>
+        </section>
+
+        <section class="matrix-section" aria-labelledby="absenceReportsTitle">
+          <div class="matrix-section-heading">
+            <h2 id="absenceReportsTitle">Weitere Absenzen</h2>
+            <p>Ferien, Krankheit, Militär, Unfall, Feiertag, ÜK und Berufsschule pro Wochentag.</p>
+          </div>
+
+          <div class="matrix-wrap" role="region" aria-label="Absenz-Matrix" tabindex="0">
+            <table class="report-matrix absence-matrix">
+              <thead>
+                <tr>
+                  <th scope="col">Absenztyp</th>
+                  <th scope="col">MO</th>
+                  <th scope="col">DI</th>
+                  <th scope="col">MI</th>
+                  <th scope="col">DO</th>
+                  <th scope="col">FR</th>
+                  <th scope="col">SA</th>
+                  <th scope="col">SO</th>
+                  <th scope="col">Total</th>
+                </tr>
+              </thead>
+              <tbody id="absenceTableBody"></tbody>
+            </table>
+            <p class="empty-state" id="absenceEmpty" hidden>Für diese Woche sind keine weiteren Absenzen vorhanden.</p>
+          </div>
+        </section>
       </section>
     </main>
   </body>
