@@ -244,3 +244,47 @@ h1 {
   .week-summary { grid-column: 1 / -1; order: -1; }
   .week-btn-secondary { grid-column: 1 / -1; }
 }
+
+.add-row-btn {
+  width: fit-content;
+  min-height: 40px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(215, 25, 32, 0.18);
+}
+
+.add-row-btn svg { width: 18px; height: 18px; }
+
+.matrix-cell-btn {
+  width: 100%;
+  min-height: 38px;
+  border: 1px dashed rgba(15, 23, 42, 0.22);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.matrix-cell-btn.has-hours {
+  border-style: solid;
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.matrix-cell-btn:hover,
+.matrix-cell-btn:focus-visible {
+  outline: 2px solid rgba(215, 25, 32, 0.28);
+  outline-offset: 2px;
+}

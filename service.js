@@ -19,12 +19,23 @@ const WEEKLY_REPORT_COLUMNS = [
   'project_name',
   'commission_number',
   'total_work_minutes',
+  'total_adjusted_work_minutes',
+  'start_time',
+  'end_time',
+  'lunch_break_minutes',
+  'additional_break_minutes',
+  'expenses_amount',
+  'other_costs_amount',
+  'expense_note',
+  'notes',
+  'attachments',
   'abz_typ'
 ].join(', ');
 const state = {
   supabase: null,
   session: null,
-  weekOffset: 0
+  weekOffset: 0,
+  reports: []
 };
 
 const elements = {
@@ -35,8 +46,10 @@ const elements = {
   nextWeekBtn: document.getElementById('nextWeekBtn'),
   reportTableBody: document.getElementById('reportTableBody'),
   reportEmpty: document.getElementById('reportEmpty'),
+  addReportRowBtn: document.getElementById('addReportRowBtn'),
   absenceTableBody: document.getElementById('absenceTableBody'),
-  absenceEmpty: document.getElementById('absenceEmpty')
+  absenceEmpty: document.getElementById('absenceEmpty'),
+  addAbsenceRowBtn: document.getElementById('addAbsenceRowBtn')
 };
 
 function refreshServiceIcons() {
@@ -88,6 +101,14 @@ function formatWeekLabel(days) {
   return `KW ${getWeekNumber(days[0])} · ${formatter.format(days[0])} – ${formatter.format(days[6])}`;
 }
 
+function parseHoursInput(value) {
+  const normalized = String(value || '').trim().replace(',', '.');
+  if (!normalized) return null;
+  const hours = Number(normalized);
+  if (!Number.isFinite(hours) || hours < 0 || hours > 24) return null;
+  return Math.round(hours * 60);
+}
+
 function formatHours(minutes) {
   const hours = Number(minutes || 0) / 60;
   if (!hours) return '';
@@ -119,13 +140,15 @@ function buildReportMatrixRows(reports) {
         projectName,
         commissionNumber,
         days: Array(7).fill(0),
-        total: 0
+        total: 0,
+        entriesByDay: Array.from({ length: 7 }, () => [])
       });
     }
     const row = grouped.get(key);
     const minutes = Number(entry.total_work_minutes || 0);
     row.days[dayIndex] += minutes;
     row.total += minutes;
+    row.entriesByDay[dayIndex].push(entry);
   });
   return Array.from(grouped.values()).sort((a, b) =>
     a.projectName.localeCompare(b.projectName, 'de') || a.commissionNumber.localeCompare(b.commissionNumber, 'de')
@@ -139,7 +162,8 @@ function buildAbsenceMatrixRows(reports) {
       type,
       label: REPORT_TYPE_LABELS[type],
       days: Array(7).fill(0),
-      total: 0
+      total: 0,
+      entriesByDay: Array.from({ length: 7 }, () => [])
     });
   });
 
@@ -154,6 +178,7 @@ function buildAbsenceMatrixRows(reports) {
     const minutes = Number(entry.total_work_minutes || 0);
     row.days[dayIndex] += minutes;
     row.total += minutes;
+    row.entriesByDay[dayIndex].push(entry);
   });
 
   return Array.from(grouped.values()).filter((row) => row.total > 0);
@@ -162,26 +187,28 @@ function buildAbsenceMatrixRows(reports) {
 function renderReportMatrix(reports) {
   const rows = buildReportMatrixRows(reports);
   elements.reportEmpty.hidden = rows.length > 0;
-  elements.reportTableBody.innerHTML = rows.map((row) => `
+  elements.reportTableBody.innerHTML = rows.map((row, rowIndex) => `
     <tr>
       <th scope="row">${escapeHtml(row.projectName)}</th>
       <td class="commission-cell">${escapeHtml(row.commissionNumber)}</td>
-      ${row.days.map((minutes) => `<td class="hours-cell ${minutes ? 'has-hours' : ''}">${escapeHtml(formatHours(minutes))}</td>`).join('')}
+      ${row.days.map((minutes, dayIndex) => `<td><button type="button" class="matrix-cell-btn ${minutes ? 'has-hours' : ''}" data-kind="report" data-row-index="${rowIndex}" data-day-index="${dayIndex}" aria-label="Rapportstunden bearbeiten">${escapeHtml(formatHours(minutes)) || '<span aria-hidden="true">+</span>'}</button></td>`).join('')}
       <td class="total-cell">${escapeHtml(formatHours(row.total))}</td>
     </tr>
   `).join('');
+  elements.reportTableBody._matrixRows = rows;
 }
 
 function renderAbsenceMatrix(reports) {
   const rows = buildAbsenceMatrixRows(reports);
   elements.absenceEmpty.hidden = rows.length > 0;
-  elements.absenceTableBody.innerHTML = rows.map((row) => `
+  elements.absenceTableBody.innerHTML = rows.map((row, rowIndex) => `
     <tr>
       <th scope="row">${escapeHtml(row.label)}</th>
-      ${row.days.map((minutes) => `<td class="hours-cell ${minutes ? 'has-hours' : ''}">${escapeHtml(formatHours(minutes))}</td>`).join('')}
+      ${row.days.map((minutes, dayIndex) => `<td><button type="button" class="matrix-cell-btn ${minutes ? 'has-hours' : ''}" data-kind="absence" data-row-index="${rowIndex}" data-day-index="${dayIndex}" aria-label="Absenzstunden bearbeiten">${escapeHtml(formatHours(minutes)) || '<span aria-hidden="true">+</span>'}</button></td>`).join('')}
       <td class="total-cell">${escapeHtml(formatHours(row.total))}</td>
     </tr>
   `).join('');
+  elements.absenceTableBody._matrixRows = rows;
 }
 
 function renderMatrices(reports) {
@@ -189,6 +216,112 @@ function renderMatrices(reports) {
   elements.weekLabel.textContent = formatWeekLabel(days);
   renderReportMatrix(reports);
   renderAbsenceMatrix(reports);
+}
+
+
+function buildMatrixPayload({ workDate, minutes, projectName = '', commissionNumber = '', absenceType = 0 }) {
+  const parsedDate = parseLocalDate(workDate);
+  return {
+    profile_id: state.session.user.id,
+    work_date: workDate,
+    year: parsedDate.getFullYear(),
+    kw: getWeekNumber(parsedDate),
+    project_name: projectName,
+    commission_number: commissionNumber || (absenceType ? REPORT_TYPE_LABELS[absenceType] : ''),
+    start_time: '00:00',
+    end_time: '00:00',
+    lunch_break_minutes: 0,
+    additional_break_minutes: 0,
+    total_work_minutes: minutes,
+    total_adjusted_work_minutes: minutes,
+    expenses_amount: 0,
+    other_costs_amount: 0,
+    expense_note: null,
+    notes: null,
+    attachments: [],
+    abz_typ: absenceType
+  };
+}
+
+async function saveMatrixReport(payload, existingEntry = null) {
+  setStatus('Rapport wird gespeichert …');
+  const query = existingEntry?.id
+    ? state.supabase.from('weekly_reports').update(payload).eq('id', existingEntry.id).eq('profile_id', state.session.user.id)
+    : state.supabase.from('weekly_reports').insert(payload);
+  const { error } = await query;
+  if (error) throw error;
+  await loadReports();
+}
+
+async function editMatrixCell(kind, row, dayIndex) {
+  const days = getWeekDays();
+  const existingEntry = row.entriesByDay[dayIndex][0] || null;
+  const currentHours = row.days[dayIndex] ? String(row.days[dayIndex] / 60).replace('.', ',') : '';
+  const value = window.prompt('Stunden erfassen (Spesen und Mittagsspesen sind in der Matrix immer aus):', currentHours);
+  if (value === null) return;
+  const minutes = parseHoursInput(value);
+  if (minutes === null || minutes <= 0) {
+    window.alert('Bitte Stunden zwischen 0,25 und 24 erfassen.');
+    return;
+  }
+  const payload = buildMatrixPayload({
+    workDate: formatLocalDate(days[dayIndex]),
+    minutes,
+    projectName: kind === 'report' ? row.projectName : row.label,
+    commissionNumber: kind === 'report' ? row.commissionNumber : row.label,
+    absenceType: kind === 'absence' ? row.type : 0
+  });
+  await saveMatrixReport(payload, existingEntry);
+}
+
+async function addMatrixRows(kind) {
+  const isAbsence = kind === 'absence';
+  const projectName = isAbsence
+    ? window.prompt(`Absenztyp (${ABSENCE_TYPE_ORDER.map((type) => `${type}=${REPORT_TYPE_LABELS[type]}`).join(', ')}):`, '1')
+    : window.prompt('Projektname:');
+  if (projectName === null) return;
+  const absenceType = isAbsence ? Number(projectName) : 0;
+  if (isAbsence && !REPORT_TYPE_LABELS[absenceType]) {
+    window.alert('Bitte einen gültigen Absenztyp wählen.');
+    return;
+  }
+  const commissionNumber = isAbsence ? REPORT_TYPE_LABELS[absenceType] : window.prompt('Kommissionsnummer:');
+  if (commissionNumber === null) return;
+  if (!isAbsence && (!projectName.trim() || !commissionNumber.trim())) {
+    window.alert('Bitte Projektname und Kommissionsnummer erfassen.');
+    return;
+  }
+  const label = isAbsence ? REPORT_TYPE_LABELS[absenceType] : projectName.trim();
+  const days = getWeekDays();
+  const dayLabels = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+  const payloads = [];
+  for (let index = 0; index < days.length; index += 1) {
+    const value = window.prompt(`${dayLabels[index]} Stunden (leer = 0):`, '');
+    if (value === null) return;
+    const minutes = parseHoursInput(value || '0');
+    if (minutes === null) {
+      window.alert('Bitte nur gültige Stunden erfassen.');
+      return;
+    }
+    if (minutes > 0) {
+      payloads.push(buildMatrixPayload({ workDate: formatLocalDate(days[index]), minutes, projectName: label, commissionNumber: commissionNumber.trim(), absenceType }));
+    }
+  }
+  if (!payloads.length) return;
+  setStatus('Rapporte werden gespeichert …');
+  const { error } = await state.supabase.from('weekly_reports').insert(payloads);
+  if (error) throw error;
+  await loadReports();
+}
+
+async function handleMatrixClick(event) {
+  const button = event.target.closest('.matrix-cell-btn');
+  if (!button) return;
+  const rows = button.dataset.kind === 'absence' ? elements.absenceTableBody._matrixRows : elements.reportTableBody._matrixRows;
+  const row = rows?.[Number(button.dataset.rowIndex)];
+  if (!row) return;
+  try { await editMatrixCell(button.dataset.kind, row, Number(button.dataset.dayIndex)); }
+  catch (error) { console.error(error); setStatus(error.message || 'Rapport konnte nicht gespeichert werden.', 'danger'); }
 }
 
 async function loadConfig() {
@@ -216,7 +349,8 @@ async function loadReports() {
     .order('work_date', { ascending: true });
 
   if (error) throw error;
-  renderMatrices(data || []);
+  state.reports = data || [];
+  renderMatrices(state.reports);
   setStatus('Rapporte und Absenzen geladen', 'success');
 }
 
@@ -255,6 +389,11 @@ async function reloadReportsSafely() {
     renderMatrices([]);
   }
 }
+
+elements.reportTableBody?.addEventListener('click', handleMatrixClick);
+elements.absenceTableBody?.addEventListener('click', handleMatrixClick);
+elements.addReportRowBtn?.addEventListener('click', () => addMatrixRows('report').catch((error) => { console.error(error); setStatus(error.message || 'Rapporte konnten nicht gespeichert werden.', 'danger'); }));
+elements.addAbsenceRowBtn?.addEventListener('click', () => addMatrixRows('absence').catch((error) => { console.error(error); setStatus(error.message || 'Absenzen konnten nicht gespeichert werden.', 'danger'); }));
 
 elements.prevWeekBtn?.addEventListener('click', async () => {
   state.weekOffset -= 1;
