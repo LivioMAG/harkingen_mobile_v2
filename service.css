@@ -135,6 +135,37 @@ h1 {
 .week-summary small[data-type='success'] { color: var(--success); }
 .week-summary small[data-type='danger'] { color: var(--danger); }
 
+
+.matrix-section {
+  display: grid;
+  gap: 12px;
+}
+
+.matrix-section-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.matrix-section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  letter-spacing: -0.03em;
+}
+
+.matrix-section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.absence-matrix {
+  min-width: 760px;
+}
+
+.absence-matrix tbody th {
+  color: var(--accent);
+}
+
 .matrix-wrap {
   position: relative;
   overflow-x: auto;
