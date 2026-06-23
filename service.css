@@ -1,0 +1,92 @@
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f6f6;
+  --card: #ffffff;
+  --line: rgba(0, 0, 0, 0.1);
+  --text: #111111;
+  --muted: #5f5f5f;
+  --accent: #d71920;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
+  --radius-xl: 26px;
+  --radius-md: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(215, 25, 32, 0.09), transparent 28%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+}
+
+.service-shell {
+  width: min(100%, 820px);
+  margin: 0 auto;
+  padding: 18px 14px 110px;
+  display: grid;
+  gap: 14px;
+}
+
+.back-link {
+  width: fit-content;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.back-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.service-card {
+  min-height: 280px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.service-icon {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+
+.section-label {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  letter-spacing: -0.06em;
+}

@@ -73,10 +73,13 @@ code {
 
 .app-nav {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.menu-toggle-btn {
+.menu-toggle-btn,
+.service-page-btn {
   width: 46px;
   height: 46px;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -93,8 +96,22 @@ code {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
+.service-page-btn {
+  width: auto;
+  min-width: 46px;
+  padding: 0 14px;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.service-page-label {
+  font-size: 0.88rem;
+}
+
 .menu-toggle-btn:hover,
-.menu-toggle-btn:focus-visible {
+.menu-toggle-btn:focus-visible,
+.service-page-btn:hover,
+.service-page-btn:focus-visible {
   border-color: rgba(215, 25, 32, 0.18);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);

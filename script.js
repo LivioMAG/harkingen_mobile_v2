@@ -7,6 +7,8 @@ const CHATBOT_INITIAL_MESSAGES = [
 ];
 const CHATBOT_INPUT_PLACEHOLDER = 'Was beschäftigt dich';
 const CHATBOT_LANGUAGE = 'de';
+const SERVICE_PAGE_URL = './service.html';
+const MOBILE_SERVICE_QUERY = '(max-width: 767px)';
 const CHATBOT_I18N = {
   de: {
     title: '',
@@ -238,6 +240,7 @@ const elements = {
   navMenuToggleBtn: document.getElementById('navMenuToggleBtn'),
   navMenuDrawer: document.getElementById('navMenuDrawer'),
   navMenuBackdrop: document.getElementById('navMenuBackdrop'),
+  servicePageBtn: document.getElementById('servicePageBtn'),
   navMenuItems: document.querySelectorAll('[data-nav-view]'),
   authForm: document.getElementById('authForm'),
   forgotPasswordForm: document.getElementById('forgotPasswordForm'),
@@ -494,6 +497,19 @@ function toggleNavMenu() {
   } else {
     closeNavMenu();
   }
+}
+
+function isMobileServiceBlocked() {
+  return window.matchMedia?.(MOBILE_SERVICE_QUERY).matches || window.innerWidth <= 767;
+}
+
+function openServicePage() {
+  if (isMobileServiceBlocked()) {
+    showToast('Kann nicht auf dem Mobiltelefon geöffnet werden.', 'error');
+    return;
+  }
+
+  window.location.href = SERVICE_PAGE_URL;
 }
 
 function setCurrentView(view) {
@@ -3508,6 +3524,7 @@ function registerEventListeners() {
     }
   });
   elements.navMenuToggleBtn?.addEventListener('click', toggleNavMenu);
+  elements.servicePageBtn?.addEventListener('click', openServicePage);
   elements.navMenuBackdrop?.addEventListener('click', closeNavMenu);
   elements.navMenuItems?.forEach((item) => {
     item.addEventListener('click', () => {
