@@ -189,5 +189,30 @@
         </div>
       </form>
     </dialog>
+
+    <dialog class="matrix-dialog matrix-day-dialog" id="matrixDayDialog" aria-labelledby="matrixDayDialogTitle">
+      <form class="matrix-dialog-card" id="matrixDayForm" method="dialog">
+        <div class="matrix-dialog-head">
+          <div>
+            <p class="section-label" id="matrixDayDialogEyebrow">Tag bearbeiten</p>
+            <h2 id="matrixDayDialogTitle">Zeit rapportieren</h2>
+          </div>
+          <button class="matrix-dialog-close" id="matrixDayDialogCancelIcon" type="button" aria-label="Popup schliessen">×</button>
+        </div>
+
+        <label class="matrix-dialog-field" for="matrixDayHoursInput">
+          <span>Zeit in Stunden</span>
+          <input id="matrixDayHoursInput" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. 8" />
+        </label>
+
+        <p class="matrix-dialog-error" id="matrixDayDialogError" role="alert" hidden></p>
+
+        <div class="matrix-dialog-actions matrix-day-dialog-actions">
+          <button class="danger-btn" id="matrixDayDeleteBtn" type="button">Rapport löschen</button>
+          <button class="week-btn" id="matrixDayDialogCancelBtn" type="button">Abbrechen</button>
+          <button class="add-row-btn" type="submit">Speichern</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

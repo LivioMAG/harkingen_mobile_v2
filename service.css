@@ -415,10 +415,45 @@ h1 {
   gap: 10px;
 }
 
+.matrix-day-dialog {
+  width: min(94vw, 440px);
+}
+
+.matrix-day-dialog-actions {
+  align-items: center;
+}
+
+.matrix-day-dialog-actions .danger-btn {
+  margin-right: auto;
+}
+
+.danger-btn {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(201, 42, 42, 0.11);
+  color: var(--danger);
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.danger-btn:hover,
+.danger-btn:focus-visible {
+  outline: 2px solid rgba(201, 42, 42, 0.26);
+  outline-offset: 2px;
+}
+
 @media (max-width: 720px) {
   .matrix-dialog-grid,
   .matrix-weekday-grid { grid-template-columns: 1fr; }
   .matrix-dialog-actions { display: grid; }
   .matrix-dialog-actions .week-btn,
-  .matrix-dialog-actions .add-row-btn { width: 100%; }
+  .matrix-dialog-actions .add-row-btn,
+  .matrix-dialog-actions .danger-btn { width: 100%; }
+
+  .matrix-day-dialog-actions .danger-btn {
+    margin-right: 0;
+  }
 }
