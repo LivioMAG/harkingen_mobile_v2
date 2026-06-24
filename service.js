@@ -57,13 +57,20 @@ const elements = {
   matrixDialogTitle: document.getElementById('matrixDialogTitle'),
   matrixDialogCancelIcon: document.getElementById('matrixDialogCancelIcon'),
   matrixDialogCancelBtn: document.getElementById('matrixDialogCancelBtn'),
-  matrixAbsenceTypeField: document.getElementById('matrixAbsenceTypeField'),
-  matrixAbsenceTypeInput: document.getElementById('matrixAbsenceTypeInput'),
-  matrixReportFields: document.getElementById('matrixReportFields'),
   matrixCommissionInput: document.getElementById('matrixCommissionInput'),
   matrixProjectInput: document.getElementById('matrixProjectInput'),
   matrixWeekdayInputs: document.getElementById('matrixWeekdayInputs'),
-  matrixDialogError: document.getElementById('matrixDialogError')
+  matrixDialogError: document.getElementById('matrixDialogError'),
+  matrixAbsenceDialog: document.getElementById('matrixAbsenceDialog'),
+  matrixAbsenceForm: document.getElementById('matrixAbsenceForm'),
+  matrixAbsenceDialogEyebrow: document.getElementById('matrixAbsenceDialogEyebrow'),
+  matrixAbsenceDialogTitle: document.getElementById('matrixAbsenceDialogTitle'),
+  matrixAbsenceDialogCancelIcon: document.getElementById('matrixAbsenceDialogCancelIcon'),
+  matrixAbsenceDialogCancelBtn: document.getElementById('matrixAbsenceDialogCancelBtn'),
+  matrixAbsenceTypeField: document.getElementById('matrixAbsenceTypeField'),
+  matrixAbsenceTypeInput: document.getElementById('matrixAbsenceTypeInput'),
+  matrixAbsenceWeekdayInputs: document.getElementById('matrixAbsenceWeekdayInputs'),
+  matrixAbsenceDialogError: document.getElementById('matrixAbsenceDialogError')
 };
 
 function refreshServiceIcons() {
@@ -241,23 +248,26 @@ function ensureMatrixDialogOptions() {
     .join('');
 }
 
-function renderMatrixDayInputs(values = []) {
-  if (!elements.matrixWeekdayInputs) return;
-  elements.matrixWeekdayInputs.innerHTML = DAY_LABELS.map((label, index) => `
-    <label class="matrix-day-field" for="matrixDayInput${index}">
-      <span>${escapeHtml(label)}</span>
-      <input class="matrix-day-hours-input" id="matrixDayInput${index}" data-day-index="${index}" type="text" inputmode="decimal" placeholder="0" value="${escapeHtml(values[index] || '')}" />
-    </label>
-  `).join('');
+function renderMatrixDayInputs(values = [], container = elements.matrixWeekdayInputs, idPrefix = 'matrixDayInput') {
+  if (!container) return;
+  container.innerHTML = DAY_LABELS.map((label, index) => {
+    const inputId = `${idPrefix}${index}`;
+    return `
+      <label class="matrix-day-field" for="${inputId}">
+        <span>${escapeHtml(label)}</span>
+        <input class="matrix-day-hours-input" id="${inputId}" data-day-index="${index}" type="text" inputmode="decimal" placeholder="0" value="${escapeHtml(values[index] || '')}" />
+      </label>
+    `;
+  }).join('');
 }
 
-function setMatrixDialogError(message = '') {
-  if (!elements.matrixDialogError) return;
-  elements.matrixDialogError.textContent = message;
-  elements.matrixDialogError.hidden = !message;
+function setMatrixDialogError(message = '', errorElement = elements.matrixDialogError) {
+  if (!errorElement) return;
+  errorElement.textContent = message;
+  errorElement.hidden = !message;
 }
 
-function getMatrixDialogResult(kind) {
+function getMatrixDialogResult(kind, weekdayInputs = elements.matrixWeekdayInputs) {
   const isAbsence = kind === 'absence';
   const absenceType = isAbsence ? Number(elements.matrixAbsenceTypeInput?.value || 0) : 0;
   const projectName = isAbsence ? REPORT_TYPE_LABELS[absenceType] : elements.matrixProjectInput.value.trim();
@@ -266,7 +276,7 @@ function getMatrixDialogResult(kind) {
   if (isAbsence && !REPORT_TYPE_LABELS[absenceType]) throw new Error('Bitte einen gültigen Absenztyp wählen.');
   if (!isAbsence && (!projectName || !commissionNumber)) throw new Error('Bitte Kommissionsnummer und Projektname erfassen.');
 
-  const dayMinutes = Array.from(elements.matrixWeekdayInputs.querySelectorAll('.matrix-day-hours-input')).map((input) => {
+  const dayMinutes = Array.from(weekdayInputs.querySelectorAll('.matrix-day-hours-input')).map((input) => {
     const minutes = parseHoursInput(input.value || '0');
     if (minutes === null) throw new Error('Bitte nur gültige Stunden zwischen 0 und 24 erfassen.');
     return minutes;
@@ -274,23 +284,18 @@ function getMatrixDialogResult(kind) {
   return { absenceType, projectName, commissionNumber, dayMinutes };
 }
 
-function openMatrixEntryDialog(kind, options = {}) {
+function openReportEntryDialog(options = {}) {
   const dialog = elements.matrixEntryDialog;
   if (!dialog || !elements.matrixEntryForm) return Promise.resolve(null);
-  const isAbsence = kind === 'absence';
-  ensureMatrixDialogOptions();
   setMatrixDialogError('');
   elements.matrixEntryForm.reset();
-  elements.matrixDialogEyebrow.textContent = isAbsence ? 'Absenz erfassen' : 'Rapport erfassen';
-  elements.matrixDialogTitle.textContent = options.title || (isAbsence ? 'Absenz hinzufügen' : 'Rapport hinzufügen');
-  elements.matrixAbsenceTypeField.hidden = !isAbsence;
-  elements.matrixReportFields.hidden = isAbsence;
-  elements.matrixCommissionInput.required = !isAbsence;
-  elements.matrixProjectInput.required = !isAbsence;
-  if (isAbsence) elements.matrixAbsenceTypeInput.value = String(options.absenceType || ABSENCE_TYPE_ORDER[0]);
+  elements.matrixDialogEyebrow.textContent = 'Rapport erfassen';
+  elements.matrixDialogTitle.textContent = options.title || 'Rapport hinzufügen';
+  elements.matrixCommissionInput.required = true;
+  elements.matrixProjectInput.required = true;
   elements.matrixCommissionInput.value = options.commissionNumber || '';
   elements.matrixProjectInput.value = options.projectName || '';
-  renderMatrixDayInputs(options.dayValues || []);
+  renderMatrixDayInputs(options.dayValues || [], elements.matrixWeekdayInputs, 'matrixReportDayInput');
 
   return new Promise((resolve) => {
     let settled = false;
@@ -301,27 +306,13 @@ function openMatrixEntryDialog(kind, options = {}) {
       dialog.removeEventListener('cancel', onCancel);
       dialog.removeEventListener('close', onClose);
     };
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(value);
-    };
-    const onCancel = (event) => {
-      event?.preventDefault?.();
-      dialog.close('cancel');
-      finish(null);
-    };
+    const finish = (value) => { if (settled) return; settled = true; cleanup(); resolve(value); };
+    const onCancel = (event) => { event?.preventDefault?.(); dialog.close('cancel'); finish(null); };
     const onClose = () => finish(null);
     const onSubmit = (event) => {
       event.preventDefault();
-      try {
-        const result = getMatrixDialogResult(kind);
-        dialog.close('save');
-        finish(result);
-      } catch (error) {
-        setMatrixDialogError(error.message || 'Bitte Eingaben prüfen.');
-      }
+      try { const result = getMatrixDialogResult('report', elements.matrixWeekdayInputs); dialog.close('save'); finish(result); }
+      catch (error) { setMatrixDialogError(error.message || 'Bitte Eingaben prüfen.'); }
     };
     elements.matrixEntryForm.addEventListener('submit', onSubmit);
     elements.matrixDialogCancelBtn?.addEventListener('click', onCancel);
@@ -331,6 +322,48 @@ function openMatrixEntryDialog(kind, options = {}) {
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
   });
+}
+
+function openAbsenceEntryDialog(options = {}) {
+  const dialog = elements.matrixAbsenceDialog;
+  if (!dialog || !elements.matrixAbsenceForm) return Promise.resolve(null);
+  ensureMatrixDialogOptions();
+  setMatrixDialogError('', elements.matrixAbsenceDialogError);
+  elements.matrixAbsenceForm.reset();
+  elements.matrixAbsenceDialogEyebrow.textContent = 'Absenz erfassen';
+  elements.matrixAbsenceDialogTitle.textContent = options.title || 'Absenz hinzufügen';
+  elements.matrixAbsenceTypeInput.value = String(options.absenceType || ABSENCE_TYPE_ORDER[0]);
+  renderMatrixDayInputs(options.dayValues || [], elements.matrixAbsenceWeekdayInputs, 'matrixAbsenceDayInput');
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      elements.matrixAbsenceForm.removeEventListener('submit', onSubmit);
+      elements.matrixAbsenceDialogCancelBtn?.removeEventListener('click', onCancel);
+      elements.matrixAbsenceDialogCancelIcon?.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.removeEventListener('close', onClose);
+    };
+    const finish = (value) => { if (settled) return; settled = true; cleanup(); resolve(value); };
+    const onCancel = (event) => { event?.preventDefault?.(); dialog.close('cancel'); finish(null); };
+    const onClose = () => finish(null);
+    const onSubmit = (event) => {
+      event.preventDefault();
+      try { const result = getMatrixDialogResult('absence', elements.matrixAbsenceWeekdayInputs); dialog.close('save'); finish(result); }
+      catch (error) { setMatrixDialogError(error.message || 'Bitte Eingaben prüfen.', elements.matrixAbsenceDialogError); }
+    };
+    elements.matrixAbsenceForm.addEventListener('submit', onSubmit);
+    elements.matrixAbsenceDialogCancelBtn?.addEventListener('click', onCancel);
+    elements.matrixAbsenceDialogCancelIcon?.addEventListener('click', onCancel);
+    dialog.addEventListener('cancel', onCancel);
+    dialog.addEventListener('close', onClose);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  });
+}
+
+function openMatrixEntryDialog(kind, options = {}) {
+  return kind === 'absence' ? openAbsenceEntryDialog(options) : openReportEntryDialog(options);
 }
 
 function buildMatrixPayload({ workDate, minutes, projectName = '', commissionNumber = '', absenceType = 0 }) {
