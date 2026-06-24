@@ -242,10 +242,15 @@ function renderMatrices(reports) {
 
 
 function ensureMatrixDialogOptions() {
-  if (!elements.matrixAbsenceTypeInput || elements.matrixAbsenceTypeInput.options.length) return;
-  elements.matrixAbsenceTypeInput.innerHTML = ABSENCE_TYPE_ORDER
-    .map((type) => `<option value="${type}">${escapeHtml(REPORT_TYPE_LABELS[type])}</option>`)
-    .join('');
+  if (!elements.matrixAbsenceTypeInput) return;
+
+  const currentValue = elements.matrixAbsenceTypeInput.value;
+  elements.matrixAbsenceTypeInput.innerHTML = [
+    '<option value="" disabled>Absenz auswählen</option>',
+    ...ABSENCE_TYPE_ORDER.map((type) => `<option value="${type}">${escapeHtml(REPORT_TYPE_LABELS[type])}</option>`)
+  ].join('');
+
+  elements.matrixAbsenceTypeInput.value = REPORT_TYPE_LABELS[Number(currentValue)] ? currentValue : '';
 }
 
 function renderMatrixDayInputs(values = [], container = elements.matrixWeekdayInputs, idPrefix = 'matrixDayInput') {
@@ -332,7 +337,7 @@ function openAbsenceEntryDialog(options = {}) {
   elements.matrixAbsenceForm.reset();
   elements.matrixAbsenceDialogEyebrow.textContent = 'Absenz erfassen';
   elements.matrixAbsenceDialogTitle.textContent = options.title || 'Absenz hinzufügen';
-  elements.matrixAbsenceTypeInput.value = String(options.absenceType || ABSENCE_TYPE_ORDER[0]);
+  elements.matrixAbsenceTypeInput.value = options.absenceType ? String(options.absenceType) : '';
   renderMatrixDayInputs(options.dayValues || [], elements.matrixAbsenceWeekdayInputs, 'matrixAbsenceDayInput');
 
   return new Promise((resolve) => {
@@ -460,7 +465,7 @@ async function addMatrixRows(kind) {
     setStatus('Keine Stunden erfasst.', 'neutral');
     return;
   }
-  setStatus('Rapporte werden gespeichert …');
+  setStatus(kind === 'absence' ? 'Absenzen werden gespeichert …' : 'Rapporte werden gespeichert …');
   const { error } = await state.supabase.from('weekly_reports').insert(payloads);
   if (error) throw error;
   await loadReports();

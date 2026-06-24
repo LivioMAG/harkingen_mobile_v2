@@ -7,17 +7,17 @@
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <meta name="app-build-version" content="2026-06-23-1" />
+    <meta name="app-build-version" content="2026-06-24-1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="service.css?v=2026-06-23-1" />
+    <link rel="stylesheet" href="service.css?v=2026-06-24-1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script defer src="service.js?v=2026-06-23-1"></script>
+    <script defer src="service.js?v=2026-06-24-1"></script>
   </head>
   <body>
     <main class="service-shell">
@@ -161,7 +161,16 @@
 
         <label class="matrix-dialog-field" id="matrixAbsenceTypeField" for="matrixAbsenceTypeInput">
           <span>Absenztyp</span>
-          <select id="matrixAbsenceTypeInput"></select>
+          <select id="matrixAbsenceTypeInput" required>
+            <option value="" disabled selected>Absenz auswählen</option>
+            <option value="1">Ferien</option>
+            <option value="2">Krankheit</option>
+            <option value="3">Militär</option>
+            <option value="4">Unfall</option>
+            <option value="5">Feiertag</option>
+            <option value="6">ÜK</option>
+            <option value="7">Berufsschule</option>
+          </select>
         </label>
 
         <div class="matrix-weekday-editor" aria-labelledby="matrixAbsenceWeekdayTitle">
