@@ -70,7 +70,16 @@ const elements = {
   matrixAbsenceTypeField: document.getElementById('matrixAbsenceTypeField'),
   matrixAbsenceTypeInput: document.getElementById('matrixAbsenceTypeInput'),
   matrixAbsenceWeekdayInputs: document.getElementById('matrixAbsenceWeekdayInputs'),
-  matrixAbsenceDialogError: document.getElementById('matrixAbsenceDialogError')
+  matrixAbsenceDialogError: document.getElementById('matrixAbsenceDialogError'),
+  matrixDayDialog: document.getElementById('matrixDayDialog'),
+  matrixDayForm: document.getElementById('matrixDayForm'),
+  matrixDayDialogEyebrow: document.getElementById('matrixDayDialogEyebrow'),
+  matrixDayDialogTitle: document.getElementById('matrixDayDialogTitle'),
+  matrixDayDialogCancelIcon: document.getElementById('matrixDayDialogCancelIcon'),
+  matrixDayDialogCancelBtn: document.getElementById('matrixDayDialogCancelBtn'),
+  matrixDayHoursInput: document.getElementById('matrixDayHoursInput'),
+  matrixDayDeleteBtn: document.getElementById('matrixDayDeleteBtn'),
+  matrixDayDialogError: document.getElementById('matrixDayDialogError')
 };
 
 function refreshServiceIcons() {
@@ -371,6 +380,64 @@ function openMatrixEntryDialog(kind, options = {}) {
   return kind === 'absence' ? openAbsenceEntryDialog(options) : openReportEntryDialog(options);
 }
 
+function openMatrixDayDialog(kind, row, dayIndex) {
+  const dialog = elements.matrixDayDialog;
+  if (!dialog || !elements.matrixDayForm) return Promise.resolve(null);
+  const currentMinutes = Number(row.days?.[dayIndex] || 0);
+  const hasExistingEntries = (row.entriesByDay?.[dayIndex] || []).length > 0;
+
+  setMatrixDialogError('', elements.matrixDayDialogError);
+  elements.matrixDayForm.reset();
+  elements.matrixDayDialogEyebrow.textContent = kind === 'absence' ? 'Absenz bearbeiten' : 'Rapport bearbeiten';
+  elements.matrixDayDialogTitle.textContent = `${DAY_LABELS[dayIndex]} · ${kind === 'absence' ? row.label : row.projectName}`;
+  elements.matrixDayHoursInput.value = currentMinutes ? String(currentMinutes / 60).replace('.', ',') : '';
+  elements.matrixDayDeleteBtn.hidden = !hasExistingEntries;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      elements.matrixDayForm.removeEventListener('submit', onSubmit);
+      elements.matrixDayDeleteBtn?.removeEventListener('click', onDelete);
+      elements.matrixDayDialogCancelBtn?.removeEventListener('click', onCancel);
+      elements.matrixDayDialogCancelIcon?.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.removeEventListener('close', onClose);
+    };
+    const finish = (value) => { if (settled) return; settled = true; cleanup(); resolve(value); };
+    const closeWith = (returnValue) => {
+      if (typeof dialog.close === 'function') dialog.close(returnValue);
+      else dialog.removeAttribute('open');
+    };
+    const onCancel = (event) => { event?.preventDefault?.(); closeWith('cancel'); finish(null); };
+    const onClose = () => finish(null);
+    const onDelete = (event) => {
+      event.preventDefault();
+      closeWith('delete');
+      finish({ action: 'delete' });
+    };
+    const onSubmit = (event) => {
+      event.preventDefault();
+      try {
+        const minutes = parseHoursInput(elements.matrixDayHoursInput.value || '0');
+        if (minutes === null) throw new Error('Bitte nur gültige Stunden zwischen 0 und 24 erfassen.');
+        closeWith('save');
+        finish({ action: 'save', minutes });
+      } catch (error) {
+        setMatrixDialogError(error.message || 'Bitte Eingaben prüfen.', elements.matrixDayDialogError);
+      }
+    };
+    elements.matrixDayForm.addEventListener('submit', onSubmit);
+    elements.matrixDayDeleteBtn?.addEventListener('click', onDelete);
+    elements.matrixDayDialogCancelBtn?.addEventListener('click', onCancel);
+    elements.matrixDayDialogCancelIcon?.addEventListener('click', onCancel);
+    dialog.addEventListener('cancel', onCancel);
+    dialog.addEventListener('close', onClose);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    elements.matrixDayHoursInput?.focus();
+  });
+}
+
 function buildMatrixPayload({ workDate, minutes, projectName = '', commissionNumber = '', absenceType = 0 }) {
   const parsedDate = parseLocalDate(workDate);
   return {
@@ -406,42 +473,52 @@ async function saveMatrixReport(payload, existingEntry = null) {
 }
 
 async function editMatrixCell(kind, row, dayIndex) {
-  const currentHours = row.days[dayIndex] ? String(row.days[dayIndex] / 60).replace('.', ',') : '';
-  const dialogResult = await openMatrixEntryDialog(kind, {
-    title: `${DAY_LABELS[dayIndex]} bearbeiten`,
-    absenceType: row.type,
-    projectName: kind === 'report' ? row.projectName : '',
-    commissionNumber: kind === 'report' ? row.commissionNumber : '',
-    dayValues: Array.from({ length: 7 }, (_, index) => (index === dayIndex ? currentHours : ''))
-  });
+  const dialogResult = await openMatrixDayDialog(kind, row, dayIndex);
   if (!dialogResult) return;
 
   const days = getWeekDays();
-  const payloads = dialogResult.dayMinutes
-    .map((minutes, index) => minutes > 0 ? {
-      payload: buildMatrixPayload({
-        workDate: formatLocalDate(days[index]),
-        minutes,
-        projectName: dialogResult.projectName,
-        commissionNumber: dialogResult.commissionNumber,
-        absenceType: dialogResult.absenceType
-      }),
-      existingEntry: row.entriesByDay[index][0] || null
-    } : null)
-    .filter(Boolean);
+  const existingEntries = row.entriesByDay[dayIndex] || [];
 
-  if (!payloads.length) {
-    setStatus('Keine Stunden erfasst.', 'neutral');
+  if (dialogResult.action === 'delete' || dialogResult.minutes === 0) {
+    if (!existingEntries.length) {
+      setStatus('Kein Rapport für diesen Tag vorhanden.', 'neutral');
+      return;
+    }
+    setStatus('Rapport wird gelöscht …');
+    const { error } = await state.supabase
+      .from('weekly_reports')
+      .delete()
+      .in('id', existingEntries.map((entry) => entry.id))
+      .eq('profile_id', state.session.user.id);
+    if (error) throw error;
+    await loadReports();
     return;
   }
 
-  setStatus('Rapporte werden gespeichert …');
-  for (const { payload, existingEntry } of payloads) {
-    const query = existingEntry?.id
-      ? state.supabase.from('weekly_reports').update(payload).eq('id', existingEntry.id).eq('profile_id', state.session.user.id)
-      : state.supabase.from('weekly_reports').insert(payload);
-    const { error } = await query;
-    if (error) throw error;
+  const payload = buildMatrixPayload({
+    workDate: formatLocalDate(days[dayIndex]),
+    minutes: dialogResult.minutes,
+    projectName: kind === 'report' ? row.projectName : row.label,
+    commissionNumber: kind === 'report' ? row.commissionNumber : row.label,
+    absenceType: kind === 'absence' ? row.type : 0
+  });
+
+  setStatus('Rapport wird gespeichert …');
+  const primaryEntry = existingEntries[0] || null;
+  const query = primaryEntry?.id
+    ? state.supabase.from('weekly_reports').update(payload).eq('id', primaryEntry.id).eq('profile_id', state.session.user.id)
+    : state.supabase.from('weekly_reports').insert(payload);
+  const { error } = await query;
+  if (error) throw error;
+
+  const duplicateEntries = existingEntries.slice(1);
+  if (duplicateEntries.length) {
+    const { error: deleteError } = await state.supabase
+      .from('weekly_reports')
+      .delete()
+      .in('id', duplicateEntries.map((entry) => entry.id))
+      .eq('profile_id', state.session.user.id);
+    if (deleteError) throw deleteError;
   }
   await loadReports();
 }
