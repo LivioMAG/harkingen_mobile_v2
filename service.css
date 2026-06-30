@@ -270,6 +270,9 @@ h1 {
   width: 44px;
   min-width: 44px;
   padding-inline: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 0;
 }
 
