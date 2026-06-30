@@ -49,6 +49,7 @@
             <span data-lucide="chevron-right" aria-hidden="true"></span>
           </button>
           <button class="week-btn week-btn-secondary" id="currentWeekBtn" type="button">Aktuelle Woche</button>
+          <button class="week-btn" id="copyWeekBtn" type="button"><span data-lucide="copy" aria-hidden="true"></span><span>Woche kopieren</span></button>
         </div>
 
         <section class="matrix-section" aria-labelledby="normalReportsTitle">
@@ -71,6 +72,7 @@
                 <th scope="col">SA</th>
                 <th scope="col">SO</th>
                 <th scope="col">Total</th>
+                <th scope="col">Aktion</th>
               </tr>
             </thead>
             <tbody id="reportTableBody"></tbody>
@@ -183,6 +185,30 @@
         <div class="matrix-dialog-actions">
           <button class="week-btn" id="matrixAbsenceDialogCancelBtn" type="button">Abbrechen</button>
           <button class="add-row-btn" type="submit">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="matrix-dialog matrix-copy-dialog" id="matrixCopyWeekDialog" aria-labelledby="matrixCopyWeekDialogTitle">
+      <form class="matrix-dialog-card" id="matrixCopyWeekForm" method="dialog">
+        <div class="matrix-dialog-head">
+          <div>
+            <p class="section-label">Rapporte kopieren</p>
+            <h2 id="matrixCopyWeekDialogTitle">Woche auswählen</h2>
+          </div>
+          <button class="matrix-dialog-close" id="matrixCopyWeekCancelIcon" type="button" aria-label="Popup schliessen">×</button>
+        </div>
+
+        <label class="matrix-dialog-field" for="matrixCopyWeekInput">
+          <span>Ziel-Kalenderwoche</span>
+          <input id="matrixCopyWeekInput" type="week" required />
+        </label>
+        <p class="copy-week-hint" id="matrixCopyWeekHint">Es werden nur normale Rapporte aus der aktuell angezeigten Woche kopiert. Absenzen werden nicht kopiert.</p>
+        <p class="matrix-dialog-error" id="matrixCopyWeekDialogError" role="alert" hidden></p>
+
+        <div class="matrix-dialog-actions">
+          <button class="week-btn" id="matrixCopyWeekCancelBtn" type="button">Abbrechen</button>
+          <button class="add-row-btn" type="submit">Kopieren</button>
         </div>
       </form>
     </dialog>

@@ -45,6 +45,7 @@ const elements = {
   prevWeekBtn: document.getElementById('prevWeekBtn'),
   currentWeekBtn: document.getElementById('currentWeekBtn'),
   nextWeekBtn: document.getElementById('nextWeekBtn'),
+  copyWeekBtn: document.getElementById('copyWeekBtn'),
   reportTableBody: document.getElementById('reportTableBody'),
   reportEmpty: document.getElementById('reportEmpty'),
   addReportRowBtn: document.getElementById('addReportRowBtn'),
@@ -71,6 +72,13 @@ const elements = {
   matrixAbsenceTypeInput: document.getElementById('matrixAbsenceTypeInput'),
   matrixAbsenceWeekdayInputs: document.getElementById('matrixAbsenceWeekdayInputs'),
   matrixAbsenceDialogError: document.getElementById('matrixAbsenceDialogError'),
+  matrixCopyWeekDialog: document.getElementById('matrixCopyWeekDialog'),
+  matrixCopyWeekForm: document.getElementById('matrixCopyWeekForm'),
+  matrixCopyWeekInput: document.getElementById('matrixCopyWeekInput'),
+  matrixCopyWeekHint: document.getElementById('matrixCopyWeekHint'),
+  matrixCopyWeekCancelIcon: document.getElementById('matrixCopyWeekCancelIcon'),
+  matrixCopyWeekCancelBtn: document.getElementById('matrixCopyWeekCancelBtn'),
+  matrixCopyWeekDialogError: document.getElementById('matrixCopyWeekDialogError'),
   matrixDayDialog: document.getElementById('matrixDayDialog'),
   matrixDayForm: document.getElementById('matrixDayForm'),
   matrixDayDialogEyebrow: document.getElementById('matrixDayDialogEyebrow'),
@@ -106,6 +114,13 @@ function formatLocalDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function getIsoWeekYear(date) {
+  const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = copy.getUTCDay() || 7;
+  copy.setUTCDate(copy.getUTCDate() + 4 - dayNumber);
+  return copy.getUTCFullYear();
+}
+
 function getWeekNumber(date) {
   const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNumber = copy.getUTCDay() || 7;
@@ -119,6 +134,32 @@ function getWeekDays() {
   today.setHours(0, 0, 0, 0);
   const monday = new Date(today);
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + (state.weekOffset * 7));
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return date;
+  });
+}
+
+function getMondayOfIsoWeek(year, week) {
+  const simple = new Date(Date.UTC(year, 0, 1 + ((week - 1) * 7)));
+  const dayNumber = simple.getUTCDay() || 7;
+  if (dayNumber <= 4) simple.setUTCDate(simple.getUTCDate() - dayNumber + 1);
+  else simple.setUTCDate(simple.getUTCDate() + 8 - dayNumber);
+  return new Date(simple.getUTCFullYear(), simple.getUTCMonth(), simple.getUTCDate());
+}
+
+function formatWeekInputValue(days = getWeekDays()) {
+  return `${getIsoWeekYear(days[0])}-W${String(getWeekNumber(days[0])).padStart(2, '0')}`;
+}
+
+function parseWeekInputValue(value) {
+  const match = String(value || '').match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  if (!year || week < 1 || week > 53) return null;
+  const monday = getMondayOfIsoWeek(year, week);
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
@@ -223,9 +264,11 @@ function renderReportMatrix(reports) {
       <td class="commission-cell">${escapeHtml(row.commissionNumber)}</td>
       ${row.days.map((minutes, dayIndex) => `<td><button type="button" class="matrix-cell-btn ${minutes ? 'has-hours' : ''}" data-kind="report" data-row-index="${rowIndex}" data-day-index="${dayIndex}" aria-label="Rapportstunden bearbeiten">${escapeHtml(formatHours(minutes)) || '<span aria-hidden="true">+</span>'}</button></td>`).join('')}
       <td class="total-cell">${escapeHtml(formatHours(row.total))}</td>
+      <td class="action-cell"><button type="button" class="row-delete-btn" data-kind="report" data-row-index="${rowIndex}" aria-label="Rapportzeile löschen"><span data-lucide="trash-2" aria-hidden="true"></span><span>Löschen</span></button></td>
     </tr>
   `).join('');
   elements.reportTableBody._matrixRows = rows;
+  refreshServiceIcons();
 }
 
 function renderAbsenceMatrix(reports) {
@@ -369,6 +412,53 @@ function openAbsenceEntryDialog(options = {}) {
     elements.matrixAbsenceForm.addEventListener('submit', onSubmit);
     elements.matrixAbsenceDialogCancelBtn?.addEventListener('click', onCancel);
     elements.matrixAbsenceDialogCancelIcon?.addEventListener('click', onCancel);
+    dialog.addEventListener('cancel', onCancel);
+    dialog.addEventListener('close', onClose);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  });
+}
+
+
+function openCopyWeekDialog() {
+  const dialog = elements.matrixCopyWeekDialog;
+  if (!dialog || !elements.matrixCopyWeekForm) return Promise.resolve(null);
+  setMatrixDialogError('', elements.matrixCopyWeekDialogError);
+  elements.matrixCopyWeekForm.reset();
+  elements.matrixCopyWeekInput.value = formatWeekInputValue(getWeekDays());
+  if (elements.matrixCopyWeekHint) {
+    elements.matrixCopyWeekHint.textContent = 'Es werden nur normale Rapporte aus der aktuell angezeigten Woche kopiert. Absenzen werden nicht kopiert.';
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      elements.matrixCopyWeekForm.removeEventListener('submit', onSubmit);
+      elements.matrixCopyWeekCancelBtn?.removeEventListener('click', onCancel);
+      elements.matrixCopyWeekCancelIcon?.removeEventListener('click', onCancel);
+      dialog.removeEventListener('cancel', onCancel);
+      dialog.removeEventListener('close', onClose);
+    };
+    const finish = (value) => { if (settled) return; settled = true; cleanup(); resolve(value); };
+    const closeWith = (returnValue) => {
+      if (typeof dialog.close === 'function') dialog.close(returnValue);
+      else dialog.removeAttribute('open');
+    };
+    const onCancel = (event) => { event?.preventDefault?.(); closeWith('cancel'); finish(null); };
+    const onClose = () => finish(null);
+    const onSubmit = (event) => {
+      event.preventDefault();
+      const targetDays = parseWeekInputValue(elements.matrixCopyWeekInput.value);
+      if (!targetDays) {
+        setMatrixDialogError('Bitte eine gültige Ziel-Kalenderwoche wählen.', elements.matrixCopyWeekDialogError);
+        return;
+      }
+      closeWith('copy');
+      finish(targetDays);
+    };
+    elements.matrixCopyWeekForm.addEventListener('submit', onSubmit);
+    elements.matrixCopyWeekCancelBtn?.addEventListener('click', onCancel);
+    elements.matrixCopyWeekCancelIcon?.addEventListener('click', onCancel);
     dialog.addEventListener('cancel', onCancel);
     dialog.addEventListener('close', onClose);
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -548,7 +638,58 @@ async function addMatrixRows(kind) {
   await loadReports();
 }
 
+
+async function deleteMatrixRow(row) {
+  const ids = (row.entriesByDay || []).flat().map((entry) => entry.id).filter(Boolean);
+  if (!ids.length) {
+    setStatus('Keine Rapportzeile zum Löschen vorhanden.', 'neutral');
+    return;
+  }
+  const confirmed = window.confirm(`Rapportzeile "${row.projectName}" mit allen Wocheneinträgen löschen?`);
+  if (!confirmed) return;
+  setStatus('Rapportzeile wird gelöscht …');
+  const { error } = await state.supabase
+    .from('weekly_reports')
+    .delete()
+    .in('id', ids)
+    .eq('profile_id', state.session.user.id);
+  if (error) throw error;
+  await loadReports();
+}
+
+async function copyCurrentWeekReports() {
+  const targetDays = await openCopyWeekDialog();
+  if (!targetDays) return;
+  const sourceRows = buildReportMatrixRows(state.reports);
+  const payloads = sourceRows.flatMap((row) => row.days.map((minutes, dayIndex) => minutes > 0 ? buildMatrixPayload({
+    workDate: formatLocalDate(targetDays[dayIndex]),
+    minutes,
+    projectName: row.projectName,
+    commissionNumber: row.commissionNumber,
+    absenceType: 0
+  }) : null).filter(Boolean));
+
+  if (!payloads.length) {
+    setStatus('Keine normalen Rapporte zum Kopieren vorhanden.', 'neutral');
+    return;
+  }
+  setStatus('Rapporte werden kopiert …');
+  const { error } = await state.supabase.from('weekly_reports').insert(payloads);
+  if (error) throw error;
+  setStatus(`${payloads.length} Rapporte wurden kopiert.`, 'success');
+}
+
 async function handleMatrixClick(event) {
+  const deleteButton = event.target.closest('.row-delete-btn');
+  if (deleteButton) {
+    const rows = elements.reportTableBody._matrixRows;
+    const row = rows?.[Number(deleteButton.dataset.rowIndex)];
+    if (!row) return;
+    try { await deleteMatrixRow(row); }
+    catch (error) { console.error(error); setStatus(error.message || 'Rapportzeile konnte nicht gelöscht werden.', 'danger'); }
+    return;
+  }
+
   const button = event.target.closest('.matrix-cell-btn');
   if (!button) return;
   const rows = button.dataset.kind === 'absence' ? elements.absenceTableBody._matrixRows : elements.reportTableBody._matrixRows;
@@ -628,6 +769,7 @@ elements.reportTableBody?.addEventListener('click', handleMatrixClick);
 elements.absenceTableBody?.addEventListener('click', handleMatrixClick);
 elements.addReportRowBtn?.addEventListener('click', () => addMatrixRows('report').catch((error) => { console.error(error); setStatus(error.message || 'Rapporte konnten nicht gespeichert werden.', 'danger'); }));
 elements.addAbsenceRowBtn?.addEventListener('click', () => addMatrixRows('absence').catch((error) => { console.error(error); setStatus(error.message || 'Absenzen konnten nicht gespeichert werden.', 'danger'); }));
+elements.copyWeekBtn?.addEventListener('click', () => copyCurrentWeekReports().catch((error) => { console.error(error); setStatus(error.message || 'Rapporte konnten nicht kopiert werden.', 'danger'); }));
 
 elements.prevWeekBtn?.addEventListener('click', async () => {
   state.weekOffset -= 1;
