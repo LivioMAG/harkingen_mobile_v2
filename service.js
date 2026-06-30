@@ -10,6 +10,7 @@ const REPORT_TYPE_LABELS = {
 };
 const ABSENCE_TYPE_ORDER = [1, 2, 3, 4, 5, 6, 7];
 const DAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const DAY_SHORT_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 const WEEKLY_REPORT_COLUMNS = [
   'id',
@@ -336,7 +337,7 @@ function ensureMatrixDialogOptions() {
 
 function renderMatrixDayInputs(values = [], container = elements.matrixWeekdayInputs, idPrefix = 'matrixDayInput') {
   if (!container) return;
-  container.innerHTML = DAY_LABELS.map((label, index) => {
+  container.innerHTML = DAY_SHORT_LABELS.map((label, index) => {
     const inputId = `${idPrefix}${index}`;
     return `
       <label class="matrix-day-field" for="${inputId}">
