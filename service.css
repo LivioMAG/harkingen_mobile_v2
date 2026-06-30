@@ -457,3 +457,41 @@ h1 {
     margin-right: 0;
   }
 }
+
+.action-cell {
+  min-width: 118px;
+  text-align: center;
+}
+
+.row-delete-btn {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(201, 42, 42, 0.11);
+  color: var(--danger);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.row-delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.row-delete-btn:hover,
+.row-delete-btn:focus-visible {
+  outline: 2px solid rgba(201, 42, 42, 0.26);
+  outline-offset: 2px;
+}
+
+.copy-week-hint {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
