@@ -87,7 +87,9 @@ const elements = {
   matrixDayDialogCancelBtn: document.getElementById('matrixDayDialogCancelBtn'),
   matrixDayHoursInput: document.getElementById('matrixDayHoursInput'),
   matrixDayDeleteBtn: document.getElementById('matrixDayDeleteBtn'),
-  matrixDayDialogError: document.getElementById('matrixDayDialogError')
+  matrixDayDialogError: document.getElementById('matrixDayDialogError'),
+  serviceLoadingOverlay: document.getElementById('serviceLoadingOverlay'),
+  serviceLoadingText: document.getElementById('serviceLoadingText')
 };
 
 function refreshServiceIcons() {
@@ -99,6 +101,24 @@ function setStatus(message, type = 'neutral') {
   if (!elements.serviceStatus) return;
   elements.serviceStatus.textContent = message;
   elements.serviceStatus.dataset.type = type;
+}
+
+function setServiceLoading(isLoading, message = 'Bitte warten …') {
+  if (elements.serviceLoadingOverlay) {
+    elements.serviceLoadingOverlay.hidden = !isLoading;
+    elements.serviceLoadingOverlay.setAttribute('aria-hidden', String(!isLoading));
+  }
+  if (elements.serviceLoadingText) elements.serviceLoadingText.textContent = message;
+  [
+    elements.prevWeekBtn,
+    elements.currentWeekBtn,
+    elements.nextWeekBtn,
+    elements.copyWeekBtn,
+    elements.addReportRowBtn,
+    elements.addAbsenceRowBtn
+  ].forEach((button) => {
+    if (button) button.disabled = isLoading;
+  });
 }
 
 function parseLocalDate(isoDate) {
@@ -170,6 +190,15 @@ function parseWeekInputValue(value) {
 function formatWeekLabel(days) {
   const formatter = new Intl.DateTimeFormat('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
   return `KW ${getWeekNumber(days[0])} · ${formatter.format(days[0])} – ${formatter.format(days[6])}`;
+}
+
+function getWeekOffsetForDays(days) {
+  const currentMonday = getWeekDays()[0];
+  const targetMonday = days?.[0];
+  if (!targetMonday) return state.weekOffset;
+  currentMonday.setHours(0, 0, 0, 0);
+  targetMonday.setHours(0, 0, 0, 0);
+  return state.weekOffset + Math.round((targetMonday - currentMonday) / (7 * 86400000));
 }
 
 function parseHoursInput(value) {
@@ -533,7 +562,7 @@ function buildMatrixPayload({ workDate, minutes, projectName = '', commissionNum
   return {
     profile_id: state.session.user.id,
     work_date: workDate,
-    year: parsedDate.getFullYear(),
+    year: getIsoWeekYear(parsedDate),
     kw: getWeekNumber(parsedDate),
     project_name: projectName,
     commission_number: commissionNumber || (absenceType ? REPORT_TYPE_LABELS[absenceType] : ''),
@@ -673,10 +702,18 @@ async function copyCurrentWeekReports() {
     setStatus('Keine normalen Rapporte zum Kopieren vorhanden.', 'neutral');
     return;
   }
+  setServiceLoading(true, 'Rapporte werden kopiert …');
   setStatus('Rapporte werden kopiert …');
-  const { error } = await state.supabase.from('weekly_reports').insert(payloads);
-  if (error) throw error;
-  setStatus(`${payloads.length} Rapporte wurden kopiert.`, 'success');
+  try {
+    const { error } = await state.supabase.from('weekly_reports').insert(payloads);
+    if (error) throw error;
+
+    state.weekOffset = getWeekOffsetForDays(targetDays);
+    await loadReports();
+    setStatus(`${payloads.length} Rapporte wurden in die Zielwoche kopiert.`, 'success');
+  } finally {
+    setServiceLoading(false);
+  }
 }
 
 async function handleMatrixClick(event) {

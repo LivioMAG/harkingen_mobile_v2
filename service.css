@@ -495,3 +495,55 @@ h1 {
   color: var(--muted);
   font-weight: 700;
 }
+
+.service-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(8px);
+}
+
+.service-loading-overlay[hidden] {
+  display: none;
+}
+
+.service-loading-card {
+  width: min(92vw, 360px);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.service-loading-card p {
+  margin: 0;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.service-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid rgba(215, 25, 32, 0.16);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: service-loading-spin 0.8s linear infinite;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+@keyframes service-loading-spin {
+  to { transform: rotate(360deg); }
+}
