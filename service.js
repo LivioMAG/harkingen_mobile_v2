@@ -293,7 +293,7 @@ function renderReportMatrix(reports) {
       <td class="commission-cell">${escapeHtml(row.commissionNumber)}</td>
       ${row.days.map((minutes, dayIndex) => `<td><button type="button" class="matrix-cell-btn ${minutes ? 'has-hours' : ''}" data-kind="report" data-row-index="${rowIndex}" data-day-index="${dayIndex}" aria-label="Rapportstunden bearbeiten">${escapeHtml(formatHours(minutes)) || '<span aria-hidden="true">+</span>'}</button></td>`).join('')}
       <td class="total-cell">${escapeHtml(formatHours(row.total))}</td>
-      <td class="action-cell"><button type="button" class="row-delete-btn" data-kind="report" data-row-index="${rowIndex}" aria-label="Rapportzeile löschen"><span data-lucide="trash-2" aria-hidden="true"></span><span>Löschen</span></button></td>
+      <td class="action-cell"><button type="button" class="row-delete-btn icon-only" data-kind="report" data-row-index="${rowIndex}" aria-label="Rapportzeile löschen" title="Rapportzeile löschen"><span data-lucide="trash-2" aria-hidden="true"></span></button></td>
     </tr>
   `).join('');
   elements.reportTableBody._matrixRows = rows;

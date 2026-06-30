@@ -36,26 +36,24 @@
         </div>
 
         <div class="matrix-toolbar" aria-label="Wochenauswahl">
-          <button class="week-btn" id="prevWeekBtn" type="button">
+          <button class="week-btn icon-only" id="prevWeekBtn" type="button" aria-label="Vorherige Woche" title="Vorherige Woche">
             <span data-lucide="chevron-left" aria-hidden="true"></span>
-            <span>Vorherige</span>
           </button>
           <div class="week-summary">
             <span id="weekLabel">KW wird geladen …</span>
             <small id="serviceStatus" data-type="neutral">Rapporte werden geladen …</small>
           </div>
-          <button class="week-btn" id="nextWeekBtn" type="button">
-            <span>Nächste</span>
+          <button class="week-btn icon-only" id="nextWeekBtn" type="button" aria-label="Nächste Woche" title="Nächste Woche">
             <span data-lucide="chevron-right" aria-hidden="true"></span>
           </button>
-          <button class="week-btn week-btn-secondary" id="currentWeekBtn" type="button">Aktuelle Woche</button>
-          <button class="week-btn" id="copyWeekBtn" type="button"><span data-lucide="copy" aria-hidden="true"></span><span>Woche kopieren</span></button>
+          <button class="week-btn week-btn-secondary icon-only" id="currentWeekBtn" type="button" aria-label="Aktuelle Woche anzeigen" title="Aktuelle Woche anzeigen"><span data-lucide="calendar-days" aria-hidden="true"></span></button>
+          <button class="week-btn icon-only" id="copyWeekBtn" type="button" aria-label="Woche kopieren" title="Woche kopieren"><span data-lucide="copy" aria-hidden="true"></span></button>
         </div>
 
         <section class="matrix-section" aria-labelledby="normalReportsTitle">
           <div class="matrix-section-heading">
             <h2 id="normalReportsTitle">Rapport</h2>
-            <button class="add-row-btn" id="addReportRowBtn" type="button"><span data-lucide="plus" aria-hidden="true"></span><span>Rapport hinzufügen</span></button>
+            <button class="add-row-btn icon-only" id="addReportRowBtn" type="button" aria-label="Rapport hinzufügen" title="Rapport hinzufügen"><span data-lucide="plus" aria-hidden="true"></span></button>
           </div>
 
           <div class="matrix-wrap" role="region" aria-label="Rapport-Matrix" tabindex="0">
@@ -84,7 +82,7 @@
         <section class="matrix-section" aria-labelledby="absenceReportsTitle">
           <div class="matrix-section-heading">
             <h2 id="absenceReportsTitle">Absenzen</h2>
-            <button class="add-row-btn" id="addAbsenceRowBtn" type="button"><span data-lucide="plus" aria-hidden="true"></span><span>Absenz hinzufügen</span></button>
+            <button class="add-row-btn icon-only" id="addAbsenceRowBtn" type="button" aria-label="Absenz hinzufügen" title="Absenz hinzufügen"><span data-lucide="plus" aria-hidden="true"></span></button>
           </div>
 
           <div class="matrix-wrap" role="region" aria-label="Absenz-Matrix" tabindex="0">
@@ -142,8 +140,8 @@
         <p class="matrix-dialog-error" id="matrixDialogError" role="alert" hidden></p>
 
         <div class="matrix-dialog-actions">
-          <button class="week-btn" id="matrixDialogCancelBtn" type="button">Abbrechen</button>
-          <button class="add-row-btn" type="submit">Speichern</button>
+          <button class="week-btn icon-only" id="matrixDialogCancelBtn" type="button" aria-label="Abbrechen" title="Abbrechen"><span data-lucide="x" aria-hidden="true"></span></button>
+          <button class="add-row-btn icon-only" type="submit" aria-label="Speichern" title="Speichern"><span data-lucide="save" aria-hidden="true"></span></button>
         </div>
       </form>
     </dialog>
@@ -183,8 +181,8 @@
         <p class="matrix-dialog-error" id="matrixAbsenceDialogError" role="alert" hidden></p>
 
         <div class="matrix-dialog-actions">
-          <button class="week-btn" id="matrixAbsenceDialogCancelBtn" type="button">Abbrechen</button>
-          <button class="add-row-btn" type="submit">Speichern</button>
+          <button class="week-btn icon-only" id="matrixAbsenceDialogCancelBtn" type="button" aria-label="Abbrechen" title="Abbrechen"><span data-lucide="x" aria-hidden="true"></span></button>
+          <button class="add-row-btn icon-only" type="submit" aria-label="Speichern" title="Speichern"><span data-lucide="save" aria-hidden="true"></span></button>
         </div>
       </form>
     </dialog>
@@ -207,8 +205,8 @@
         <p class="matrix-dialog-error" id="matrixCopyWeekDialogError" role="alert" hidden></p>
 
         <div class="matrix-dialog-actions">
-          <button class="week-btn" id="matrixCopyWeekCancelBtn" type="button">Abbrechen</button>
-          <button class="add-row-btn" type="submit">Kopieren</button>
+          <button class="week-btn icon-only" id="matrixCopyWeekCancelBtn" type="button" aria-label="Abbrechen" title="Abbrechen"><span data-lucide="x" aria-hidden="true"></span></button>
+          <button class="add-row-btn icon-only" type="submit" aria-label="Kopieren" title="Kopieren"><span data-lucide="copy" aria-hidden="true"></span></button>
         </div>
       </form>
     </dialog>
@@ -231,9 +229,9 @@
         <p class="matrix-dialog-error" id="matrixDayDialogError" role="alert" hidden></p>
 
         <div class="matrix-dialog-actions matrix-day-dialog-actions">
-          <button class="danger-btn" id="matrixDayDeleteBtn" type="button">Rapport löschen</button>
-          <button class="week-btn" id="matrixDayDialogCancelBtn" type="button">Abbrechen</button>
-          <button class="add-row-btn" type="submit">Speichern</button>
+          <button class="danger-btn icon-only" id="matrixDayDeleteBtn" type="button" aria-label="Rapport löschen" title="Rapport löschen"><span data-lucide="trash-2" aria-hidden="true"></span></button>
+          <button class="week-btn icon-only" id="matrixDayDialogCancelBtn" type="button" aria-label="Abbrechen" title="Abbrechen"><span data-lucide="x" aria-hidden="true"></span></button>
+          <button class="add-row-btn icon-only" type="submit" aria-label="Speichern" title="Speichern"><span data-lucide="save" aria-hidden="true"></span></button>
         </div>
       </form>
     </dialog>

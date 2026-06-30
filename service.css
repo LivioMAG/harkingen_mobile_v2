@@ -142,8 +142,10 @@ h1 {
 }
 
 .matrix-section-heading {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .matrix-section-heading h2 {
@@ -248,7 +250,7 @@ h1 {
 .add-row-btn {
   width: fit-content;
   min-height: 40px;
-  margin-top: 8px;
+  margin-top: 0;
   padding: 0 12px;
   border: 0;
   border-radius: 999px;
@@ -263,6 +265,37 @@ h1 {
 }
 
 .add-row-btn svg { width: 18px; height: 18px; }
+
+.icon-only {
+  width: 44px;
+  min-width: 44px;
+  padding-inline: 0;
+  gap: 0;
+}
+
+.icon-only svg {
+  width: 18px;
+  height: 18px;
+}
+
+.add-row-btn.icon-only {
+  width: 40px;
+  min-width: 40px;
+}
+
+.danger-btn.icon-only {
+  width: 44px;
+  min-width: 44px;
+  padding-inline: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.danger-btn.icon-only svg {
+  width: 18px;
+  height: 18px;
+}
 
 .matrix-cell-btn {
   width: 100%;
@@ -451,7 +484,7 @@ h1 {
   .matrix-dialog-actions { display: grid; }
   .matrix-dialog-actions .week-btn,
   .matrix-dialog-actions .add-row-btn,
-  .matrix-dialog-actions .danger-btn { width: 100%; }
+  .matrix-dialog-actions .danger-btn { width: 44px; }
 
   .matrix-day-dialog-actions .danger-btn {
     margin-right: 0;
