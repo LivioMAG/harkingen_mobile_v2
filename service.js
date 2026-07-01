@@ -37,7 +37,8 @@ const state = {
   supabase: null,
   session: null,
   weekOffset: 0,
-  reports: []
+  reports: [],
+  savedCommissions: []
 };
 
 const elements = {
@@ -59,6 +60,7 @@ const elements = {
   matrixDialogTitle: document.getElementById('matrixDialogTitle'),
   matrixDialogCancelIcon: document.getElementById('matrixDialogCancelIcon'),
   matrixDialogCancelBtn: document.getElementById('matrixDialogCancelBtn'),
+  matrixSavedCommissionSelect: document.getElementById('matrixSavedCommissionSelect'),
   matrixCommissionInput: document.getElementById('matrixCommissionInput'),
   matrixProjectInput: document.getElementById('matrixProjectInput'),
   matrixWeekdayInputs: document.getElementById('matrixWeekdayInputs'),
@@ -225,6 +227,69 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function pickFirstFilledValue(record, keys) {
+  for (const key of keys) {
+    const value = String(record?.[key] ?? '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+function normalizeSavedCommissionItem(record) {
+  if (!record || typeof record !== 'object') return null;
+  const commissionNumber = pickFirstFilledValue(record, [
+    'commission_number',
+    'commissionNumber',
+    'kommissionsnummer',
+    'Kommissionsnummer',
+    'number'
+  ]);
+  const projectName = pickFirstFilledValue(record, [
+    'project_name',
+    'projectName',
+    'projektname',
+    'Projektname',
+    'name'
+  ]);
+
+  if (!commissionNumber || !projectName) return null;
+  return { commission_number: commissionNumber, project_name: projectName };
+}
+
+function normalizeSavedCommissions(value) {
+  const source = Array.isArray(value) ? value : [];
+  const unique = new Map();
+  source.forEach((item) => {
+    const normalized = normalizeSavedCommissionItem(item);
+    if (!normalized) return;
+    const key = normalized.commission_number.toLowerCase();
+    if (!unique.has(key)) unique.set(key, normalized);
+  });
+  return Array.from(unique.values()).slice(0, 10);
+}
+
+function renderSavedCommissionSelect(selectedCommissionNumber = '') {
+  const select = elements.matrixSavedCommissionSelect;
+  if (!select) return;
+  const commissions = normalizeSavedCommissions(state.savedCommissions);
+  select.innerHTML = [
+    `<option value="">${commissions.length ? '— Kommission auswählen —' : 'Keine gespeicherten Kommissionen'}</option>`,
+    ...commissions.map((item, index) => (
+      `<option value="${index}">${escapeHtml(item.project_name)} · ${escapeHtml(item.commission_number)}</option>`
+    ))
+  ].join('');
+  select.disabled = commissions.length === 0;
+  const selectedIndex = commissions.findIndex((item) => item.commission_number === selectedCommissionNumber);
+  select.value = selectedIndex >= 0 ? String(selectedIndex) : '';
+}
+
+function applyMatrixSavedCommission(index) {
+  const item = normalizeSavedCommissions(state.savedCommissions)[Number(index)];
+  if (!item) return;
+  elements.matrixCommissionInput.value = item.commission_number;
+  elements.matrixProjectInput.value = item.project_name;
+}
+
 function buildReportMatrixRows(reports) {
   const grouped = new Map();
   (reports || []).forEach((entry) => {
@@ -382,6 +447,7 @@ function openReportEntryDialog(options = {}) {
   elements.matrixProjectInput.required = true;
   elements.matrixCommissionInput.value = options.commissionNumber || '';
   elements.matrixProjectInput.value = options.projectName || '';
+  renderSavedCommissionSelect(options.commissionNumber || '');
   renderMatrixDayInputs(options.dayValues || [], elements.matrixWeekdayInputs, 'matrixReportDayInput');
 
   return new Promise((resolve) => {
@@ -743,6 +809,23 @@ async function loadConfig() {
   return response.json();
 }
 
+
+async function loadSavedCommissions() {
+  if (!state.supabase || !state.session?.user) {
+    state.savedCommissions = [];
+    return;
+  }
+
+  const { data, error } = await state.supabase
+    .from('app_profiles')
+    .select('saved_commissions')
+    .eq('id', state.session.user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  state.savedCommissions = normalizeSavedCommissions(data?.saved_commissions);
+}
+
 async function loadReports() {
   if (!state.supabase || !state.session?.user) {
     renderMatrices([]);
@@ -785,6 +868,7 @@ async function initServicePage() {
       renderMatrices([]);
       return;
     }
+    await loadSavedCommissions();
     await loadReports();
   } catch (error) {
     console.error(error);
@@ -808,6 +892,7 @@ elements.absenceTableBody?.addEventListener('click', handleMatrixClick);
 elements.addReportRowBtn?.addEventListener('click', () => addMatrixRows('report').catch((error) => { console.error(error); setStatus(error.message || 'Rapporte konnten nicht gespeichert werden.', 'danger'); }));
 elements.addAbsenceRowBtn?.addEventListener('click', () => addMatrixRows('absence').catch((error) => { console.error(error); setStatus(error.message || 'Absenzen konnten nicht gespeichert werden.', 'danger'); }));
 elements.copyWeekBtn?.addEventListener('click', () => copyCurrentWeekReports().catch((error) => { console.error(error); setStatus(error.message || 'Rapporte konnten nicht kopiert werden.', 'danger'); }));
+elements.matrixSavedCommissionSelect?.addEventListener('change', (event) => applyMatrixSavedCommission(event.target.value));
 
 elements.prevWeekBtn?.addEventListener('click', async () => {
   state.weekOffset -= 1;

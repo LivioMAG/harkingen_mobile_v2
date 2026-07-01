@@ -388,6 +388,10 @@ h1 {
   font-weight: 900;
 }
 
+.matrix-saved-commission-field {
+  grid-column: 1 / -1;
+}
+
 .matrix-dialog-field input,
 .matrix-dialog-field select,
 .matrix-day-hours-input {
