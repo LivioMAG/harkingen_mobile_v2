@@ -45,6 +45,8 @@ const REPORT_TYPE_LABELS = {
   berufsschule: 'Berufsschule'
 };
 const AUTO_REPORT_TYPES = new Set(['ferien', 'krankheit', 'militaer', 'unfall', 'feiertag', 'uk', 'berufsschule']);
+const COMMISSION_NUMBER_PATTERN = /^[A-Za-z0-9]{8}$/;
+const COMMISSION_NUMBER_ERROR = 'Kommissionsnummer muss genau 8 Buchstaben oder Zahlen enthalten.';
 const ABSENCE_TYPE_BY_REPORT_TYPE = {
   ferien: 1,
   krankheit: 2,
@@ -1026,6 +1028,10 @@ function requiresExpenseAttachment(payload) {
   return Number(payload.other_costs_amount || 0) > 0;
 }
 
+function isValidCommissionNumber(commissionNumber = '') {
+  return COMMISSION_NUMBER_PATTERN.test(String(commissionNumber || '').trim());
+}
+
 function commissionRequiresGeneralNote(commissionNumber = '') {
   return commissionNumber.toUpperCase().includes('K');
 }
@@ -1826,6 +1832,12 @@ async function saveSavedCommission(event) {
 
   if (!commissionNumber || !projectName) {
     showToast('Kommissionsnummer und Projektname sind erforderlich.', 'error');
+    return;
+  }
+
+  if (!isValidCommissionNumber(commissionNumber)) {
+    showToast(COMMISSION_NUMBER_ERROR, 'error');
+    elements.savedCommissionNumberInput.focus();
     return;
   }
   if (editIndex === null && commissions.length >= 10) {
@@ -2778,6 +2790,12 @@ async function saveEntry(event) {
 
   if (!isAutoType && !payload.commission_number) {
     showToast('Kommissionsnummer fehlt.', 'error');
+    return;
+  }
+
+  if (!isAutoType && !isValidCommissionNumber(payload.commission_number)) {
+    showToast(COMMISSION_NUMBER_ERROR, 'error');
+    elements.commissionInput.focus();
     return;
   }
 
