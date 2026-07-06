@@ -449,7 +449,15 @@
                 <div class="field-row two-columns">
                   <label class="field">
                     <span>Kommissionsnummer</span>
-                    <input id="savedCommissionNumberInput" type="text" required placeholder="z. B. K-2026-041" />
+                    <input
+                      id="savedCommissionNumberInput"
+                      type="text"
+                      required
+                      placeholder="z. B. AB12CD34"
+                      maxlength="8"
+                      pattern="[A-Za-z0-9]{8}"
+                      title="Genau 8 Buchstaben oder Zahlen"
+                    />
                   </label>
                   <label class="field">
                     <span>Projektname</span>
@@ -549,7 +557,10 @@
                 type="text"
                 inputmode="text"
                 autocomplete="off"
-                placeholder="z. B. K-2026-041"
+                placeholder="z. B. AB12CD34"
+                maxlength="8"
+                pattern="[A-Za-z0-9]{8}"
+                title="Genau 8 Buchstaben oder Zahlen"
               />
               <button class="secondary-btn commission-dropdown-btn" id="savedCommissionDropdownBtn" type="button" aria-label="Gespeicherte Kommissionen anzeigen"><span class="btn-icon" data-lucide="chevron-down" aria-hidden="true"></span></button>
             </div>

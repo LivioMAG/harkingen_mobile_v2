@@ -11,6 +11,8 @@ const REPORT_TYPE_LABELS = {
 const ABSENCE_TYPE_ORDER = [1, 2, 3, 4, 5, 6, 7];
 const DAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const DAY_SHORT_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const COMMISSION_NUMBER_PATTERN = /^[A-Za-z0-9]{8}$/;
+const COMMISSION_NUMBER_ERROR = 'Kommissionsnummer muss genau 8 Buchstaben oder Zahlen enthalten.';
 
 const WEEKLY_REPORT_COLUMNS = [
   'id',
@@ -419,6 +421,10 @@ function setMatrixDialogError(message = '', errorElement = elements.matrixDialog
   errorElement.hidden = !message;
 }
 
+function isValidCommissionNumber(commissionNumber = '') {
+  return COMMISSION_NUMBER_PATTERN.test(String(commissionNumber || '').trim());
+}
+
 function getMatrixDialogResult(kind, weekdayInputs = elements.matrixWeekdayInputs) {
   const isAbsence = kind === 'absence';
   const absenceType = isAbsence ? Number(elements.matrixAbsenceTypeInput?.value || 0) : 0;
@@ -427,6 +433,7 @@ function getMatrixDialogResult(kind, weekdayInputs = elements.matrixWeekdayInput
 
   if (isAbsence && !REPORT_TYPE_LABELS[absenceType]) throw new Error('Bitte einen gültigen Absenztyp wählen.');
   if (!isAbsence && (!projectName || !commissionNumber)) throw new Error('Bitte Kommissionsnummer und Projektname erfassen.');
+  if (!isAbsence && !isValidCommissionNumber(commissionNumber)) throw new Error(COMMISSION_NUMBER_ERROR);
 
   const dayMinutes = Array.from(weekdayInputs.querySelectorAll('.matrix-day-hours-input')).map((input) => {
     const minutes = parseHoursInput(input.value || '0');
